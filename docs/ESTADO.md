@@ -40,9 +40,12 @@ primer hito es más largo**, porque nadie ha hecho standalone todavía.
     pre-refactor y SoH 9.0.0.
   - `HarbourMasters/Shipwright` **no tiene Android en absoluto**. Las releases
     9.2.1 y 9.2.3 publican solo Linux/Mac/Win64.
-- Unirlas son **tres migraciones** antes de tener nada que ejecutar: D3D11→GLES,
-  hooks de `gfx_pc.cpp`→`Fast::Interpreter`, y rebasar ~118 call sites de 9.0.0 a
-  9.2.3 cruzando ZAPDTR→torch y OTR→O2R.
+- Unirlas es **una migración** antes de tener nada que ejecutar: D3D11→GLES.
+  ~~Tres~~ — corregido el 2026-09-10: la investigación había leído la rama
+  `vr-integration` de `libultraship-vr`, pero el juego usa **`vr-port`**, donde
+  los hooks ya están en `Fast::Interpreter` y el juego ya está en SoH 9.2.3 con
+  `.o2r`. El cruce ZAPDTR→torch ni siquiera existe: upstream 9.2.3 sigue con
+  ZAPDTR. Ver la corrección al principio de `research/landscape.md`.
 - **La escala no es constante**: `Player_GetHeight()` = 68.0f adulto / 44.0f niño,
   y el juego cambia entre las dos a mitad de partida.
 
@@ -71,9 +74,13 @@ ojo a FBO trivial.
 
 4. **Alcance mínimo de comodidad — ticket 10.** Graduó de la niebla al confirmar
    el destino. Bloqueado por el 03.
-5. **Combate por gesto o por botón — ticket 11.** ShinyWindow trae combate por
-   movimiento (`vr-combat/`, ~47 de los ~118 call sites). Decir que no recorta el
-   ticket 09 casi a la mitad. Bloqueado por el 03.
+5. **Combate por gesto o por botón — ticket 11.** No es solo gesto: `vr-port`
+   trae `vr_physics.cpp` (77 KB), una espada con física de verdad. Bloqueado por
+   el 03.
+6. **Forkear `MotionControls-2` o reimplantar — ticket 12.** Ahora que el fork ya
+   está en 9.2.3, forkearlo convierte semanas en horas — pero es código sin
+   licencia y el destino deja abierta la puerta a publicar. **Desbloqueado**, y
+   bloquea al 09.
 
 Las otras siete decisiones de encuadre se heredan de Mario sin cambio.
 
@@ -94,11 +101,16 @@ se pueden hacer en paralelo:
   visor por Link/AirLink. Es PCVR, no es el destino, pero pone a prueba las
   decisiones 2, 4, 5 y 6 con el juego real en primera persona.
 
-Ambos están desbloqueados, junto con el ticket 06 (toolchain). El 03 es el que
-más informa: desbloquea el 04, el 05 y el 10.
+Ambos están desbloqueados, junto con los tickets 06 (toolchain) y 12 (forkear o
+reimplantar). El 03 es el que más informa: desbloquea el 04, el 05, el 10 y el 11
+— y **hay que hacerlo desde Windows**, que está en dual boot con 74 GB libres.
+`vr_openxr.cpp` es D3D11 puro y Quest Link es solo Windows; por Linux no hay
+camino sin hacer antes el 07, que depende del 03.
 
-Los tickets 07, 08 y 09 son las tres migraciones y son semanas de trabajo cada
-una. Ahora que el destino está confirmado, lo que los bloquea son el 03 y el 06.
+El ticket 07 (D3D11→GLES) es ahora **la única migración de verdad** y sigue
+siendo semanas. El 08 y el 09 se reescribieron a la baja el 2026-09-10 al
+descubrirse que `vr-port` ya está sobre `Fast::Interpreter` y el juego ya en
+9.2.3.
 
 ## Cómo trabajar aquí
 
