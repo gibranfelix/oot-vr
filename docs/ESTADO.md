@@ -86,37 +86,24 @@ Las otras siete decisiones de encuadre se heredan de Mario sin cambio.
 
 ## Siguiente paso
 
-**No hay APK del destino que instalar** — el "camino 2" de Mario (probar antes de
-construir) no tiene equivalente aquí. Sí existe binario del port *plano*, pero
-eso es instrumento de medición, no el destino. Lo más parecido son dos experimentos independientes que
-se pueden hacer en paralelo:
+**El ticket 03 (PCVR por Link) quedó fuera de alcance** el 2026-09-10: exigía
+reiniciar a Windows y el usuario no quiere. Con él se fue el banco de pruebas, y
+las cuatro decisiones que informaba pasan al ticket 13 — se deciden sobre el
+build propio, después de la migración.
 
-- **Ticket 02** — instalar el port Android *flat* de `linkzenic` en el 3S. Corre en
-  modo 2D, sin VR. Mide framerate y consumo reales en el visor. **APK ya
-  descargado** (`v9.2.3-android.14`, arm64-v8a, en
-  `.scratch/oot-quest-3s/artifacts/`): linkzenic sí publica binarios, así que
-  este ticket **no depende del 06** (toolchain). Lo que falta es enchufar el
-  visor y jugar — checklist exacta en el propio ticket.
-- **Ticket 03** — compilar `ShinyWindow/Shipwright-VR` en PC y jugarlo con el
-  visor por Link/AirLink. Es PCVR, no es el destino, pero pone a prueba las
-  decisiones 2, 4, 5 y 6 con el juego real en primera persona.
+Quedan dos caminos abiertos:
 
-Ambos están desbloqueados, junto con el ticket 12 (forkear o reimplantar).
+- **Ticket 02** — instalar el port Android *flat* de linkzenic en el 3S y medir
+  framerate. APK ya descargado. Solo necesita el visor enchufado.
+- **Ticket 07** — la migración: `vr_openxr` de D3D11 a GLES. Ya no está bloqueado
+  por nada. Es la única migración de verdad que queda y son semanas.
 
-El **ticket 06 (toolchain) está resuelto**: SDK, platforms 33/34 y NDK r26d en
-`~/Android/Sdk`, verificado compilando un binario ARM64. La parte de `adb` se
-cerró por testimonio del usuario, que ya había conectado el 3S antes. El 03 es el que más informa: desbloquea el 04, el 05, el 10 y el 11
-— y **conviene hacerlo desde Windows**, que está en dual boot con 74 GB libres.
-Ojo, el 03 es PCVR: el juego corre en el PC, no en el visor, así que la API que
-manda es la del PC. `vr_openxr.cpp` es D3D11 puro y Quest Link no tiene cliente
-Linux. Hay un camino en Linux (ALVR/WiVRn sobre Monado, más Proton para el
-D3D11), pero mete tres capas de traducción entre tú y las cuatro preguntas que
-el ticket viene a contestar.
+Después del 07 vienen el 08 (reconciliar `vr-port` con el LUS objetivo) y el 13
+(primer arranque en el 3S), que es el que desbloquea las cuatro decisiones
+pendientes: snap turn, escala, comodidad y combate.
 
-El ticket 07 (D3D11→GLES) es ahora **la única migración de verdad** y sigue
-siendo semanas. El 08 y el 09 se reescribieron a la baja el 2026-09-10 al
-descubrirse que `vr-port` ya está sobre `Fast::Interpreter` y el juego ya en
-9.2.3.
+El ticket 09 (inventariar el diff) está desbloqueado y se puede hacer en
+cualquier momento.
 
 ## Cómo trabajar aquí
 
