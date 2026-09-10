@@ -103,10 +103,9 @@ se pueden hacer en paralelo:
 
 Ambos están desbloqueados, junto con el ticket 12 (forkear o reimplantar).
 
-El **ticket 06 (toolchain) está hecho a medias**: el SDK, las platforms 33/34 y
-el NDK r26d están instalados en `~/Android/Sdk` y verificados compilando un
-binario ARM64 de verdad. Falta solo que `adb` vea el 3S, que necesita el visor
-enchufado — el mismo requisito que el ticket 02. El 03 es el que más informa: desbloquea el 04, el 05, el 10 y el 11
+El **ticket 06 (toolchain) está resuelto**: SDK, platforms 33/34 y NDK r26d en
+`~/Android/Sdk`, verificado compilando un binario ARM64. La parte de `adb` se
+cerró por testimonio del usuario, que ya había conectado el 3S antes. El 03 es el que más informa: desbloquea el 04, el 05, el 10 y el 11
 — y **conviene hacerlo desde Windows**, que está en dual boot con 74 GB libres.
 Ojo, el 03 es PCVR: el juego corre en el PC, no en el visor, así que la API que
 manda es la del PC. `vr_openxr.cpp` es D3D11 puro y Quest Link no tiene cliente
