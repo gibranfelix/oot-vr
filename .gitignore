@@ -1,0 +1,21 @@
+# Nunca commitear ROMs ni assets extraídos.
+*.z64
+*.n64
+*.v64
+*.otr
+*.o2r
+
+# Build
+build/
+cmake-build-*/
+_build/
+
+# Android / NDK
+*.apk
+*.aab
+.gradle/
+local.properties
+obj/
+libs/
+
+.DS_Store
