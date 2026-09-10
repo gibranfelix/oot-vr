@@ -121,20 +121,27 @@ reiniciar a Windows y el usuario no quiere. Con él se fue el banco de pruebas, 
 las cuatro decisiones que informaba pasan al ticket 13 — se deciden sobre el
 build propio, después de la migración.
 
-Quedan tres caminos abiertos, ninguno bloqueado:
+El **ticket 08** se cerró el 2026-09-10 sin trabajo de código: **no se rebasa**.
+`vr-port` está 53 commits *por delante* del LUS que trae SoH 9.2.3, los 21 hooks
+no colisionan con nada de lo que upstream ha movido, y upstream ya migró a SDL3
+mientras el juego y el envoltorio Android siguen en SDL2.
+
+Quedan dos caminos abiertos, ninguno bloqueado:
 
 - **Ticket 14** — el envoltorio Android: trasplantar el `Android/` de linkzenic
   al fork de VR, manifiesto de Quest, y compilar el lado `soh/` para arm64 por
-  primera vez. Es lo que produce un APK.
-- **Ticket 08** — reconciliar con upstream. Ya se sabe que `vr-port` parte de
-  `f30fe0e` y que upstream ha movido `interpreter.cpp` +328/−131 desde entonces;
-  falta ver si alguno de los 21 hooks cae en lo reescrito.
+  primera vez. Es lo que produce un APK, y es el único bloqueante que le queda al
+  ticket 13.
 - **Ticket 02** — instalar el port Android *flat* de linkzenic en el 3S y medir
   framerate. APK ya descargado. Solo necesita el visor enchufado.
 
-Los tres desembocan en el **ticket 13** (primer arranque en el 3S), que es el que
+Los dos desembocan en el **ticket 13** (primer arranque en el 3S), que es el que
 desbloquea las cuatro decisiones pendientes: snap turn, escala, comodidad y
 combate.
+
+**Restricción de encuadre nueva: este proyecto es SDL2.** Subir LUS a
+`upstream/main` significa migrar el juego y el envoltorio a SDL3, que es un
+esfuerzo aparte y no un `git merge`. Ver el ticket 08.
 
 **El cuello de botella real es físico**: el 3S sigue sin aparecer en `adb`. Los
 tickets 02 y 13 no se pueden cerrar sin enchufarlo.
