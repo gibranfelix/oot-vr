@@ -4,9 +4,9 @@
 
 ## En una frase
 
-Investigación terminada, **destino sin confirmar**, cero código escrito. El
-siguiente paso son dos experimentos que se pueden hacer en paralelo y que
-convierten en observación varias decisiones que hoy son teóricas.
+Investigación terminada, **destino confirmado** (2026-09-10), cero código
+escrito. El siguiente paso son dos experimentos que se pueden hacer en paralelo y
+que convierten en observación varias decisiones que hoy son teóricas.
 
 ## Qué se sabe (verificado, con fuentes en `research/landscape.md`)
 
@@ -57,10 +57,11 @@ ojo a FBO trivial.
 
 ## Qué falta decidir (bloquea el trabajo real)
 
-1. **Confirmar el destino — ticket 01.** El mapa hereda por defecto el del
-   proyecto de Mario (jugable de principio a fin en primera persona, APK
-   sideloadeable). **No está confirmado con el usuario para OoT** y el coste aquí
-   es mayor. Ver `map.md`.
+1. ~~**Confirmar el destino — ticket 01.**~~ **Resuelto 2026-09-10.** Standalone
+   confirmado, PCVR descartado como destino (`docs/adr/0001`). El destino se
+   reescribió: suelo práctico en vez de "sin crashes", línea principal hasta
+   créditos, y la comodidad **dentro** del criterio de éxito. Ver `map.md` y
+   `CONTEXT.md`.
 2. **Decisión 5 — snap turn contra Z-targeting.** En SM64 el stick derecho estaba
    libre. En OoT el Z-targeting ya ocupa el rol de "hacia dónde miro", con siete
    modos de cámara, y con lock-on el marco de referencia del stick tiene que
@@ -68,25 +69,36 @@ ojo a FBO trivial.
 3. **Decisión 6 — escala adulto/niño.** Dos alturas y una transición a mitad de
    partida. Hay que re-decidir. Ticket 05.
 
+4. **Alcance mínimo de comodidad — ticket 10.** Graduó de la niebla al confirmar
+   el destino. Bloqueado por el 03.
+5. **Combate por gesto o por botón — ticket 11.** ShinyWindow trae combate por
+   movimiento (`vr-combat/`, ~47 de los ~118 call sites). Decir que no recorta el
+   ticket 09 casi a la mitad. Bloqueado por el 03.
+
 Las otras siete decisiones de encuadre se heredan de Mario sin cambio.
 
 ## Siguiente paso
 
-**No hay APK que instalar** — el "camino 2" de Mario (probar antes de construir) no
-tiene equivalente aquí. Lo más parecido son dos experimentos independientes que
+**No hay APK del destino que instalar** — el "camino 2" de Mario (probar antes de
+construir) no tiene equivalente aquí. Sí existe binario del port *plano*, pero
+eso es instrumento de medición, no el destino. Lo más parecido son dos experimentos independientes que
 se pueden hacer en paralelo:
 
 - **Ticket 02** — instalar el port Android *flat* de `linkzenic` en el 3S. Corre en
-  modo 2D, sin VR. Mide framerate y consumo reales en el visor.
+  modo 2D, sin VR. Mide framerate y consumo reales en el visor. **APK ya
+  descargado** (`v9.2.3-android.14`, arm64-v8a, en
+  `.scratch/oot-quest-3s/artifacts/`): linkzenic sí publica binarios, así que
+  este ticket **no depende del 06** (toolchain). Lo que falta es enchufar el
+  visor y jugar — checklist exacta en el propio ticket.
 - **Ticket 03** — compilar `ShinyWindow/Shipwright-VR` en PC y jugarlo con el
   visor por Link/AirLink. Es PCVR, no es el destino, pero pone a prueba las
   decisiones 2, 4, 5 y 6 con el juego real en primera persona.
 
-Ambos están desbloqueados, junto con el ticket 01 (confirmar el destino). El 03
-es el que más informa de los tres.
+Ambos están desbloqueados, junto con el ticket 06 (toolchain). El 03 es el que
+más informa: desbloquea el 04, el 05 y el 10.
 
 Los tickets 07, 08 y 09 son las tres migraciones y son semanas de trabajo cada
-una. Ninguno debería empezar antes de cerrar el 01.
+una. Ahora que el destino está confirmado, lo que los bloquea son el 03 y el 06.
 
 ## Cómo trabajar aquí
 
