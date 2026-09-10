@@ -103,9 +103,12 @@ se pueden hacer en paralelo:
 
 Ambos están desbloqueados, junto con los tickets 06 (toolchain) y 12 (forkear o
 reimplantar). El 03 es el que más informa: desbloquea el 04, el 05, el 10 y el 11
-— y **hay que hacerlo desde Windows**, que está en dual boot con 74 GB libres.
-`vr_openxr.cpp` es D3D11 puro y Quest Link es solo Windows; por Linux no hay
-camino sin hacer antes el 07, que depende del 03.
+— y **conviene hacerlo desde Windows**, que está en dual boot con 74 GB libres.
+Ojo, el 03 es PCVR: el juego corre en el PC, no en el visor, así que la API que
+manda es la del PC. `vr_openxr.cpp` es D3D11 puro y Quest Link no tiene cliente
+Linux. Hay un camino en Linux (ALVR/WiVRn sobre Monado, más Proton para el
+D3D11), pero mete tres capas de traducción entre tú y las cuatro preguntas que
+el ticket viene a contestar.
 
 El ticket 07 (D3D11→GLES) es ahora **la única migración de verdad** y sigue
 siendo semanas. El 08 y el 09 se reescribieron a la baja el 2026-09-10 al
