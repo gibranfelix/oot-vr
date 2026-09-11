@@ -144,6 +144,11 @@ Los dos necesitan exactamente lo mismo y nada más.
 `upstream/main` significa migrar el juego y el envoltorio a SDL3, que es un
 esfuerzo aparte y no un `git merge`. Ver el ticket 08.
 
+**Todo lo que se puede preparar sin visor, está preparado**: el APK en
+`/tmp/ootvr-quest-debug.apk` y el `oot.o2r` de tu cartucho en `/tmp/oot.o2r`
+(PAL GC, versión soportada). Tres comandos de `adb` y a jugar — están en el
+ticket 13.
+
 **El cuello de botella es el visor.** `adb devices` sigue sin verlo — ni siquiera
 aparece en el bus USB. Ya no queda trabajo de código por delante: modo
 desarrollador en el 3S, USB-C, aceptar el diálogo dentro del visor, y
