@@ -144,9 +144,22 @@ Los dos necesitan exactamente lo mismo y nada más.
 `upstream/main` significa migrar el juego y el envoltorio a SDL3, que es un
 esfuerzo aparte y no un `git merge`. Ver el ticket 08.
 
-**El cuello de botella es el visor.** `adb devices` sigue sin verlo. Ya no queda
-trabajo de código por delante: modo desarrollador en el 3S, USB-C, aceptar el
-diálogo dentro del visor, y `adb install -r /tmp/ootvr-quest-debug.apk`.
+**El cuello de botella es el visor.** `adb devices` sigue sin verlo — ni siquiera
+aparece en el bus USB. Ya no queda trabajo de código por delante: modo
+desarrollador en el 3S, USB-C, aceptar el diálogo dentro del visor, y
+`adb install -r /tmp/ootvr-quest-debug.apk`.
+
+Antes de eso se barrieron los fallos de arranque que **sí** se podían ver sin
+hardware, mirando la tabla de símbolos del `.so`. Apareció uno de verdad:
+`libsoh.so` exportaba `main` donde SDL iba a pedir `SDL_main`, lo que habría
+cerrado la app al instante sin dejar rastro en un build correcto. Corregido. El
+resto salió limpio: el loader de OpenXR está en `DT_NEEDED`, los 558 símbolos
+indefinidos resuelven todos, VR arranca sola, y si OpenXR falla el juego cae a
+plano en vez de crashear.
+
+Si el primer arranque falla, **no será por el empaquetado**. Los sospechosos que
+quedan son el estéreo, el contexto EGL y la sesión OpenXR sobre GLES — lo que el
+ticket 07 escribió y nadie ha visto correr.
 
 ## Cómo trabajar aquí
 
