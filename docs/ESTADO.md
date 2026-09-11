@@ -4,9 +4,9 @@
 
 ## En una frase
 
-Destino confirmado y **la migración gráfica hecha**: la capa de VR compila para
-arm64 con GLES y OpenXR de verdad. Lo que separa del visor ya no es portar
-código, es empaquetar una app Android — y enchufar el 3S.
+**Hay APK.** El juego entero compila para arm64 con la capa de VR sobre GLES y
+OpenXR, y sale empaquetado como app inmersiva de Quest. Lo único que separa de
+saber si funciona es **enchufar el 3S**.
 
 ## Qué se sabe (verificado, con fuentes en `research/landscape.md`)
 
@@ -92,27 +92,28 @@ Las otras siete decisiones de encuadre se heredan de Mario sin cambio.
 
 ## Dónde está el código
 
-El fork de la capa de VR: `~/src/oot-vr/lus-vr`, rama `quest-gles`, commit
-`b5514d6`. **Ese árbol no está respaldado**; la copia durable del trabajo es
-`.scratch/oot-quest-3s/artifacts/07-vr-openxr-d3d11-a-gles.patch`, en este repo.
+Dos forks, en `~/src/oot-vr/`:
 
-Al lado, como referencia de solo lectura: `soh-vr` (el fork de VR del juego),
-`soh-android` (el port plano de linkzenic), `lus-android` (su LUS),
+- **`soh-vr`**, rama `quest` (`1893b98e`) — el juego. Su submódulo `libultraship`
+  apunta al de al lado.
+- **`lus-vr`**, rama `quest-gles` (`05b0381`) — la capa de VR portada a GLES.
+
+Al lado, solo lectura: `soh-android` y `lus-android` (el port plano de linkzenic),
 `openxr-android` (el AAR del loader de Khronos).
 
-Para reconstruir:
+**Ese árbol no está respaldado.** Las copias durables viven en este repo, en
+`.scratch/oot-quest-3s/artifacts/`: los parches de los tickets 07 y 14.
 
-```
-cmake -S . -B build-android -G Ninja \
-  -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
-  -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-24 -DANDROID_STL=c++_static \
-  -DUSE_OPENGLES=ON -DCMAKE_BUILD_TYPE=Release \
-  -DOpenXR_DIR=~/src/oot-vr/openxr-android/aar/prefab/modules/openxr_loader/libs/android.arm64-v8a/cmake/openxr
-```
+**El APK**: `~/src/oot-vr/soh-vr/Android/app/build/outputs/apk/debug/app-debug.apk`,
+con copia en `/tmp/ootvr-quest-debug.apk`. 32 MB, arm64-v8a, firmado de debug.
 
-**Riesgo abierto**: el path D3D11 se refactorizó junto con el port y no se ha
-recompilado — aquí no hay MSVC. No afecta al destino (Windows no es objetivo),
-pero está roto hasta que se demuestre lo contrario.
+Cómo reconstruir: `soh-vr/Android/README.md`. Son tres pasos — build host (genera
+`soh.o2r`), build nativo arm64, y gradle. El nativo se hace **fuera de gradle** a
+propósito: gradle fija versiones exactas de NDK y CMake que esta máquina no tiene.
+
+**Riesgo abierto**: el path D3D11 se refactorizó junto con el port del ticket 07 y
+no se ha recompilado — aquí no hay MSVC. No afecta al destino (Windows no es
+objetivo), pero está roto hasta que se demuestre lo contrario.
 
 ## Siguiente paso
 
@@ -126,25 +127,26 @@ El **ticket 08** se cerró el 2026-09-10 sin trabajo de código: **no se rebasa*
 no colisionan con nada de lo que upstream ha movido, y upstream ya migró a SDL3
 mientras el juego y el envoltorio Android siguen en SDL2.
 
-Quedan dos caminos abiertos, ninguno bloqueado:
+El **ticket 14** se cerró el 2026-09-10: hay APK de Quest, y con él cayó el
+último bloqueante del 13.
 
-- **Ticket 14** — el envoltorio Android: trasplantar el `Android/` de linkzenic
-  al fork de VR, manifiesto de Quest, y compilar el lado `soh/` para arm64 por
-  primera vez. Es lo que produce un APK, y es el único bloqueante que le queda al
-  ticket 13.
-- **Ticket 02** — instalar el port Android *flat* de linkzenic en el 3S y medir
-  framerate. APK ya descargado. Solo necesita el visor enchufado.
+Queda un solo camino, y **es físico**:
 
-Los dos desembocan en el **ticket 13** (primer arranque en el 3S), que es el que
-desbloquea las cuatro decisiones pendientes: snap turn, escala, comodidad y
-combate.
+- **Ticket 13** — primer arranque en el 3S. Instalar el APK, empujar tu `oot.o2r`,
+  abrirlo. Desbloquea las cuatro decisiones pendientes: snap turn, escala,
+  comodidad y combate.
+- **Ticket 02** — en paralelo, medir framerate con el port plano de linkzenic.
+  APK ya descargado.
+
+Los dos necesitan exactamente lo mismo y nada más.
 
 **Restricción de encuadre nueva: este proyecto es SDL2.** Subir LUS a
 `upstream/main` significa migrar el juego y el envoltorio a SDL3, que es un
 esfuerzo aparte y no un `git merge`. Ver el ticket 08.
 
-**El cuello de botella real es físico**: el 3S sigue sin aparecer en `adb`. Los
-tickets 02 y 13 no se pueden cerrar sin enchufarlo.
+**El cuello de botella es el visor.** `adb devices` sigue sin verlo. Ya no queda
+trabajo de código por delante: modo desarrollador en el 3S, USB-C, aceptar el
+diálogo dentro del visor, y `adb install -r /tmp/ootvr-quest-debug.apk`.
 
 ## Cómo trabajar aquí
 
