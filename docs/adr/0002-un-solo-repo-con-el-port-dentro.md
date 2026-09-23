@@ -5,7 +5,7 @@ Estado: aceptada
 
 ## Contexto
 
-El port se construyó forkeando el trabajo de ShinyWindow (ticket 12): el juego
+El port se construyó forkeando el trabajo de ShinyWindow (ticket [#14](https://github.com/gibranfelix/zelda-oot-vr/issues/14)): el juego
 en `Shipwright-VR@MotionControls-2`, el motor en `libultraship-vr@vr-port`, y
 `ZAPDTR` / `OTRExporter` como submódulos de HarbourMasters. Cuatro repositorios
 con commits nuestros encima, más este, que solo tenía el mapa y las decisiones.
@@ -15,7 +15,7 @@ disco. Un clon limpio no compilaba en ninguna otra máquina.
 
 Esa forma solo tiene sentido si se va a **seguir sincronizado con upstream** —
 es lo que compran los forks y los submódulos: poder hacer `git merge` del
-original. Y eso ya estaba descartado: el ticket 08 midió que upstream migró a
+original. Y eso ya estaba descartado: el ticket [#10](https://github.com/gibranfelix/zelda-oot-vr/issues/10) midió que upstream migró a
 SDL3 (#1191) y metió un sistema de componentes de 232 archivos (#1174), mientras
 que el juego y el envoltorio Android son SDL2. Subir a upstream es una migración,
 no un merge.
@@ -33,10 +33,10 @@ submódulos son idénticos byte a byte a su origen; `port/.gitattributes` los ma
 ## Lo que se pierde
 
 - **El historial de commits de los forks.** El código entró como una
-  instantánea. Los *porqués* de cada cambio siguen en los tickets 07, 08, 13 y
-  14; los mensajes de commit individuales solo existen en `~/src/oot-vr/`.
+  instantánea. Los *porqués* de cada cambio siguen en los tickets [#9](https://github.com/gibranfelix/zelda-oot-vr/issues/9), [#10](https://github.com/gibranfelix/zelda-oot-vr/issues/10), [#15](https://github.com/gibranfelix/zelda-oot-vr/issues/15) y
+  [#16](https://github.com/gibranfelix/zelda-oot-vr/issues/16); los mensajes de commit individuales solo existen en `~/src/oot-vr/`.
 - **Traer un arreglo de upstream deja de ser un `git merge`.** Pasa a ser un
-  cherry-pick a mano o un parche. El ticket 08 midió que la superficie de VR en
+  cherry-pick a mano o un parche. El ticket [#10](https://github.com/gibranfelix/zelda-oot-vr/issues/10) midió que la superficie de VR en
   `interpreter.cpp` son 8 funciones localizadas, así que un arreglo puntual sigue
   siendo barato mientras esas 8 no se muevan.
 - **La atribución deja de ser estructural.** En un fork, GitHub dice de dónde
@@ -54,5 +54,5 @@ submódulos son idénticos byte a byte a su origen; `port/.gitattributes` los ma
   archivos nuevos en esas carpetas hay que añadirlos con `git add -f`
   (`AGENTS.md`).
 - **La licencia no cambia.** Shipwright y zeldaret/oot no tienen licencia; la
-  exposición es la misma que con el fork (ticket 12). El repositorio es
+  exposición es la misma que con el fork (ticket [#14](https://github.com/gibranfelix/zelda-oot-vr/issues/14)). El repositorio es
   **privado**, como el destino. Publicar sigue siendo una decisión aparte.

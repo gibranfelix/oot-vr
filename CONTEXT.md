@@ -6,7 +6,7 @@ construyen. Las decisiones difíciles de revertir viven en `docs/adr/`.
 ## Destino
 
 El estado en el que este esfuerzo se declara terminado. Está escrito en
-`.scratch/oot-quest-3s/map.md` y se confirmó el 2026-09-10. No es una lista de
+el mapa ([issue #2](https://github.com/gibranfelix/zelda-oot-vr/issues/2)) y se confirmó el 2026-09-10. No es una lista de
 tareas ni una fecha: es una descripción de cómo se ve la victoria.
 
 ## Standalone

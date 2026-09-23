@@ -40,12 +40,12 @@ PC"*.
 
 ## Consecuencias
 
-- Las tres migraciones (tickets 07, 08, 09) están dentro del alcance y son el
+- Las tres migraciones (tickets [#9](https://github.com/gibranfelix/zelda-oot-vr/issues/9), [#10](https://github.com/gibranfelix/zelda-oot-vr/issues/10), [#11](https://github.com/gibranfelix/zelda-oot-vr/issues/11)) están dentro del alcance y son el
   grueso del trabajo.
 - `ShinyWindow/Shipwright-VR` se usa igual, pero como **referencia y banco de
-  pruebas** (ticket 03), no como base a mejorar.
+  pruebas** (ticket [#5](https://github.com/gibranfelix/zelda-oot-vr/issues/5)), no como base a mejorar.
 - El presupuesto de rendimiento pasa a ser crítico: standalone significa que el
-  3S renderiza dos pasadas por su cuenta, sin un PC detrás. Lo mide el ticket 02.
+  3S renderiza dos pasadas por su cuenta, sin un PC detrás. Lo mide el ticket [#4](https://github.com/gibranfelix/zelda-oot-vr/issues/4).
 - Si el 3S no diera para dos pasadas, eso **redibuja la ruta** (resolución,
   foveación, recortes), no el destino. Volver a PCVR sería redibujar el destino y
   sería un esfuerzo nuevo, no una continuación.
