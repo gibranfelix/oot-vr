@@ -1,0 +1,9 @@
+* text=auto eol=lf
+
+# SOH [Quest] These three were separate repositories, vendored in from what used to be
+# submodules. Their blobs carry their own line endings - some CRLF - and at least one of them
+# (libultraship's stormlib-optimizations.patch) is fed to `git apply` at configure time, where a
+# normalised line ending means a patch that no longer applies. Keep them byte-for-byte.
+libultraship/** -text
+ZAPDTR/** -text
+OTRExporter/** -text

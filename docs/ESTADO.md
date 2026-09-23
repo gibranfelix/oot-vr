@@ -92,24 +92,37 @@ Las otras siete decisiones de encuadre se heredan de Mario sin cambio.
 
 ## Dónde está el código
 
-Dos forks, en `~/src/oot-vr/`:
+**Aquí, en `port/`.** Es el juego entero: Ship of Harkinian con la capa de VR, el
+motor (`port/libultraship`), las herramientas de extracción (`port/ZAPDTR`,
+`port/OTRExporter`) y el envoltorio de Quest (`port/Android`).
 
-- **`soh-vr`**, rama `quest` (`1893b98e`) — el juego. Su submódulo `libultraship`
-  apunta al de al lado.
-- **`lus-vr`**, rama `quest-gles` (`05b0381`) — la capa de VR portada a GLES.
+Hasta el 2026-09-23 vivía repartido en forks locales bajo `~/src/oot-vr/`, con
+submódulos que apuntaban a rutas del disco. Se consolidó porque esos repos solo
+servían para seguir sincronizados con upstream, y el ticket 08 ya había decidido
+no hacerlo (upstream migró a SDL3; este proyecto es SDL2). Los tres subárboles
+que eran submódulos se importaron **byte a byte** — verificado comparando el árbol
+completo — y un `.gitattributes` en `port/` impide que git les normalice los
+finales de línea.
 
-Al lado, solo lectura: `soh-android` y `lus-android` (el port plano de linkzenic),
-`openxr-android` (el AAR del loader de Khronos).
+`~/src/oot-vr/` ya no hace falta. El historial de cómo se llegó aquí queda en los
+tickets 07, 08, 13 y 14. Los parches de `.scratch/oot-quest-3s/artifacts/` que
+citan esos tickets se retiraron al consolidar — eran el respaldo de los forks, y
+`port/` los contiene enteros. Siguen en el historial de git si hacen falta.
 
-**Ese árbol no está respaldado.** Las copias durables viven en este repo, en
-`.scratch/oot-quest-3s/artifacts/`: los parches de los tickets 07 y 14.
+**Construir el APK**, de una sola orden:
 
-**El APK**: `~/src/oot-vr/soh-vr/Android/app/build/outputs/apk/debug/app-debug.apk`,
-con copia en `/tmp/ootvr-quest-debug.apk`. 32 MB, arm64-v8a, firmado de debug.
+```
+port/Android/build-apk.sh
+```
 
-Cómo reconstruir: `soh-vr/Android/README.md`. Son tres pasos — build host (genera
-`soh.o2r`), build nativo arm64, y gradle. El nativo se hace **fuera de gradle** a
-propósito: gradle fija versiones exactas de NDK y CMake que esta máquina no tiene.
+Hace el build host (genera `soh.o2r`), el build arm64, empaqueta con gradle y deja
+el APK en `port/Android/app/build/outputs/apk/debug/app-debug.apk`. El loader de
+OpenXR lo baja CMake de Maven, fijado por hash: el build no depende de nada fuera
+del repo salvo el SDK/NDK de Android.
+
+**Ojo**: el checkout principal está en `/mnt/data`, que es NTFS por fuseblk, y
+ahí no se puede compilar (sin symlinks ni bit de ejecución — ver ticket 06).
+Compilar desde un clon o worktree en `/home`.
 
 **Riesgo abierto**: el path D3D11 se refactorizó junto con el port del ticket 07 y
 no se ha recompilado — aquí no hay MSVC. No afecta al destino (Windows no es

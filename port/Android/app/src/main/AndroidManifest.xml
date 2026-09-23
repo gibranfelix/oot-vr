@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    android:versionCode="1"
+    android:versionName="0.1-quest"
+    android:installLocation="auto">
+
+    <!-- OpenGL ES 3.0: the renderer is GLES3 and the OpenXR graphics binding is GLES. -->
+    <uses-feature android:glEsVersion="0x00030000" android:required="true"/>
+
+    <!-- Horizon OS lists an app as VR only if it declares 6DoF head tracking. Without this the
+         3S runs it as a flat 2D window - which is exactly what the reference port does. -->
+    <uses-feature android:name="android.hardware.vr.headtracking"
+        android:required="true"
+        android:version="1"/>
+
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false"/>
+    <uses-feature android:name="android.hardware.gamepad" android:required="false"/>
+
+    <!-- SOH [Quest] Declared optional, and not because the port uses hands. Horizon OS runs a
+         RequiresControllersLaunchInterceptor over any app that says nothing about hand tracking:
+         when the Touch controllers happen to be asleep it swallows the launch and shows a dialog
+         instead, which from outside the headset is indistinguishable from the app hanging. Saying
+         "hands optional" is enough to stop the interceptor firing. -->
+    <uses-feature android:name="oculus.software.handtracking" android:required="false"/>
+    <uses-permission android:name="com.oculus.permission.HAND_TRACKING"/>
+
+    <!-- No storage permission: libultraship uses the app-private external directory. -->
+    <uses-permission android:name="android.permission.VIBRATE"/>
+
+    <application android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+        android:hardwareAccelerated="true"
+        android:appCategory="game"
+        >
+
+        <meta-data android:name="com.samsung.android.vr.application.mode" android:value="vr_only"/>
+
+        <!-- SOH [Quest] SDL blocks its main thread whenever Android says the activity is paused or
+             unfocused, and it defaults to doing so. That assumption is a 2D one: an immersive
+             Horizon OS app hands focus of its flat window straight back to the shell, so SDL parks
+             the game loop forever and the compositor is left showing its own grey environment.
+             SDL reads SDL_ENV.* meta-data at startup (SDLActivity.java), so this needs no code. -->
+        <meta-data android:name="SDL_ENV.SDL_ANDROID_BLOCK_ON_PAUSE" android:value="0"/>
+        <meta-data android:name="SDL_ENV.SDL_ANDROID_BLOCK_ON_PAUSE_PAUSEAUDIO" android:value="0"/>
+
+        <activity android:name="org.oot.vr.MainActivity"
+            android:label="@string/app_name"
+            android:alwaysRetainTaskState="true"
+            android:launchMode="singleTask"
+            android:configChanges="density|keyboard|keyboardHidden|navigation|orientation|screenLayout|screenSize|uiMode"
+            android:excludeFromRecents="false"
+            android:exported="true"
+            android:screenOrientation="landscape">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+                <!-- What makes Horizon OS treat this as an immersive app rather than a 2D panel. -->
+                <category android:name="com.oculus.intent.category.VR"/>
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
