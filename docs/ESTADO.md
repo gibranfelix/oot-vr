@@ -4,9 +4,9 @@
 
 ## En una frase
 
-**Hay APK.** El juego entero compila para arm64 con la capa de VR sobre GLES y
-OpenXR, y sale empaquetado como app inmersiva de Quest. Lo único que separa de
-saber si funciona es **enchufar el 3S**.
+**Funciona.** Ocarina of Time corre en el Quest 3S, en estéreo, en primera
+persona, nativo. Sesión OpenXR en `FOCUSED` a ~82 fps, con glitches gráficos por
+clasificar (ticket 15) y las cuatro decisiones de diseño ya desbloqueadas.
 
 ## Qué se sabe (verificado, con fuentes en `research/landscape.md`)
 
@@ -117,54 +117,32 @@ objetivo), pero está roto hasta que se demuestre lo contrario.
 
 ## Siguiente paso
 
-**El ticket 03 (PCVR por Link) quedó fuera de alcance** el 2026-09-10: exigía
-reiniciar a Windows y el usuario no quiere. Con él se fue el banco de pruebas, y
-las cuatro decisiones que informaba pasan al ticket 13 — se deciden sobre el
-build propio, después de la migración.
+El **ticket 13 se cerró el 2026-09-23**: el juego arranca y se juega. Con él caen
+los bloqueantes de las cuatro decisiones pendientes.
 
-El **ticket 08** se cerró el 2026-09-10 sin trabajo de código: **no se rebasa**.
-`vr-port` está 53 commits *por delante* del LUS que trae SoH 9.2.3, los 21 hooks
-no colisionan con nada de lo que upstream ha movido, y upstream ya migró a SDL3
-mientras el juego y el envoltorio Android siguen en SDL2.
+Frontera actual, toda takeable:
 
-El **ticket 14** se cerró el 2026-09-10: hay APK de Quest, y con él cayó el
-último bloqueante del 13.
+- **Ticket 15** — clasificar los glitches gráficos. Es el primero que se resuelve
+  mirando, no razonando. Cada síntoma tiene su sospechoso identificado (sesgo de
+  profundidad, sRGB, HUD, proyección).
+- **Tickets 04, 05, 10, 11** — snap turn, escala niño/adulto, comodidad y combate.
+  Son HITL: se deciden jugando, no discutiendo.
+- **Ticket 02** — medir framerate con el port plano de referencia.
 
-Queda un solo camino, y **es físico**:
+**Y todos necesitan lo mismo: alguien con el visor puesto.** Horizon OS bloquea
+el lanzamiento en cuanto nadie lo lleva (`vrlockscreen/.SensorLockActivity`), y
+`oculus_proximity_sensor_enabled=0` se ignora incluso tras reiniciar. No hay
+camino por `adb`.
 
-- **Ticket 13** — primer arranque en el 3S. Instalar el APK, empujar tu `oot.o2r`,
-  abrirlo. Desbloquea las cuatro decisiones pendientes: snap turn, escala,
-  comodidad y combate.
-- **Ticket 02** — en paralelo, medir framerate con el port plano de linkzenic.
-  APK ya descargado.
+## Herramientas que ahora existen
 
-Los dos necesitan exactamente lo mismo y nada más.
+Un visor no tiene consola ni depurador. Durante el arranque se añadieron dos
+cosas sin las cuales depurar ahí es a ciegas:
 
-**Restricción de encuadre nueva: este proyecto es SDL2.** Subir LUS a
-`upstream/main` significa migrar el juego y el envoltorio a SDL3, que es un
-esfuerzo aparte y no un `git merge`. Ver el ticket 08.
-
-**Todo lo que se puede preparar sin visor, está preparado**: el APK en
-`/tmp/ootvr-quest-debug.apk` y el `oot.o2r` de tu cartucho en `/tmp/oot.o2r`
-(PAL GC, versión soportada). Tres comandos de `adb` y a jugar — están en el
-ticket 13.
-
-**El cuello de botella es el visor.** `adb devices` sigue sin verlo — ni siquiera
-aparece en el bus USB. Ya no queda trabajo de código por delante: modo
-desarrollador en el 3S, USB-C, aceptar el diálogo dentro del visor, y
-`adb install -r /tmp/ootvr-quest-debug.apk`.
-
-Antes de eso se barrieron los fallos de arranque que **sí** se podían ver sin
-hardware, mirando la tabla de símbolos del `.so`. Apareció uno de verdad:
-`libsoh.so` exportaba `main` donde SDL iba a pedir `SDL_main`, lo que habría
-cerrado la app al instante sin dejar rastro en un build correcto. Corregido. El
-resto salió limpio: el loader de OpenXR está en `DT_NEEDED`, los 558 símbolos
-indefinidos resuelven todos, VR arranca sola, y si OpenXR falla el juego cae a
-plano en vez de crashear.
-
-Si el primer arranque falla, **no será por el empaquetado**. Los sospechosos que
-quedan son el estéreo, el contexto EGL y la sesión OpenXR sobre GLES — lo que el
-ticket 07 escribió y nadie ha visto correr.
+- **`android_sink` de spdlog + nivel `info` en Android**: todo `[VR]` sale por
+  `adb logcat -s soh:V`.
+- **Espejo del ojo izquierdo en GLES**: `adb exec-out screencap -p` debería
+  devolver lo que el visor pinta. **Sin verificar en dispositivo todavía.**
 
 ## Cómo trabajar aquí
 
