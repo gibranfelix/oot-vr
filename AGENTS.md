@@ -42,20 +42,20 @@ investigación como referencia, hay una copia en
 
 1. `docs/ESTADO.md` — qué está decidido, qué está pendiente, cuál es el siguiente
    paso exacto. **Léelo primero, siempre.**
-2. `.scratch/oot-quest-3s/map.md` — el mapa de wayfinder: destino, decisiones de
-   encuadre, niebla y fuera de alcance.
-3. `.scratch/oot-quest-3s/issues/` — los tickets. La frontera son los que están
-   `open`, sin `Blocked by` pendiente y sin asignar.
+2. **El mapa de wayfinder es el issue #2** — https://github.com/gibranfelix/zelda-oot-vr/issues/2 — destino,
+   decisiones de encuadre, niebla y fuera de alcance.
+3. **Los tickets son sus sub-issues** en GitHub. La frontera son los abiertos,
+   sin bloqueo pendiente y sin asignar. Cómo se opera: `docs/agents/issue-tracker.md`.
 4. `.scratch/oot-quest-3s/research/` — los hechos verificados. No los
    reinvestigues; si algo cambió, corrige el archivo.
 
-Para avanzar el mapa: `/wayfinder .scratch/oot-quest-3s/map.md`.
+Para avanzar el mapa: `/wayfinder https://github.com/gibranfelix/zelda-oot-vr/issues/2`.
 
 ## Agent skills
 
 ### Issue tracker
 
-Issues live as markdown files under `.scratch/<feature>/`.
+GitHub Issues on `gibranfelix/zelda-oot-vr`, via `gh`. The wayfinder map is issue #2.
 See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
