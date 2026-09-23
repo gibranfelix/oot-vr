@@ -8,6 +8,25 @@ del juego.** Hace falta un dump del cartucho propio; el `.gitignore` bloquea
 `*.z64`, `*.otr` y `*.o2r`, y ningún build debe poder producir un artefacto
 commiteable con assets dentro.
 
+## Dónde está el código
+
+Todo en **`port/`**: el juego, el motor (`port/libultraship`), las herramientas de
+extracción (`port/ZAPDTR`, `port/OTRExporter`) y el envoltorio de Quest
+(`port/Android`). No hay submódulos ni forks aparte; es desarrollo nuestro. Por
+qué, y qué se pierde con ello: `docs/adr/0002`.
+
+- **APK**: `port/Android/build-apk.sh`, una sola orden.
+- **Compila desde `/home`, no desde `/mnt/data`**: es NTFS por fuseblk y no
+  soporta symlinks ni bit de ejecución.
+- **Archivos nuevos dentro de `port/`**: el `.gitignore` de Shipwright es una
+  plantilla de Visual Studio que ignora carpetas llamadas `debug/` y `log/`,
+  `*.png` y `Makefile`. `libultraship` tiene código real en `src/fast/debug/` y
+  `src/libultraship/log/`. Si un archivo nuevo "no aparece" en `git status`, es
+  eso: añádelo con `git add -f`.
+- **No toques los finales de línea** de `port/libultraship`, `port/ZAPDTR` ni
+  `port/OTRExporter`: `port/.gitattributes` los marca `-text` porque algunos son
+  parches que se aplican con `git apply` al configurar.
+
 ## NO CONFUNDIR con el proyecto de Mario
 
 Existe un proyecto hermano en `../mario-64`: un port

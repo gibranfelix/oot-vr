@@ -4,9 +4,9 @@
 
 ## En una frase
 
-Investigación terminada, **destino confirmado** (2026-09-10), cero código
-escrito. El siguiente paso son dos experimentos que se pueden hacer en paralelo y
-que convierten en observación varias decisiones que hoy son teóricas.
+**Funciona.** Ocarina of Time corre en el Quest 3S, en estéreo, en primera
+persona, nativo. Sesión OpenXR en `FOCUSED` a ~82 fps, con glitches gráficos por
+clasificar (ticket 15) y las cuatro decisiones de diseño ya desbloqueadas.
 
 ## Qué se sabe (verificado, con fuentes en `research/landscape.md`)
 
@@ -40,12 +40,13 @@ primer hito es más largo**, porque nadie ha hecho standalone todavía.
     pre-refactor y SoH 9.0.0.
   - `HarbourMasters/Shipwright` **no tiene Android en absoluto**. Las releases
     9.2.1 y 9.2.3 publican solo Linux/Mac/Win64.
-- Unirlas es **una migración** antes de tener nada que ejecutar: D3D11→GLES.
-  ~~Tres~~ — corregido el 2026-09-10: la investigación había leído la rama
-  `vr-integration` de `libultraship-vr`, pero el juego usa **`vr-port`**, donde
-  los hooks ya están en `Fast::Interpreter` y el juego ya está en SoH 9.2.3 con
-  `.o2r`. El cruce ZAPDTR→torch ni siquiera existe: upstream 9.2.3 sigue con
-  ZAPDTR. Ver la corrección al principio de `research/landscape.md`.
+- ~~Unirlas es **una migración** antes de tener nada que ejecutar: D3D11→GLES.~~
+  **Hecha el 2026-09-10** (ticket 07): ~350 líneas de 2822, detrás de una costura
+  de diez funciones, compilando para arm64. Antes de eso se había corregido de
+  ~~tres~~ a una, al descubrir que el juego usa la rama **`vr-port`** y no
+  `vr-integration`: los hooks ya están en `Fast::Interpreter`, el juego ya está
+  en SoH 9.2.3 con `.o2r`, y el cruce ZAPDTR→torch ni siquiera existe.
+  Lo que de verdad falta ahora es el **envoltorio Android** (ticket 14).
 - **La escala no es constante**: `Player_GetHeight()` = 68.0f adulto / 44.0f niño,
   y el juego cambia entre las dos a mitad de partida.
 
@@ -57,6 +58,12 @@ linaje que `gfx_pc.c`. El punto de intercepción es `Interpreter::GfxSpMatrix`
 (`src/fast/interpreter.cpp:1541`), mismo coste que en SM64. Lo que LUS **sí**
 aporta es framebuffers de primera clase en el backend, que hacen el render por
 ojo a FBO trivial.
+
+**Corolario que solo apareció al portar** (2026-09-10): `vr-port` **ya traía**
+`option(USE_OPENGLES "Enable GLES3")` y `cmake/dependencies/android.cmake`, y su
+matriz de proyección ya estaba en convención GL. La capa de VR entera estaba tras
+`#ifdef ENABLE_DX11`, que solo se define en Windows — no había que cambiar de
+backend, había que dejar de compilarla a stubs.
 
 ## Qué falta decidir (bloquea el trabajo real)
 
@@ -77,33 +84,78 @@ ojo a FBO trivial.
 5. **Combate por gesto o por botón — ticket 11.** No es solo gesto: `vr-port`
    trae `vr_physics.cpp` (77 KB), una espada con física de verdad. Bloqueado por
    el 03.
-6. **Forkear `MotionControls-2` o reimplantar — ticket 12.** Ahora que el fork ya
-   está en 9.2.3, forkearlo convierte semanas en horas — pero es código sin
-   licencia y el destino deja abierta la puerta a publicar. **Desbloqueado**, y
-   bloquea al 09.
+6. ~~**Forkear `MotionControls-2` o reimplantar — ticket 12.**~~ **Resuelto
+   2026-09-10**: forkear, citando a ShinyWindow. El argumento de licencia para
+   reimplantar no se sostenía.
 
 Las otras siete decisiones de encuadre se heredan de Mario sin cambio.
 
+## Dónde está el código
+
+**Aquí, en `port/`.** Es el juego entero: Ship of Harkinian con la capa de VR, el
+motor (`port/libultraship`), las herramientas de extracción (`port/ZAPDTR`,
+`port/OTRExporter`) y el envoltorio de Quest (`port/Android`).
+
+Hasta el 2026-09-23 vivía repartido en forks locales bajo `~/src/oot-vr/`, con
+submódulos que apuntaban a rutas del disco. Se consolidó porque esos repos solo
+servían para seguir sincronizados con upstream, y el ticket 08 ya había decidido
+no hacerlo (upstream migró a SDL3; este proyecto es SDL2). Los tres subárboles
+que eran submódulos se importaron **byte a byte** — verificado comparando el árbol
+completo — y un `.gitattributes` en `port/` impide que git les normalice los
+finales de línea.
+
+`~/src/oot-vr/` ya no hace falta. El historial de cómo se llegó aquí queda en los
+tickets 07, 08, 13 y 14. Los parches de `.scratch/oot-quest-3s/artifacts/` que
+citan esos tickets se retiraron al consolidar — eran el respaldo de los forks, y
+`port/` los contiene enteros. Siguen en el historial de git si hacen falta.
+
+**Construir el APK**, de una sola orden:
+
+```
+port/Android/build-apk.sh
+```
+
+Hace el build host (genera `soh.o2r`), el build arm64, empaqueta con gradle y deja
+el APK en `port/Android/app/build/outputs/apk/debug/app-debug.apk`. El loader de
+OpenXR lo baja CMake de Maven, fijado por hash: el build no depende de nada fuera
+del repo salvo el SDK/NDK de Android.
+
+**Ojo**: el checkout principal está en `/mnt/data`, que es NTFS por fuseblk, y
+ahí no se puede compilar (sin symlinks ni bit de ejecución — ver ticket 06).
+Compilar desde un clon o worktree en `/home`.
+
+**Riesgo abierto**: el path D3D11 se refactorizó junto con el port del ticket 07 y
+no se ha recompilado — aquí no hay MSVC. No afecta al destino (Windows no es
+objetivo), pero está roto hasta que se demuestre lo contrario.
+
 ## Siguiente paso
 
-**El ticket 03 (PCVR por Link) quedó fuera de alcance** el 2026-09-10: exigía
-reiniciar a Windows y el usuario no quiere. Con él se fue el banco de pruebas, y
-las cuatro decisiones que informaba pasan al ticket 13 — se deciden sobre el
-build propio, después de la migración.
+El **ticket 13 se cerró el 2026-09-23**: el juego arranca y se juega. Con él caen
+los bloqueantes de las cuatro decisiones pendientes.
 
-Quedan dos caminos abiertos:
+Frontera actual, toda takeable:
 
-- **Ticket 02** — instalar el port Android *flat* de linkzenic en el 3S y medir
-  framerate. APK ya descargado. Solo necesita el visor enchufado.
-- **Ticket 07** — la migración: `vr_openxr` de D3D11 a GLES. Ya no está bloqueado
-  por nada. Es la única migración de verdad que queda y son semanas.
+- **Ticket 15** — clasificar los glitches gráficos. Es el primero que se resuelve
+  mirando, no razonando. Cada síntoma tiene su sospechoso identificado (sesgo de
+  profundidad, sRGB, HUD, proyección).
+- **Tickets 04, 05, 10, 11** — snap turn, escala niño/adulto, comodidad y combate.
+  Son HITL: se deciden jugando, no discutiendo.
+- **Ticket 02** — medir framerate con el port plano de referencia.
 
-Después del 07 vienen el 08 (reconciliar `vr-port` con el LUS objetivo) y el 13
-(primer arranque en el 3S), que es el que desbloquea las cuatro decisiones
-pendientes: snap turn, escala, comodidad y combate.
+**Y todos necesitan lo mismo: alguien con el visor puesto.** Horizon OS bloquea
+el lanzamiento en cuanto nadie lo lleva (`vrlockscreen/.SensorLockActivity`), y
+`oculus_proximity_sensor_enabled=0` se ignora incluso tras reiniciar. No hay
+camino por `adb`.
 
-El ticket 09 (inventariar el diff) está desbloqueado y se puede hacer en
-cualquier momento.
+## Herramientas que ahora existen
+
+Un visor no tiene consola ni depurador. Durante el arranque se añadieron dos
+cosas sin las cuales depurar ahí es a ciegas:
+
+- **`android_sink` de spdlog + nivel `info` en Android**: todo `[VR]` sale por
+  `adb logcat -s soh:V`.
+- **Espejo del ojo izquierdo en GLES**: `adb exec-out screencap -p` debería
+  devolver lo que el visor pinta. **Sin verificar en dispositivo todavía.**
 
 ## Cómo trabajar aquí
 

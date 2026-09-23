@@ -1,0 +1,65 @@
+apply plugin: 'com.android.application'
+
+// The native libraries are built by CMake OUTSIDE gradle (see Android/README.md) and dropped
+// into app/libs/arm64-v8a. Decoupling the two avoids gradle's exact-version pin on the NDK and
+// on CMake - the reference port pins CMake 3.31.5, which nothing on this machine has - and keeps
+// the build loop that already works for the native side untouched.
+android {
+    namespace 'org.oot.vr'
+    compileSdkVersion 34
+    ndkVersion "26.3.11579264"
+
+    defaultConfig {
+        applicationId "org.oot.vr"
+        minSdkVersion 29          // Horizon OS is Android 10+
+        targetSdkVersion 32       // what Meta's OpenXR samples target
+        versionCode 1
+        versionName "0.1-quest"
+        ndk {
+            abiFilters 'arm64-v8a'
+        }
+    }
+
+    signingConfigs {
+        release {
+            def releaseStoreFile = project.findProperty('storeFile')
+            if (releaseStoreFile) {
+                storeFile file(releaseStoreFile)
+                storePassword project.findProperty('storePassword')
+                keyAlias project.findProperty('keyAlias')
+                keyPassword project.findProperty('keyPassword')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    sourceSets.main {
+        jniLibs.srcDirs = ['libs']
+    }
+
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+
+    lintOptions {
+        abortOnError false
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core:1.13.1'
+}

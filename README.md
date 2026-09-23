@@ -29,6 +29,16 @@ Este port no parte de cero. Se apoya en el trabajo de otra gente:
 Zelda y Ocarina of Time son marcas de Nintendo. Este proyecto no está asociado
 con Nintendo de ninguna forma.
 
+## El código
+
+Vive en `port/`. Para construir el APK:
+
+```
+port/Android/build-apk.sh
+```
+
+Luego, con el visor conectado, ver `port/Android/README.md`.
+
 ## Por dónde empezar
 
 - `docs/ESTADO.md` — qué está decidido y cuál es el siguiente paso.
