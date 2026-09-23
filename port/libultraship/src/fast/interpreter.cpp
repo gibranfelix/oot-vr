@@ -4916,6 +4916,7 @@ static void gfx_step() {
         // Guard against null or N64-segment addresses that would crash in strlen/strncmp.
         if (opcode == OTR_G_VTX_OTR_FILEPATH || opcode == OTR_G_SETTIMG_OTR_FILEPATH ||
             opcode == OTR_G_DL_OTR_FILEPATH || opcode == OTR_G_PUSHCD || opcode == OTR_G_MTX_OTR_FILEPATH) {
+            // SOH [Quest] Tag-aware, like gfx_check_image_signature.
             if (!IsPlausibleHostPointer((uintptr_t)cmd->words.w1)) {
                 ++g_exec_stack.currCmd();
                 return;
@@ -5410,6 +5411,7 @@ int32_t gfx_check_image_signature(const char* imgData) {
 
     // Filter addresses that are obviously not valid string pointers before
     // attempting to dereference for the "__OTR__" check.
+    // SOH [Quest] Tag-aware: Android tags arm64 heap pointers (see HostPointer.h).
     if (!IsPlausibleHostPointer(i)) {
         return 0;
     }
