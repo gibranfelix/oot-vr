@@ -105,6 +105,12 @@ class GfxRenderingAPIOGL final : public GfxRenderingAPI {
     void SetSrgbMode() override;
     ImTextureID GetTextureById(int id) override;
 
+    // SOH [VR] Draw into a framebuffer this backend did not create (an OpenXR swapchain image).
+    // It is registered in a reserved slot of mFrameBuffers and made current, so everything that
+    // reads the current framebuffer - Y inversion, the decal depth bias, the rebind after a copy -
+    // sees the XR target instead of whichever engine framebuffer happened to be bound last.
+    void StartDrawToExternalFramebuffer(GLuint fbo, uint32_t width, uint32_t height);
+
   private:
     void SetUniforms(ShaderProgram* prg) const;
     std::string BuildFsShader(const CCFeatures& cc_features);
@@ -131,6 +137,7 @@ class GfxRenderingAPIOGL final : public GfxRenderingAPI {
 
     std::vector<FramebufferOGL> mFrameBuffers;
     size_t mCurrentFrameBuffer = 0;
+    int mExternalFrameBuffer = -1; // SOH [VR] slot for StartDrawToExternalFramebuffer
     float mCurrentNoiseScale = 0.0f;
     FilteringMode mCurrentFilterMode = FILTER_THREE_POINT;
 
