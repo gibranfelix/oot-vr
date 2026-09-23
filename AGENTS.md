@@ -12,7 +12,8 @@ commiteable con assets dentro.
 
 Todo en **`port/`**: el juego, el motor (`port/libultraship`), las herramientas de
 extracción (`port/ZAPDTR`, `port/OTRExporter`) y el envoltorio de Quest
-(`port/Android`). No hay submódulos ni forks aparte; es desarrollo nuestro.
+(`port/Android`). No hay submódulos ni forks aparte; es desarrollo nuestro. Por
+qué, y qué se pierde con ello: `docs/adr/0002`.
 
 - **APK**: `port/Android/build-apk.sh`, una sola orden.
 - **Compila desde `/home`, no desde `/mnt/data`**: es NTFS por fuseblk y no
