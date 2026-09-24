@@ -103,10 +103,10 @@ static const VrInputDef sVrInputDefsOcarina[] = {
     { "L Stick " ICON_FA_ARROW_DOWN, "gVrBindOcaLStickDown", 0 },
     { "L Stick " ICON_FA_ARROW_LEFT, "gVrBindOcaLStickLeft", 0 },
     { "L Stick " ICON_FA_ARROW_RIGHT, "gVrBindOcaLStickRight", 0 },
-    { "R Stick " ICON_FA_ARROW_UP, "gVrBindOcaRStickUp", 0 },
-    { "R Stick " ICON_FA_ARROW_DOWN, "gVrBindOcaRStickDown", 0 },
-    { "R Stick " ICON_FA_ARROW_LEFT, "gVrBindOcaRStickLeft", 0 },
-    { "R Stick " ICON_FA_ARROW_RIGHT, "gVrBindOcaRStickRight", 0 },
+    { "R Stick " ICON_FA_ARROW_UP, "gVrBindOcaRStickUp", BTN_CUP },
+    { "R Stick " ICON_FA_ARROW_DOWN, "gVrBindOcaRStickDown", BTN_CDOWN },
+    { "R Stick " ICON_FA_ARROW_LEFT, "gVrBindOcaRStickLeft", BTN_CLEFT },
+    { "R Stick " ICON_FA_ARROW_RIGHT, "gVrBindOcaRStickRight", BTN_CRIGHT },
 };
 static const int kVrButtonInputCount = 12;
 static const int kVrOcarinaInputCount = 20; // buttons + the 8 stick directions
