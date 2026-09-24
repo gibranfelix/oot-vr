@@ -147,7 +147,7 @@ extern "C" void DisableFixedCamera_SetNormalCamera(PlayState* play) {
 }
 
 extern "C" void DisableFixedCamera_CheckCameraState(PlayState* play) {
-    const bool disableFixedCamEnabled = CVarGetInteger(CVAR_DISABLE_FIXED_CAMERA_NAME, 0) != 0;
+    const bool disableFixedCamEnabled = CVAR_DISABLE_FIXED_CAMERA_VALUE != 0;
     if (!disableFixedCamEnabled) {
         DisableFixedCamera_RestoreAllCameraData();
         DisableFixedCamera_ResetState();
