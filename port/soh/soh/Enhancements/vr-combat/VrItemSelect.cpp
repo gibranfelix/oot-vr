@@ -220,20 +220,50 @@ void ExecuteSector(int sector) {
     }
 }
 
-// Rising edge of the two-grip chord: stow whatever is held and draw the sword, exactly the
-// selector's UP sector (the shield needs nothing — it rides the off hand under VrShield's own
-// rules). Already holding a melee weapon = nothing to do. Skipped while the compass is open;
-// the selector owns that interaction.
+// Two-grip chord = holding the sword: squeezing both inputs stows whatever is held and draws the
+// sword, exactly the selector's UP sector (the shield needs nothing — it rides the off hand under
+// VrShield's own rules); letting go sheathes it again, walking or not, the way letting go of a
+// real hilt would. gVrGripHoldSword 0 keeps the old press-to-draw-only behaviour. Skipped while
+// the compass is open; the selector owns that interaction.
+static const int kPutAwayRetryTicks = 10; // Link may be mid-swing on the release tick; keep asking
+
 void QuickSwapTick() {
     static bool sChordPrev = false;
+    static bool sHeldByChord = false; // the sword came out (or was already out) under this chord
+    static int sPutAwayTicks = 0;
     const bool chord = SwapChordHeld();
     const bool rising = chord && !sChordPrev;
+    const bool falling = !chord && sChordPrev;
     sChordPrev = chord;
+
+    Player* player = GET_PLAYER(gPlayState);
+    if (player == NULL) {
+        return;
+    }
+    if (falling && sHeldByChord) {
+        sHeldByChord = false;
+        if (CVarGetInteger("gVrGripHoldSword", 1)) {
+            sPutAwayTicks = kPutAwayRetryTicks;
+        }
+    }
+    if (sPutAwayTicks > 0) {
+        sPutAwayTicks--;
+        if (Player_GetMeleeWeaponHeld(player) == 0 || !SelectorAvailable()) {
+            sPutAwayTicks = 0;
+        } else {
+            // The vanilla put-away flow, as the selector's centre sector uses: unlike A's
+            // "Put Away" it does not turn into a roll when the stick is pushed.
+            sEquipGrace = 3;
+            Player_UseItem(gPlayState, player, ITEM_NONE);
+        }
+    }
+
     if (!rising || sOpen || !SelectorAvailable()) {
         return;
     }
-    Player* player = GET_PLAYER(gPlayState);
-    if (player == NULL || Player_GetMeleeWeaponHeld(player) != 0) {
+    sPutAwayTicks = 0;
+    sHeldByChord = true;
+    if (Player_GetMeleeWeaponHeld(player) != 0) {
         return;
     }
     sEquipGrace = 3;
