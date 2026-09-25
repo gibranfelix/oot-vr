@@ -1123,6 +1123,12 @@ void Player_DrawImpl(PlayState* play, void** skeleton, Vec3s* jointTable, s32 dL
          (overrideLimbDraw != Player_OverrideLimbDrawGameplayFirstPerson)) &&
         (overrideLimbDraw != Player_OverrideLimbDrawGameplayCrawling) &&
         (gSaveContext.gameMode != GAMEMODE_END_CREDITS)) {
+        // SOH [VR] These pieces have no matrix of their own: they ride the skeleton's limb matrices.
+        // With the body hidden in first person only the hands follow the controllers, so anything
+        // anchored to a forearm or foot (gauntlet cuffs, boots, the Goron bracelet) would float
+        // where the invisible body's limbs are. Draw only what sits on the hands.
+        s32 vrHiddenBody = (overrideLimbDraw == Player_OverrideLimbDrawGameplayVRFirstPerson) &&
+                           CVarGetInteger("gVrHideBody", 1);
         if (LINK_IS_ADULT) {
             s32 strengthUpgrade = CUR_UPG_VALUE(UPG_STRENGTH);
 
@@ -1141,8 +1147,10 @@ void Player_DrawImpl(PlayState* play, void** skeleton, Vec3s* jointTable, s32 dL
                 }
                 gDPSetEnvColor(POLY_OPA_DISP++, color->r, color->g, color->b, 0);
 
-                gSPDisplayList(POLY_OPA_DISP++, gLinkAdultLeftGauntletPlate1DL);
-                gSPDisplayList(POLY_OPA_DISP++, gLinkAdultRightGauntletPlate1DL);
+                if (!vrHiddenBody) {
+                    gSPDisplayList(POLY_OPA_DISP++, gLinkAdultLeftGauntletPlate1DL);
+                    gSPDisplayList(POLY_OPA_DISP++, gLinkAdultRightGauntletPlate1DL);
+                }
                 gSPDisplayList(POLY_OPA_DISP++, (sLeftHandType == PLAYER_MODELTYPE_LH_OPEN)
                                                     ? gLinkAdultLeftGauntletPlate2DL
                                                     : gLinkAdultLeftGauntletPlate3DL);
@@ -1151,14 +1159,14 @@ void Player_DrawImpl(PlayState* play, void** skeleton, Vec3s* jointTable, s32 dL
                                                     : gLinkAdultRightGauntletPlate3DL);
             }
 
-            if (boots != 0) {
+            if (boots != 0 && !vrHiddenBody) {
                 Gfx** bootDLists = sBootDListGroups[boots - 1];
 
                 gSPDisplayList(POLY_OPA_DISP++, bootDLists[0]);
                 gSPDisplayList(POLY_OPA_DISP++, bootDLists[1]);
             }
         } else {
-            if (Player_GetStrength() > PLAYER_STR_NONE) {
+            if (Player_GetStrength() > PLAYER_STR_NONE && !vrHiddenBody) {
                 gSPDisplayList(POLY_OPA_DISP++, gLinkChildGoronBraceletDL);
             }
         }
