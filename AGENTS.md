@@ -14,9 +14,7 @@ Ship of Harkinian and `libultraship`.
    to the game and to the engine.
 3. [`CONTEXT.md`](CONTEXT.md): the terms of this project. Use these terms in
    issues, commits, and code.
-4. [`docs/adr/`](docs/adr/): the decisions that are difficult to change. If
-   your change goes against an ADR, say so in the pull request.
-5. The roadmap is issue [#1](https://github.com/oot-vr/oot-vr/issues/1). Its sub-issues are the tasks.
+4. The roadmap is issue [#1](https://github.com/gibranfelix/oot-vr/issues/1). Its sub-issues are the tasks.
 
 ## Documentation language
 
@@ -40,7 +38,7 @@ rule applies to Markdown files, issues, pull requests, and release notes.
 - No build can make an output that contains game assets and that Git can
   commit.
 - The APK contains only `soh.o2r`. The player makes `oot.o2r` from a dump of a
-  cartridge that the player owns.
+  cartridge or disc that the player owns.
 - Do not write ROM file names, ROM sources, or ROM paths in issues, commits, or
   documentation.
 
@@ -49,10 +47,14 @@ rule applies to Markdown files, issues, pull requests, and release notes.
 All code is in `port/`: the game (`port/soh`), the engine
 (`port/libultraship`), the extraction tools (`port/ZAPDTR`,
 `port/OTRExporter`), and the Quest wrapper (`port/Android`). There are no
-submodules. Read [`docs/adr/0002`](docs/adr/0002-one-repository-with-the-port-inside.md).
+submodules.
 
 - **Build the APK** with `port/Android/build-apk.sh`. Read
   [`port/Android/README.md`](port/Android/README.md).
+- **Ship of Harkinian version for players.** Players use Ship of Harkinian for
+  PC to make `oot.o2r`. `.github/soh-version` contains that version. Keep the
+  version in `README.md` the same. A weekly workflow opens an issue when a new
+  release of Ship of Harkinian is available.
 - **Build on a Linux file system.** The build needs symlinks and the execute
   bit. NTFS and FAT disks do not have them.
 - **Mark changes in upstream files** with a comment. Use `SOH [VR]` for VR

@@ -1,0 +1,69 @@
+name: Ship of Harkinian release check
+
+# Once a week, compare the latest release of Ship of Harkinian with the version
+# in .github/soh-version. If a new release exists, open an issue to examine it.
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Compare the versions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          CURRENT="$(tr -d '[:space:]' < .github/soh-version)"
+          LATEST_JSON="$(gh api repos/HarbourMasters/Shipwright/releases/latest)"
+          LATEST="$(jq -r .tag_name <<< "$LATEST_JSON")"
+          NAME="$(jq -r .name <<< "$LATEST_JSON")"
+          URL="$(jq -r .html_url <<< "$LATEST_JSON")"
+          echo "Current: $CURRENT. Latest: $LATEST."
+          if [ "$LATEST" = "$CURRENT" ]; then
+            echo "No new release."
+            exit 0
+          fi
+
+          TITLE="Ship of Harkinian $LATEST is available"
+          if gh issue list --state all --search "\"$TITLE\" in:title" --json number -q '.[0].number' | grep -q .; then
+            echo "An issue for $LATEST exists."
+            exit 0
+          fi
+
+          MAJOR_CURRENT="${CURRENT%%.*}"
+          MAJOR_LATEST="${LATEST%%.*}"
+          if [ "$MAJOR_CURRENT" = "$MAJOR_LATEST" ]; then
+            FORMAT="The major version is the same ($MAJOR_LATEST). Ship of Harkinian says that \`oot.o2r\` does not change in this case. Test it to make sure."
+          else
+            FORMAT="**The major version changed ($MAJOR_CURRENT to $MAJOR_LATEST).** Ship of Harkinian says that a new major version needs a new \`oot.o2r\`. The port code uses $CURRENT. Thus, a new \`oot.o2r\` can fail with this port. Do not change the version for players before the port code uses $MAJOR_LATEST."
+          fi
+
+          gh label create soh-update --color c5def5 --description "A new release of Ship of Harkinian" --force
+
+          BODY="$(cat <<BODY
+          Ship of Harkinian released [$NAME]($URL). Players use version $CURRENT to make \`oot.o2r\`.
+
+          $FORMAT
+
+          ## Steps
+
+          - [ ] Read the release notes.
+          - [ ] Download Ship of Harkinian $LATEST for PC.
+          - [ ] Make \`oot.o2r\` from a legal dump.
+          - [ ] Copy \`oot.o2r\` to the headset and start the game.
+          - [ ] Play for some minutes: title screen, a save, a scene transition, a cutscene.
+          - [ ] If all is correct, change \`.github/soh-version\` to $LATEST.
+          - [ ] If all is correct, change the version and the file names in \`README.md\`.
+          - [ ] If a problem occurs, write it in this issue and keep $CURRENT.
+          BODY
+          )"
+          gh issue create --title "$TITLE" --label soh-update --body "$(sed 's/^          //' <<< "$BODY")"
