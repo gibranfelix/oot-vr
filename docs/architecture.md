@@ -12,18 +12,28 @@ engine. Read it before you change VR code.
 | Android wrapper | `port/Android` | The Gradle project, `MainActivity`, and the manifest for Horizon OS |
 
 The game and the Android wrapper use SDL2. Upstream `libultraship` changed to
-SDL3. Thus, we do not merge upstream changes. We copy each fix by hand. Read
-[`adr/0002`](adr/0002-one-repository-with-the-port-inside.md).
+SDL3. Thus, we do not merge upstream changes. We copy each fix by hand.
 
 ## How to find VR code
 
-Ship of Harkinian marks its changes with comments of the form `SOH [Category]`.
-This port uses two categories:
+The code of the game comes from the decompilation of the original game. When
+Ship of Harkinian changes that code, it adds a comment that starts with
+`SOH [Category]`. The comment tells what the change does and why. This port
+adds two categories:
 
-- `SOH [VR]`: a VR change in an upstream file.
+- `SOH [VR]`: a change for VR.
 - `SOH [Quest]`: a change for Android or for the Quest that is not VR.
 
-To find them, run:
+For example, this comment in `port/libultraship/src/fast/interpreter.cpp` marks
+the start of the stereo render:
+
+```cpp
+// SOH [VR] Stereo rendering: replace the game's perspective projection with the current
+// eye's VR view * projection. 2D targets (HUD quad, flat-screen panel) keep the game's own
+// flat projection.
+```
+
+To list all changes of this port, run:
 
 ```
 git grep -n -e 'SOH \[VR\]' -e 'SOH \[Quest\]' port

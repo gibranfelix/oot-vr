@@ -7,8 +7,12 @@ The game runs natively on the headset. You do not need a PC to play.
 Tower. Some problems are known. Read [`STATUS.md`](STATUS.md) before you play.
 
 > [!IMPORTANT]
-> This repository does not contain game assets. You must use a dump of your own
-> cartridge. Do not ask for ROMs in the issues.
+> You must own a legal copy of *The Legend of Zelda: Ocarina of Time*. To play,
+> you make a dump of your own cartridge or disc.
+>
+> This repository and its releases do not contain game assets. We do not supply
+> ROMs, and we do not help you get them. Do not ask for ROMs in the issues. Do
+> not share ROMs in the issues.
 
 ## Features
 
@@ -28,18 +32,19 @@ You need a PC with `adb` for these steps. You do these steps one time only.
 
 ### 1. Make `oot.o2r` from your ROM
 
-The game assets come from your ROM. The APK does not contain them. Use a ROM
-version that Ship of Harkinian 9.2.3 supports.
+The game assets come from your ROM. The APK does not contain them.
 
-1. Build the host tools. Follow [`port/Android/README.md`](port/Android/README.md).
-2. Put your `.z64` file in `port/OTRExporter/`.
-3. Run `cmake --build port/build-host --target ExtractAssets`.
-4. Get the file `port/oot.o2r`.
+1. Make a dump of your own cartridge or disc of Ocarina of Time. Use a version
+   that Ship of Harkinian 9.2.3 supports.
+2. Build the host tools. Follow [`port/Android/README.md`](port/Android/README.md).
+3. Put your `.z64` file in `port/OTRExporter/`.
+4. Run `cmake --build port/build-host --target ExtractAssets`.
+5. Get the file `port/oot.o2r`.
 
 ### 2. Install the APK
 
 1. Download `oot-vr-<version>.apk` from
-   [Releases](https://github.com/oot-vr/oot-vr/releases).
+   [Releases](https://github.com/gibranfelix/oot-vr/releases).
 2. Connect the headset to the PC with a USB cable.
 3. Run these commands:
 
@@ -67,7 +72,6 @@ APK: `port/Android/build-apk.sh`.
 | [`STATUS.md`](STATUS.md) | What works, what does not work, where to help |
 | [`docs/architecture.md`](docs/architecture.md) | How the VR layer connects to the game and the engine |
 | [`CONTEXT.md`](CONTEXT.md) | The terms that this project uses |
-| [`docs/adr/`](docs/adr/) | Decisions that are difficult to change |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to send changes |
 | [`AGENTS.md`](AGENTS.md) | Rules for contributors and for AI agents |
 

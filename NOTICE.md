@@ -28,10 +28,18 @@ original code in the same files keeps the rights of its authors.
 
 ## Game assets
 
-This repository does not contain assets of Ocarina of Time. The build makes
-`soh.o2r` from assets that Ship of Harkinian owns. You make `oot.o2r` from a
-dump of your own cartridge. Do not put `oot.o2r` in the repository or in a
-release.
+This repository and its releases do not contain assets of Ocarina of Time.
+The APK contains the compiled code of the game and `soh.o2r`. The build makes
+`soh.o2r` from assets that Ship of Harkinian owns.
+
+To use this project, you must own a legal copy of *The Legend of Zelda:
+Ocarina of Time*. Make `oot.o2r` from a dump of a cartridge or disc that you
+own.
+
+- Do not download ROMs.
+- Do not share ROMs or `oot.o2r`.
+- Do not put ROMs or `oot.o2r` in the repository, in an issue, or in a
+  release.
 
 Zelda and Ocarina of Time are trademarks of Nintendo. This project has no
 connection with Nintendo.
