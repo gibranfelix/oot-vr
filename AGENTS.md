@@ -51,6 +51,10 @@ submodules.
 
 - **Build the APK** with `port/Android/build-apk.sh`. Read
   [`port/Android/README.md`](port/Android/README.md).
+- **Ship of Harkinian version for players.** Players use Ship of Harkinian for
+  PC to make `oot.o2r`. `.github/soh-version` contains that version. Keep the
+  version in `README.md` the same. A weekly workflow opens an issue when a new
+  release of Ship of Harkinian is available.
 - **Build on a Linux file system.** The build needs symlinks and the execute
   bit. NTFS and FAT disks do not have them.
 - **Mark changes in upstream files** with a comment. Use `SOH [VR]` for VR
