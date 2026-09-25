@@ -34,12 +34,27 @@ You need a PC with `adb` for these steps. You do these steps one time only.
 
 The game assets come from your ROM. The APK does not contain them.
 
-1. Make a dump of your own cartridge or disc of Ocarina of Time. Use a version
-   that Ship of Harkinian 9.2.3 supports.
+1. Make a dump of your own cartridge or disc of Ocarina of Time. Use one of
+   the supported versions below.
 2. Build the host tools. Follow [`port/Android/README.md`](port/Android/README.md).
 3. Put your `.z64` file in `port/OTRExporter/`.
 4. Run `cmake --build port/build-host --target ExtractAssets`.
 5. Get the file `port/oot.o2r`.
+
+#### Supported versions
+
+| Platform | Region | Versions |
+|---|---|---|
+| Nintendo 64 | Europe (PAL) | 1.0, 1.1 |
+| Nintendo 64 | North America (NTSC-U) | 1.0, 1.1, 1.2 |
+| Nintendo 64 | Japan (NTSC-J) | 1.0, 1.1, 1.2 |
+| GameCube | Europe (PAL) | Ocarina of Time, Master Quest |
+| GameCube | North America (NTSC-U) | Ocarina of Time, Master Quest |
+| GameCube | Japan (NTSC-J) | Ocarina of Time, Master Quest, Collector's Edition |
+
+To make sure that your dump is correct, compare its SHA-1 with the list in
+[`port/docs/supportedHashes.json`](port/docs/supportedHashes.json). We tested
+only the European GameCube version.
 
 ### 2. Install the APK
 
