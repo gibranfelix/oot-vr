@@ -31,7 +31,7 @@ We tested the port only on the Meta Quest 3S.
 You need:
 
 - a legal copy of Ocarina of Time: a cartridge or disc that you own;
-- a PC with Windows, macOS, or Linux;
+- a PC with Windows, macOS, or Linux, to install the game;
 - a USB-C cable for the headset.
 
 You do these steps one time only.
@@ -53,10 +53,52 @@ To make sure that your dump is correct, compare its SHA-1 with the list in
 [`port/docs/supportedHashes.json`](port/docs/supportedHashes.json). We tested
 only the European GameCube version.
 
-### 2. Make `oot.o2r` with Ship of Harkinian
+### 2. Enable developer mode on the headset
 
-The game assets come from your dump. The APK does not contain them. Ship of
-Harkinian for PC converts your dump into the file `oot.o2r`.
+The game does not come from the Meta store. Thus, the headset must be in
+developer mode. Follow the steps from Meta:
+[Device Setup](https://developers.meta.com/horizon/documentation/native/android/mobile-device-setup/).
+
+### 3. Install the game with SideQuest
+
+1. Install [SideQuest](https://sidequestvr.com/setup-howto) on your PC.
+2. Connect the headset to the PC with the USB-C cable.
+3. Put on the headset. Select **Always allow from this computer**, then
+   select **Allow**.
+4. Download `oot-vr-<version>.apk` from
+   [Releases](https://github.com/gibranfelix/oot-vr/releases).
+5. Drag the APK file into the SideQuest window. SideQuest installs it.
+6. In SideQuest, open the file manager of the headset.
+7. Copy your dump into the `Download` folder of the headset.
+
+If you use `adb`, you can do steps 5 to 7 with these commands:
+
+```
+adb install -r oot-vr-<version>.apk
+adb push <your-dump>.z64 /sdcard/Download/
+```
+
+### 4. Start the game and select your dump
+
+1. Put on the headset.
+2. Open the **Library**, and select **Unknown Sources**.
+3. Open **OoT VR**. At the first start, a panel opens.
+4. Select **Select ROM**. The file picker of the headset opens.
+5. Go to the `Download` folder, and select your dump.
+6. Wait until the extraction is complete. This takes some minutes. Do not
+   remove the headset.
+7. The game starts in VR.
+
+The game makes the file `oot.o2r` from your dump, and then deletes its copy of
+the dump. You can then delete your dump from the `Download` folder. The next
+starts go directly to the game.
+
+If the game does not start, read the "If the game does not start" section in
+[`port/Android/README.md`](port/Android/README.md).
+
+### Alternative: make `oot.o2r` on a PC
+
+Use this method if the extraction on the headset does not work for you.
 
 This port uses **Ship of Harkinian 9.2.3 "Ackbar Delta"**. Use this version.
 
@@ -70,43 +112,11 @@ This port uses **Ship of Harkinian 9.2.3 "Ackbar Delta"**. Use this version.
 5. Find the file `oot.o2r`:
    - Windows and Linux: in the same folder as `soh.exe` or `soh.appimage`.
    - macOS: in `~/Library/Application Support/com.shipofharkinian.soh/`.
+6. With the SideQuest file manager, copy `oot.o2r` into
+   `Android/data/org.oot.vr/files/` on the headset. Make the folders if they do
+   not exist.
 
-### 3. Enable developer mode on the headset
-
-The game does not come from the Meta store. Thus, the headset must be in
-developer mode. Follow the steps from Meta:
-[Device Setup](https://developers.meta.com/horizon/documentation/native/android/mobile-device-setup/).
-
-### 4. Install the game with SideQuest
-
-1. Install [SideQuest](https://sidequestvr.com/setup-howto) on your PC.
-2. Connect the headset to the PC with the USB-C cable.
-3. Put on the headset. Select **Always allow from this computer**, then
-   select **Allow**.
-4. Download `oot-vr-<version>.apk` from
-   [Releases](https://github.com/gibranfelix/oot-vr/releases).
-5. Drag the APK file into the SideQuest window. SideQuest installs it.
-6. In SideQuest, open the file manager of the headset.
-7. Go to `Android/data/`. Make the folder `org.oot.vr`, and in it the folder
-   `files`, if they do not exist.
-8. Copy `oot.o2r` into `Android/data/org.oot.vr/files/`.
-
-If you use `adb`, you can do steps 5 to 8 with these commands:
-
-```
-adb install -r oot-vr-<version>.apk
-adb shell mkdir -p /sdcard/Android/data/org.oot.vr/files
-adb push oot.o2r /sdcard/Android/data/org.oot.vr/files/oot.o2r
-```
-
-### 5. Play
-
-1. Put on the headset.
-2. Open the **Library**, and select **Unknown Sources**.
-3. Open **OoT VR**.
-
-If the game does not start, read the "If the game does not start" section in
-[`port/Android/README.md`](port/Android/README.md).
+When `oot.o2r` is on the headset, the game does not open the panel.
 
 ## Build from source
 

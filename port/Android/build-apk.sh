@@ -9,7 +9,7 @@
 # VERSION_CODE. Output: port/Android/app/build/outputs/apk/release/app-release.apk
 #
 # The game's own assets (oot.o2r) are NOT part of this: they come from your cartridge and never
-# enter the repository or the APK. See port/Android/README.md for how to push them to the headset.
+# enter the repository or the APK. The app makes them on the headset at the first start.
 set -euo pipefail
 
 ANDROID_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -47,6 +47,13 @@ cp "$OPENXR_SO" "$LIBS/libopenxr_loader.so"
 
 mkdir -p "$ANDROID_DIR/app/src/main/assets"
 cp "$PORT/soh.o2r" "$ANDROID_DIR/app/src/main/assets/soh.o2r"
+
+# The ZAPD XML that SetupActivity gives the on-device extractor: where each asset is in each ROM
+# version. Ship of Harkinian's files, not the game's. NOT under assets/assets/: MainActivity copies
+# that tree to the headset on every fresh install, and this is 54 MB for all versions.
+XML_STAGE="$ANDROID_DIR/app/src/main/assets/extractor-xml"
+rm -rf "$XML_STAGE"
+cp -r "$PORT/soh/assets/xml" "$XML_STAGE"
 
 # 4. Package. gradle only zips things up here; it never runs CMake (see app/build.gradle).
 BUILD_TYPE="${BUILD_TYPE:-debug}"

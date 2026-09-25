@@ -43,6 +43,7 @@
 
 #include <SDL2/SDL_messagebox.h>
 
+#include <algorithm> // SOH [Quest] std::fill_n in CheckRomFile()
 #include <array>
 #include <fstream>
 #include <filesystem>
@@ -479,6 +480,77 @@ bool Extractor::RunFileStandalone(std::string rom) {
     }
 
     return true;
+}
+
+// SOH [Quest] The header CRCs that GetZapdVerStr() and IsMasterQuest() handle. Any other value
+// reaches UNREACHABLE there, so CheckRomFile() refuses it first.
+static bool IsHandledVerCrc(uint32_t verCrc) {
+    switch (verCrc) {
+        case OOT_PAL_GC:
+        case OOT_PAL_MQ:
+        case OOT_PAL_GC_DBG1:
+        case OOT_PAL_GC_MQ_DBG:
+        case OOT_PAL_10:
+        case OOT_PAL_11:
+        case OOT_NTSC_US_GC:
+        case OOT_NTSC_JP_GC:
+        case OOT_NTSC_JP_GC_CE:
+        case OOT_NTSC_US_MQ:
+        case OOT_NTSC_JP_MQ:
+        case OOT_NTSC_10:
+        case OOT_NTSC_11:
+        case OOT_NTSC_12:
+            return true;
+        default:
+            return false;
+    }
+}
+
+// SOH [Quest] Same steps as RunFileStandalone() and ValidateRom(), without the file extension
+// check (the headset copy is "rom.bin") and without message boxes.
+Extractor::RomCheck Extractor::CheckRomFile(const std::string& path) {
+    std::error_code ec;
+    if (!std::filesystem::is_regular_file(path, ec) || ec) {
+        return RomCheck::Read;
+    }
+    const uintmax_t fileSize = std::filesystem::file_size(path, ec);
+    if (ec) {
+        return RomCheck::Read;
+    }
+
+    mCurrentRomPath = path;
+    mCurRomSize = static_cast<size_t>(fileSize);
+
+    // Read at most the buffer size. A larger file fails the size check below, but it must first
+    // get the compressed check on its header.
+    const size_t readSize = mCurRomSize < MB64 ? mCurRomSize : MB64;
+    std::fill_n(mRomData.get(), MB64, 0);
+    std::ifstream inFile(path, std::ios::in | std::ios::binary);
+    if (!inFile.is_open()) {
+        return RomCheck::Read;
+    }
+    inFile.read((char*)mRomData.get(), readSize);
+    if (static_cast<size_t>(inFile.gcount()) != readSize) {
+        return RomCheck::Read;
+    }
+    inFile.close();
+    BitConverter::RomToBigEndian(mRomData.get(), readSize);
+
+    if (!ValidateNotCompressed()) {
+        return RomCheck::Compressed;
+    }
+    if (!ValidateRomSize()) {
+        return RomCheck::Size;
+    }
+    if (!ValidateAndFixRom() || !IsHandledVerCrc(GetRomVerCrc())) {
+        return RomCheck::Unsupported;
+    }
+    return RomCheck::Ok;
+}
+
+// SOH [Quest]
+const char* Extractor::GetCheckedZapdVerStr() const {
+    return GetZapdVerStr();
 }
 
 void Extractor::SetSearchPath(const std::string& path) {

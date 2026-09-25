@@ -28,8 +28,8 @@ The script does these steps:
 2. **arm64 build** of the game. CMake downloads the OpenXR loader from Maven and
    checks its hash.
 3. **Copy.** It copies `libsoh.so`, `libSDL2.so`, and `libopenxr_loader.so` to
-   `app/libs/arm64-v8a/`. It removes the debug symbols. It copies `soh.o2r` to
-   the assets.
+   `app/libs/arm64-v8a/`. It removes the debug symbols. It copies `soh.o2r` and
+   the extractor XML files (`port/soh/assets/xml`) to the assets.
 4. **Package.** Gradle makes the APK. Gradle does not run CMake. The native
    libraries are ready before this step.
 
@@ -41,9 +41,10 @@ The game assets come from **your** legal copy of the game: a dump of a
 cartridge or disc that you own. They **never** go into the repository or into
 the APK.
 
-Players can make `oot.o2r` with Ship of Harkinian 9.2.3 for PC. Read the main
-[`README.md`](../../README.md). As a developer, you can also make it with the
-tools of this repository:
+At the first start, the game makes `oot.o2r` on the headset from the dump that
+the player selects. Players can also make it with Ship of Harkinian 9.2.3 for
+PC. Read the main [`README.md`](../../README.md). As a developer, you can also
+make it with the tools of this repository:
 
 1. Put your `.z64` file in `port/OTRExporter/`. The `.gitignore` blocks this
    file.
@@ -68,6 +69,19 @@ tools of this repository:
 
 3. Put on the headset.
 4. Open **OoT VR** from **Unknown Sources**.
+
+To test the first-start setup, do not push `oot.o2r`. Push a dump to
+`/sdcard/Download/` instead. To start the setup again, delete `oot.o2r` from
+`/sdcard/Android/data/org.oot.vr/files/`.
+
+## Run the unit tests
+
+The first-start setup has unit tests that run on the PC, without a headset:
+
+```
+cd port/Android
+./gradlew testDebugUnitTest
+```
 
 ## If the game does not start
 

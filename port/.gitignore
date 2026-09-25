@@ -468,6 +468,7 @@ soh/properties.h
 # SOH [Quest] build outputs staged for the APK; regenerate, never commit
 Android/app/libs/
 Android/app/src/main/assets/*.o2r
+Android/app/src/main/assets/extractor-xml/
 Android/build/
 Android/app/build/
 Android/local.properties

@@ -28,6 +28,10 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      - name: Run the unit tests
+        working-directory: port/Android
+        run: ./gradlew testDebugUnitTest --no-daemon
+
       - name: Install the Android NDK
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;26.3.11579264" "platforms;android-34" > /dev/null
 

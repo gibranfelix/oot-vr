@@ -67,5 +67,21 @@ class Extractor {
                   std::atomic<size_t>* totalExtract);
     const char* GetZapdStr();
     std::string Mkdtemp();
+
+    // SOH [Quest] The headset picks the ROM in a 2D Android panel, so the check must not open
+    // SDL message boxes or file dialogs, and must not reach UNREACHABLE for an unknown ROM.
+    enum class RomCheck {
+        Ok,
+        Read,
+        Compressed,
+        Size,
+        Unsupported,
+    };
+    // SOH [Quest] Loads the ROM at path (any file name) and checks it with no UI: compressed,
+    // then size, then CRC, then a known version. On Ok, CallZapd(), IsMasterQuest() and
+    // GetCheckedZapdVerStr() are safe to call.
+    RomCheck CheckRomFile(const std::string& path);
+    // SOH [Quest] Only valid after CheckRomFile() returned RomCheck::Ok.
+    const char* GetCheckedZapdVerStr() const;
 };
 #endif
