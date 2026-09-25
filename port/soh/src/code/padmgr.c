@@ -398,7 +398,9 @@ void PadMgr_HandleRetraceMsg(PadMgr* padMgr) {
             // OCARINA stick directions: in this set ONLY, the four cardinal deflections of each
             // thumbstick are bindable inputs too (gameplay sticks keep their stock jobs: move and
             // turn). Dominant-axis with the same 0.5 threshold as the stock C-stick mapping, so a
-            // diagonal flick plays one note, not two. All unbound by default. A hand with any
+            // diagonal flick plays one note, not two. The right stick plays the four C notes by
+            // default, as the C-stick does on a pad (nothing else uses it while playing); the
+            // left stick stays unbound, keeping its pitch bend. A hand with any
             // direction bound claims that stick outright — vrOcaStickClaimed above — standing
             // down its stock ocarina job (left: pitch bend / analog stick; right: third-person
             // C-stick). Order: up, down, left, right. Keep in sync with sVrInputDefsOcarina in
@@ -406,6 +408,10 @@ void PadMgr_HandleRetraceMsg(PadMgr* padMgr) {
             static const char* sVrBindOcaStickCvars[2][4] = {
                 { "gVrBindOcaLStickUp", "gVrBindOcaLStickDown", "gVrBindOcaLStickLeft", "gVrBindOcaLStickRight" },
                 { "gVrBindOcaRStickUp", "gVrBindOcaRStickDown", "gVrBindOcaRStickLeft", "gVrBindOcaRStickRight" },
+            };
+            static const s32 sVrBindOcaStickDefaults[2][4] = {
+                { 0, 0, 0, 0 },
+                { BTN_CUP, BTN_CDOWN, BTN_CLEFT, BTN_CRIGHT },
             };
             static const u16 sVrBtnMasks[6] = { VR_BTN_TRIGGER,   VR_BTN_GRIP,       VR_BTN_PRIMARY,
                                                 VR_BTN_SECONDARY, VR_BTN_THUMBCLICK, VR_BTN_MENU };
@@ -461,7 +467,7 @@ void PadMgr_HandleRetraceMsg(PadMgr* padMgr) {
                     s32 vrHeldDir = -1;
                     float vrSx = 0.0f, vrSy = 0.0f;
                     for (vrDirIdx = 0; vrDirIdx < 4; vrDirIdx++) {
-                        if (CVarGetInteger(sVrBindOcaStickCvars[vrHandIdx][vrDirIdx], 0) != 0) {
+                        if (CVarGetInteger(sVrBindOcaStickCvars[vrHandIdx][vrDirIdx], sVrBindOcaStickDefaults[vrHandIdx][vrDirIdx]) != 0) {
                             vrOcaStickClaimed[vrHandIdx] = 1;
                         }
                     }
@@ -475,7 +481,7 @@ void PadMgr_HandleRetraceMsg(PadMgr* padMgr) {
                         vrHeldDir = (vrSx < -0.5f) ? 2 : (vrSx > 0.5f) ? 3 : -1;
                     }
                     if (vrHeldDir >= 0) {
-                        s32 mapped = CVarGetInteger(sVrBindOcaStickCvars[vrHandIdx][vrHeldDir], 0);
+                        s32 mapped = CVarGetInteger(sVrBindOcaStickCvars[vrHandIdx][vrHeldDir], sVrBindOcaStickDefaults[vrHandIdx][vrHeldDir]);
                         // Mask to the real pad bits (drops the PC-only modifier bits if selected).
                         vrPad->button |= (u16)(mapped & 0xFFFF);
                     }
