@@ -100,21 +100,30 @@ static void* gfx_d3d11_get_context() {
 }
 #endif
 
-// Render-target height, which D3D11 needs because its viewport origin is top-left while the N64
-// (and GL) origin is bottom-left, so every viewport and scissor gets flipped against it. GL needs
-// no flip, so on GLES this is inert.
+// Tell the rendering backend which XR target it is now drawing into. The VR layer binds swapchain
+// images the backend never created, and both backends derive state from "the current target":
 //
-// Caveat worth knowing before chasing a depth-fighting bug on the Quest: the GL backend also reads
-// mFrameBuffers[mCurrentFrameBuffer].height for its screen-space depth bias, and the VR layer binds
-// XR swapchain FBOs behind the backend's back - they are not in that registry. The bias is
-// therefore computed against whatever engine framebuffer was bound last, not the eye texture.
-static void vr_gfx_set_target_height(uint32_t height) {
+// - D3D11 needs the height because its viewport origin is top-left while the N64 (and GL) origin is
+//   bottom-left, so every viewport and scissor gets flipped against it.
+// - GL reads Y inversion and the decal depth bias from its framebuffer registry. Bound behind its
+//   back, the XR image inherited both from whatever engine framebuffer was current before - after
+//   the pause menu's framebuffer copies that was an inverted one, and the whole menu panel came out
+//   upside down. So on GLES the XR FBO is registered and made current through the backend.
+static void vr_gfx_adopt_target(uint32_t gl_fbo, uint32_t width, uint32_t height) {
 #if VR_GFX_D3D11
+    (void)gl_fbo;
+    (void)width;
     if (auto* dx = vr_dx11()) {
         dx->SetRenderTargetHeight((int32_t)height);
     }
 #else
-    (void)height;
+    Fast::Interpreter* interp = vr_get_interpreter();
+    if (interp == nullptr) {
+        glBindFramebuffer(GL_FRAMEBUFFER, gl_fbo);
+        return;
+    }
+    static_cast<Fast::GfxRenderingAPIOGL*>(interp->GetCurrentRenderingAPI())
+        ->StartDrawToExternalFramebuffer(gl_fbo, width, height);
 #endif
 }
 
@@ -500,7 +509,7 @@ static void vr_gfx_rebind_target(EyeSwapchain& sc, uint32_t index) {
     ID3D11RenderTargetView* rtv = sc.rtvs[index].Get();
     ID3D11DepthStencilView* dsv = sc.dsvs[index].Get();
     xr.d3d_context->OMSetRenderTargets(1, &rtv, dsv);
-    vr_gfx_set_target_height(sc.height);
+    vr_gfx_adopt_target(0, sc.width, sc.height);
 }
 
 static void vr_gfx_bind_target(EyeSwapchain& sc, uint32_t index, const float clear_color[4]) {
@@ -520,7 +529,7 @@ static void vr_gfx_bind_target(EyeSwapchain& sc, uint32_t index, const float cle
     viewport.MaxDepth = 1.0f;
     xr.d3d_context->RSSetViewports(1, &viewport);
 
-    vr_gfx_set_target_height(sc.height);
+    vr_gfx_adopt_target(0, sc.width, sc.height);
 }
 
 #else // VR_GFX_GLES
@@ -721,13 +730,12 @@ static void vr_gfx_destroy_targets(EyeSwapchain& sc) {
 }
 
 static void vr_gfx_rebind_target(EyeSwapchain& sc, uint32_t index) {
-    glBindFramebuffer(GL_FRAMEBUFFER, sc.fbos[index]);
+    vr_gfx_adopt_target(sc.fbos[index], sc.width, sc.height);
     glViewport(0, 0, static_cast<GLsizei>(sc.width), static_cast<GLsizei>(sc.height));
-    vr_gfx_set_target_height(sc.height);
 }
 
 static void vr_gfx_bind_target(EyeSwapchain& sc, uint32_t index, const float clear_color[4]) {
-    glBindFramebuffer(GL_FRAMEBUFFER, sc.fbos[index]);
+    vr_gfx_adopt_target(sc.fbos[index], sc.width, sc.height);
     glViewport(0, 0, static_cast<GLsizei>(sc.width), static_cast<GLsizei>(sc.height));
 
     // Unlike D3D11's ClearRenderTargetView, glClear honours the scissor box and the write masks,
@@ -761,8 +769,6 @@ static void vr_gfx_bind_target(EyeSwapchain& sc, uint32_t index, const float cle
     }
     glDepthMask(depth_mask_was);
     glColorMask(color_mask_was[0], color_mask_was[1], color_mask_was[2], color_mask_was[3]);
-
-    vr_gfx_set_target_height(sc.height);
 }
 
 #endif // VR_GFX_D3D11
@@ -3006,12 +3012,17 @@ void vr_capture_mirror() {
 
     // The swapchain image is still acquired at this point, so it can be read. A resolve blit is
     // enough - same size, same format family - and it keeps the engine's own binding untouched by
-    // restoring the draw target afterwards.
+    // restoring the draw target afterwards. Scissor goes back on as found, for the same shadow-state
+    // reason as in vr_gfx_bind_target.
+    const GLboolean scissor_was_enabled = glIsEnabled(GL_SCISSOR_TEST);
     glBindFramebuffer(GL_READ_FRAMEBUFFER, sc.fbos[idx]);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, xr.mirror_fbo);
     glDisable(GL_SCISSOR_TEST);
     glBlitFramebuffer(0, 0, (GLint)sc.width, (GLint)sc.height, 0, 0, (GLint)xr.mirror_w, (GLint)xr.mirror_h,
                       GL_COLOR_BUFFER_BIT, GL_LINEAR);
+    if (scissor_was_enabled) {
+        glEnable(GL_SCISSOR_TEST);
+    }
     glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, sc.fbos[idx]);
     return;

@@ -850,6 +850,23 @@ void GfxRenderingAPIOGL::StartDrawToFramebuffer(int fb_id, float noise_scale) {
     mCurrentFrameBuffer = fb_id;
 }
 
+void GfxRenderingAPIOGL::StartDrawToExternalFramebuffer(GLuint fbo, uint32_t width, uint32_t height) {
+    if (mExternalFrameBuffer < 0) {
+        mExternalFrameBuffer = (int)mFrameBuffers.size();
+        mFrameBuffers.resize(mFrameBuffers.size() + 1);
+    }
+    FramebufferOGL& fb = mFrameBuffers[mExternalFrameBuffer];
+    fb.fbo = fbo;
+    fb.width = width;
+    fb.height = height;
+    fb.has_depth_buffer = true;
+    fb.msaa_level = 1;
+    fb.invertY = false; // GL texture origin is bottom-left, and OpenXR samples GL images that way
+
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    mCurrentFrameBuffer = mExternalFrameBuffer;
+}
+
 void GfxRenderingAPIOGL::ClearFramebuffer(bool color, bool depth) {
     if (mLastScissorEnabled != 0) {
         mLastScissorEnabled = 0;
@@ -898,7 +915,7 @@ void GfxRenderingAPIOGL::ResolveMSAAColorBuffer(int fb_id_target, int fb_id_sour
 
     glBlitFramebuffer(0, 0, fb_src.width, fb_src.height, 0, 0, fb_dst.width, fb_dst.height, GL_COLOR_BUFFER_BIT,
                       GL_NEAREST);
-    glBindFramebuffer(GL_FRAMEBUFFER, mCurrentFrameBuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, mFrameBuffers[mCurrentFrameBuffer].fbo);
 
     if (mLastScissorEnabled != 1) {
         mLastScissorEnabled = 1;
@@ -1084,7 +1101,7 @@ GfxRenderingAPIOGL::GetPixelDepth(int fb_id, const std::set<std::pair<float, flo
         }
     }
 
-    glBindFramebuffer(GL_FRAMEBUFFER, mCurrentFrameBuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, mFrameBuffers[mCurrentFrameBuffer].fbo);
 
     return res;
 }
