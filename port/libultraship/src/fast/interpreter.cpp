@@ -30,6 +30,7 @@
 #include "fast/backends/gfx_window_manager_api.h"
 #include "fast/backends/gfx_rendering_api.h"
 #include "fast/vr_openxr.h"
+#include "fast/HostPointer.h"
 
 #include "ship/window/gui/Gui.h"
 #include "ship/resource/ResourceManager.h"
@@ -4915,13 +4916,8 @@ static void gfx_step() {
         // Guard against null or N64-segment addresses that would crash in strlen/strncmp.
         if (opcode == OTR_G_VTX_OTR_FILEPATH || opcode == OTR_G_SETTIMG_OTR_FILEPATH ||
             opcode == OTR_G_DL_OTR_FILEPATH || opcode == OTR_G_PUSHCD || opcode == OTR_G_MTX_OTR_FILEPATH) {
-            uintptr_t w1 = (uintptr_t)cmd->words.w1;
-            if (w1 < 0x10000
-#if UINTPTR_MAX > 0xFFFFFFFFu
-                // On 64-bit: filter kernel/sentinel addresses.
-                || w1 > 0x0000FFFFFFFFFFFFull
-#endif
-            ) {
+            // SOH [Quest] Tag-aware, like gfx_check_image_signature.
+            if (!IsPlausibleHostPointer((uintptr_t)cmd->words.w1)) {
                 ++g_exec_stack.currCmd();
                 return;
             }
@@ -5415,16 +5411,10 @@ int32_t gfx_check_image_signature(const char* imgData) {
 
     // Filter addresses that are obviously not valid string pointers before
     // attempting to dereference for the "__OTR__" check.
-    if (i == 0 || i < 0x10000) {
+    // SOH [Quest] Tag-aware: Android tags arm64 heap pointers (see HostPointer.h).
+    if (!IsPlausibleHostPointer(i)) {
         return 0;
     }
-#if UINTPTR_MAX > 0xFFFFFFFFu
-    // On 64-bit: filter kernel/sentinel addresses. Upper bound covers all
-    // user-space layouts (x86_64 47-bit canonical, ARM64 48-bit VA, etc.).
-    if (i > 0x0000FFFFFFFFFFFFull) {
-        return 0;
-    }
-#endif
 
     return Ship::Context::GetRawInstance()->GetResourceManager()->OtrSignatureCheck(imgData);
 }
