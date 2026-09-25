@@ -1,12 +1,14 @@
 # Estado del proyecto
 
-Última actualización: 2026-09-10.
+Última actualización: 2026-09-25.
 
 ## En una frase
 
-**Funciona.** Ocarina of Time corre en el Quest 3S, en estéreo, en primera
-persona, nativo. Sesión OpenXR en `FOCUSED` a ~82 fps, con glitches gráficos por
-clasificar (ticket [#17](https://github.com/gibranfelix/zelda-oot-vr/issues/17)) y las cuatro decisiones de diseño ya desbloqueadas.
+**Se juega.** Ocarina of Time corre en el Quest 3S, en estéreo, en primera
+persona, nativo, y se ha jugado de Kokiri a la torre de Ganon. Los glitches
+gráficos están clasificados (ticket [#17](https://github.com/gibranfelix/zelda-oot-vr/issues/17),
+cerrado): los grandes están arreglados y lo que queda son tickets pequeños y
+separados, #33–#39. Tres de las cuatro decisiones de diseño se cerraron jugando.
 
 ## Qué se sabe (verificado, con fuentes en `research/landscape.md`)
 
@@ -72,18 +74,17 @@ backend, había que dejar de compilarla a stubs.
    reescribió: suelo práctico en vez de "sin crashes", línea principal hasta
    créditos, y la comodidad **dentro** del criterio de éxito. Ver [el mapa](https://github.com/gibranfelix/zelda-oot-vr/issues/2) y
    `CONTEXT.md`.
-2. **Decisión 5 — snap turn contra Z-targeting.** En SM64 el stick derecho estaba
+2. **Decisión 5 — snap turn contra Z-targeting.** Sigue abierta. En SM64 el stick derecho estaba
    libre. En OoT el Z-targeting ya ocupa el rol de "hacia dónde miro", con siete
    modos de cámara, y con lock-on el marco de referencia del stick tiene que
    cambiar de cabeza a cuerpo. Hay que re-decidir. Ticket [#6](https://github.com/gibranfelix/zelda-oot-vr/issues/6).
-3. **Decisión 6 — escala adulto/niño.** Dos alturas y una transición a mitad de
-   partida. Hay que re-decidir. Ticket [#7](https://github.com/gibranfelix/zelda-oot-vr/issues/7).
-
-4. **Alcance mínimo de comodidad — ticket [#12](https://github.com/gibranfelix/zelda-oot-vr/issues/12).** Graduó de la niebla al confirmar
-   el destino. Bloqueado por el [#5](https://github.com/gibranfelix/zelda-oot-vr/issues/5).
-5. **Combate por gesto o por botón — ticket [#13](https://github.com/gibranfelix/zelda-oot-vr/issues/13).** No es solo gesto: `vr-port`
-   trae `vr_physics.cpp` (77 KB), una espada con física de verdad. Bloqueado por
-   el [#5](https://github.com/gibranfelix/zelda-oot-vr/issues/5).
+3. ~~**Decisión 6 — escala adulto/niño — ticket [#7](https://github.com/gibranfelix/zelda-oot-vr/issues/7).**~~ **Resuelto
+   2026-09-25**: la escala automática, que recalibra con la altura de ojos de
+   Link, basta. Sin problemas de tamaño jugando como niño y como adulto.
+4. ~~**Alcance mínimo de comodidad — ticket [#12](https://github.com/gibranfelix/zelda-oot-vr/issues/12).**~~ **Descartado
+   2026-09-25** por el usuario.
+5. ~~**Combate por gesto o por botón — ticket [#13](https://github.com/gibranfelix/zelda-oot-vr/issues/13).**~~ **Resuelto
+   2026-09-25: gesto.** La espada física de `vr-combat` funciona bien jugando.
 6. ~~**Forkear `MotionControls-2` o reimplantar — ticket [#14](https://github.com/gibranfelix/zelda-oot-vr/issues/14).**~~ **Resuelto
    2026-09-10**: forkear, citando a ShinyWindow. El argumento de licencia para
    reimplantar no se sostenía.
@@ -130,17 +131,28 @@ objetivo), pero está roto hasta que se demuestre lo contrario.
 
 ## Siguiente paso
 
-El **ticket [#15](https://github.com/gibranfelix/zelda-oot-vr/issues/15) se cerró el 2026-09-23**: el juego arranca y se juega. Con él caen
-los bloqueantes de las cuatro decisiones pendientes.
+Del 23 al 25 de septiembre se jugó con el visor y se arreglaron los glitches y
+los controles en los PRs #21–#31: menú de pausa al revés, texto invisible,
+cámara fija del Mercado, escudo Hylian del niño y escudo con la Biggoron, notas
+de la ocarina, paredes que se recortaban, espada con los dos grips, placas del
+guantelete, Epona con el arco y punta del gancho. #28–#31 **no se han probado
+aún en el visor**.
 
-Frontera actual, toda takeable:
+Frontera actual:
 
-- **Ticket [#17](https://github.com/gibranfelix/zelda-oot-vr/issues/17)** — clasificar los glitches gráficos. Es el primero que se resuelve
-  mirando, no razonando. Cada síntoma tiene su sospechoso identificado (sesgo de
-  profundidad, sRGB, HUD, proyección).
-- **Tickets [#6](https://github.com/gibranfelix/zelda-oot-vr/issues/6), [#7](https://github.com/gibranfelix/zelda-oot-vr/issues/7), [#12](https://github.com/gibranfelix/zelda-oot-vr/issues/12), [#13](https://github.com/gibranfelix/zelda-oot-vr/issues/13)** — snap turn, escala niño/adulto, comodidad y combate.
-  Son HITL: se deciden jugando, no discutiendo.
-- **Ticket [#4](https://github.com/gibranfelix/zelda-oot-vr/issues/4)** — medir framerate con el port plano de referencia.
+- **Tickets pequeños, toda takeable**:
+  - rectángulo gris en las transiciones ([#33](https://github.com/gibranfelix/zelda-oot-vr/issues/33));
+  - bomba rosa ([#34](https://github.com/gibranfelix/zelda-oot-vr/issues/34));
+  - escudo que tapa la vista ([#35](https://github.com/gibranfelix/zelda-oot-vr/issues/35));
+  - objeto recibido dentro de la cámara ([#36](https://github.com/gibranfelix/zelda-oot-vr/issues/36));
+  - cámara de cutscene dentro de la geometría ([#37](https://github.com/gibranfelix/zelda-oot-vr/issues/37));
+  - doble arranque ([#38](https://github.com/gibranfelix/zelda-oot-vr/issues/38));
+  - inclinarse contra una pared ([#39](https://github.com/gibranfelix/zelda-oot-vr/issues/39));
+  - grito de Link al blandir la espada ([#32](https://github.com/gibranfelix/zelda-oot-vr/issues/32)).
+- **Interiores pre-renderizados ([#19](https://github.com/gibranfelix/zelda-oot-vr/issues/19))**: casas, tiendas y Mercado se
+  ven con la malla proxy sin textura. El panorama 360° se probó y no funcionó;
+  quedan convertir la geometría de OoT 3D o modelar a mano.
+- **Snap turn contra Z-targeting ([#6](https://github.com/gibranfelix/zelda-oot-vr/issues/6))**: se decide jugando.
 
 **Y todos necesitan lo mismo: alguien con el visor puesto.** Horizon OS bloquea
 el lanzamiento en cuanto nadie lo lleva (`vrlockscreen/.SensorLockActivity`), y
@@ -156,6 +168,12 @@ cosas sin las cuales depurar ahí es a ciegas:
   `adb logcat -s soh:V`.
 - **Espejo del ojo izquierdo en GLES**: `adb exec-out screencap -p` debería
   devolver lo que el visor pinta. **Sin verificar en dispositivo todavía.**
+- **Grabaciones del visor**: lo que graba el Quest queda en
+  `/sdcard/Oculus/VideoShots/`, y se baja con `adb pull` para revisarlo cuadro a cuadro con `ffmpeg`. El log del
+  juego está en `/sdcard/Android/data/org.oot.vr/files/logs/`.
+- **Partida con todo**: con `gDeveloperTools.DebugEnabled=1` y `DebugSaveFileMode=2` en
+  `shipofharkinian.json`, una partida nueva en el primer slot nace con todos los objetos, y el modo
+  desarrollador da el selector de escenas. Está activo en el visor.
 
 ## Cómo trabajar aquí
 
