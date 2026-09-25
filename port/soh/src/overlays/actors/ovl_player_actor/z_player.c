@@ -2811,10 +2811,10 @@ LinkAnimationHeader* func_808346C4(PlayState* play, Player* this) {
     Player_DetachHeldActor(play, this);
 
     if (this->unk_870 < 0.5f) {
-        return D_808543A4[Player_HoldsTwoHandedWeapon(this) && !(CVarGetInteger(CVAR_CHEAT("ShieldTwoHanded"), 0) &&
+        return D_808543A4[Player_HoldsTwoHandedWeapon(this) && !(Player_CanShieldWithTwoHandedWeapon() &&
                                                                  (this->heldItemAction != PLAYER_IA_DEKU_STICK))];
     } else {
-        return D_808543AC[Player_HoldsTwoHandedWeapon(this) && !(CVarGetInteger(CVAR_CHEAT("ShieldTwoHanded"), 0) &&
+        return D_808543AC[Player_HoldsTwoHandedWeapon(this) && !(Player_CanShieldWithTwoHandedWeapon() &&
                                                                  (this->heldItemAction != PLAYER_IA_DEKU_STICK))];
     }
 }
@@ -4935,18 +4935,18 @@ s32 func_808382DC(Player* this, PlayState* play) {
 
                             if (this->unk_870 < 0.5f) {
                                 anim = D_808543BC[Player_HoldsTwoHandedWeapon(this) &&
-                                                  !(CVarGetInteger(CVAR_CHEAT("ShieldTwoHanded"), 0) &&
+                                                  !(Player_CanShieldWithTwoHandedWeapon() &&
                                                     (this->heldItemAction != PLAYER_IA_DEKU_STICK))];
                             } else {
                                 anim = D_808543B4[Player_HoldsTwoHandedWeapon(this) &&
-                                                  !(CVarGetInteger(CVAR_CHEAT("ShieldTwoHanded"), 0) &&
+                                                  !(Player_CanShieldWithTwoHandedWeapon() &&
                                                     (this->heldItemAction != PLAYER_IA_DEKU_STICK))];
                             }
                             LinkAnimation_PlayOnce(play, &this->upperSkelAnime, anim);
                         } else {
                             Player_AnimPlayOnce(play, this,
                                                 D_808543C4[Player_HoldsTwoHandedWeapon(this) &&
-                                                           !(CVarGetInteger(CVAR_CHEAT("ShieldTwoHanded"), 0) &&
+                                                           !(Player_CanShieldWithTwoHandedWeapon() &&
                                                              (this->heldItemAction != PLAYER_IA_DEKU_STICK))]);
                         }
                     }

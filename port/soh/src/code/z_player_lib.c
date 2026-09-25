@@ -548,7 +548,7 @@ void Player_SetModelsForHoldingShield(Player* this) {
     // flag, no button. VrShield re-asserts this every tick while VrCombat_ShieldHeld.
     if (((this->stateFlags1 & PLAYER_STATE1_SHIELDING) || VrCombat_ShieldHeld(this)) &&
         ((this->itemAction < 0) || (this->itemAction == this->heldItemAction))) {
-        if ((CVarGetInteger(CVAR_CHEAT("ShieldTwoHanded"), 0) && (this->heldItemAction != PLAYER_IA_DEKU_STICK) ||
+        if ((Player_CanShieldWithTwoHandedWeapon() && (this->heldItemAction != PLAYER_IA_DEKU_STICK) ||
              !Player_HoldsTwoHandedWeapon(this)) &&
             (!Player_IsChildWithHylianShield(this) || VrCombat_ShieldHeld(this))) {
             this->rightHandType = PLAYER_MODELTYPE_RH_SHIELD;
@@ -881,6 +881,14 @@ s32 Player_ActionToMeleeWeapon(s32 actionParam) {
 
 s32 Player_GetMeleeWeaponHeld(Player* this) {
     return Player_ActionToMeleeWeapon(this->heldItemAction);
+}
+
+// Whether a shield may be held alongside a two-handed weapon (Biggoron's Sword, Megaton Hammer):
+// the ShieldTwoHanded cheat, or VR first person, where the physical weapon only occupies one
+// controller and the other hand is free. gVrShieldTwoHanded 0 restores the vanilla rule in VR.
+s32 Player_CanShieldWithTwoHandedWeapon(void) {
+    return CVarGetInteger(CVAR_CHEAT("ShieldTwoHanded"), 0) ||
+           (VR_IsInitialized() && VR_GetFirstPerson() && CVarGetInteger("gVrShieldTwoHanded", 1));
 }
 
 s32 Player_HoldsTwoHandedWeapon(Player* this) {
