@@ -346,7 +346,7 @@ static void RegisterCustomEquipment() {
                                                 player->heldItemAction <= PLAYER_IA_HAMMER;
                     const bool isChildHylian = !isAdult && player->currentShield == PLAYER_SHIELD_HYLIAN;
                     const bool isShielding = (player->stateFlags1 & PLAYER_STATE1_SHIELDING) != 0 && !isChildHylian &&
-                                             (!holdsTwoHanded || (CVarGetInteger(CVAR_CHEAT("ShieldTwoHanded"), 0) &&
+                                             (!holdsTwoHanded || (Player_CanShieldWithTwoHandedWeapon() &&
                                                                   player->heldItemAction != PLAYER_IA_DEKU_STICK));
                     const bool isOcarina = player->heldItemAction == PLAYER_IA_OCARINA_FAIRY ||
                                            player->heldItemAction == PLAYER_IA_OCARINA_OF_TIME ||
@@ -443,7 +443,7 @@ static void RegisterCustomEquipment() {
                                                  player->heldItemAction <= PLAYER_IA_HAMMER;
                     const bool sheathChildHylian = !isAdult && player->currentShield == PLAYER_SHIELD_HYLIAN;
                     const bool sheathCanShield =
-                        !sheathChildHylian && (!sheathTwoHanded || (CVarGetInteger(CVAR_CHEAT("ShieldTwoHanded"), 0) &&
+                        !sheathChildHylian && (!sheathTwoHanded || (Player_CanShieldWithTwoHandedWeapon() &&
                                                                     player->heldItemAction != PLAYER_IA_DEKU_STICK));
                     if (sheathCanShield) {
                         if (sheathType == PLAYER_MODELTYPE_SHEATH_18)

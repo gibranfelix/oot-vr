@@ -63,7 +63,7 @@ extern "C" bool VrCombat_ShieldHeld(Player* player) {
         return false;
     }
     if (Player_HoldsTwoHandedWeapon(player) &&
-        !(CVarGetInteger(CVAR_CHEAT("ShieldTwoHanded"), 0) && (player->heldItemAction != PLAYER_IA_DEKU_STICK))) {
+        !(Player_CanShieldWithTwoHandedWeapon() && (player->heldItemAction != PLAYER_IA_DEKU_STICK))) {
         return false;
     }
     // The shield rides the off hand exactly while a melee weapon is VISIBLY in the sword hand.
@@ -81,7 +81,7 @@ extern "C" bool VrCombat_ShieldHeld(Player* player) {
         case PLAYER_MODELTYPE_LH_SWORD:
         case PLAYER_MODELTYPE_LH_SWORD_2:
         case PLAYER_MODELTYPE_LH_BGS:    // broken Giant's Knife / child Master Sword renders here
-        case PLAYER_MODELTYPE_LH_HAMMER: // reachable only with the ShieldTwoHanded cheat
+        case PLAYER_MODELTYPE_LH_HAMMER: // reachable via Player_CanShieldWithTwoHandedWeapon
             break;
         case PLAYER_MODELTYPE_LH_CLOSED:
             // The Deku stick has no hand model of its own — it renders separately over a closed
