@@ -28,20 +28,17 @@ We tested the port only on the Meta Quest 3S.
 
 ## Install
 
-You need a PC with `adb` for these steps. You do these steps one time only.
+You need:
 
-### 1. Make `oot.o2r` from your ROM
+- a legal copy of Ocarina of Time: a cartridge or disc that you own;
+- a PC with Windows, macOS, or Linux;
+- a USB-C cable for the headset.
 
-The game assets come from your ROM. The APK does not contain them.
+You do these steps one time only.
 
-1. Make a dump of your own cartridge or disc of Ocarina of Time. Use one of
-   the supported versions below.
-2. Build the host tools. Follow [`port/Android/README.md`](port/Android/README.md).
-3. Put your `.z64` file in `port/OTRExporter/`.
-4. Run `cmake --build port/build-host --target ExtractAssets`.
-5. Get the file `port/oot.o2r`.
+### 1. Make a dump of your game
 
-#### Supported versions
+Make a dump of your own cartridge or disc. Use one of these versions:
 
 | Platform | Region | Versions |
 |---|---|---|
@@ -56,21 +53,57 @@ To make sure that your dump is correct, compare its SHA-1 with the list in
 [`port/docs/supportedHashes.json`](port/docs/supportedHashes.json). We tested
 only the European GameCube version.
 
-### 2. Install the APK
+### 2. Make `oot.o2r` with Ship of Harkinian
 
-1. Download `oot-vr-<version>.apk` from
+The game assets come from your dump. The APK does not contain them. Ship of
+Harkinian for PC converts your dump into the file `oot.o2r`.
+
+This port uses **Ship of Harkinian 9.2.3 "Ackbar Delta"**. Use this version.
+
+1. Download Ship of Harkinian 9.2.3 for your PC from its
+   [release page](https://github.com/HarbourMasters/Shipwright/releases/tag/9.2.3):
+   `SoH-Ackbar-Delta-Win64.zip`, `SoH-Ackbar-Delta-Mac.zip`, or
+   `SoH-Ackbar-Delta-Linux.zip`.
+2. Extract the ZIP file and start Ship of Harkinian.
+3. When Ship of Harkinian asks for a ROM, select your dump.
+4. Wait until the extraction is complete. Then close Ship of Harkinian.
+5. Find the file `oot.o2r`:
+   - Windows and Linux: in the same folder as `soh.exe` or `soh.appimage`.
+   - macOS: in `~/Library/Application Support/com.shipofharkinian.soh/`.
+
+### 3. Enable developer mode on the headset
+
+The game does not come from the Meta store. Thus, the headset must be in
+developer mode. Follow the steps from Meta:
+[Device Setup](https://developers.meta.com/horizon/documentation/native/android/mobile-device-setup/).
+
+### 4. Install the game with SideQuest
+
+1. Install [SideQuest](https://sidequestvr.com/setup-howto) on your PC.
+2. Connect the headset to the PC with the USB-C cable.
+3. Put on the headset. Select **Always allow from this computer**, then
+   select **Allow**.
+4. Download `oot-vr-<version>.apk` from
    [Releases](https://github.com/gibranfelix/oot-vr/releases).
-2. Connect the headset to the PC with a USB cable.
-3. Run these commands:
+5. Drag the APK file into the SideQuest window. SideQuest installs it.
+6. In SideQuest, open the file manager of the headset.
+7. Go to `Android/data/`. Make the folder `org.oot.vr`, and in it the folder
+   `files`, if they do not exist.
+8. Copy `oot.o2r` into `Android/data/org.oot.vr/files/`.
 
-   ```
-   adb install -r oot-vr-<version>.apk
-   adb shell mkdir -p /sdcard/Android/data/org.oot.vr/files
-   adb push oot.o2r /sdcard/Android/data/org.oot.vr/files/oot.o2r
-   ```
+If you use `adb`, you can do steps 5 to 8 with these commands:
 
-4. Put on the headset.
-5. Open **OoT VR** from **Unknown Sources**.
+```
+adb install -r oot-vr-<version>.apk
+adb shell mkdir -p /sdcard/Android/data/org.oot.vr/files
+adb push oot.o2r /sdcard/Android/data/org.oot.vr/files/oot.o2r
+```
+
+### 5. Play
+
+1. Put on the headset.
+2. Open the **Library**, and select **Unknown Sources**.
+3. Open **OoT VR**.
 
 If the game does not start, read the "If the game does not start" section in
 [`port/Android/README.md`](port/Android/README.md).
@@ -78,7 +111,8 @@ If the game does not start, read the "If the game does not start" section in
 ## Build from source
 
 Read [`port/Android/README.md`](port/Android/README.md). One script builds the
-APK: `port/Android/build-apk.sh`.
+APK: `port/Android/build-apk.sh`. The same document tells how to make
+`oot.o2r` with the tools of this repository, without Ship of Harkinian for PC.
 
 ## Documentation
 
@@ -101,7 +135,8 @@ This port uses the work of other people:
   first-person camera, the physical combat, and many control fixes.
 - **[Harbour Masters](https://github.com/HarbourMasters)**:
   [Ship of Harkinian](https://github.com/HarbourMasters/Shipwright), the port of
-  Ocarina of Time that all of this uses.
+  Ocarina of Time that all of this uses. This port is based on version 9.2.3
+  "Ackbar Delta".
 - **[Kenix3](https://github.com/Kenix3)**:
   [`libultraship`](https://github.com/Kenix3/libultraship).
 - **[linkzenic](https://github.com/linkzenic)**:

@@ -7,7 +7,7 @@ engine. Read it before you change VR code.
 
 | Part | Directory | Contents |
 |---|---|---|
-| Game | `port/soh` | Ship of Harkinian 9.2.3 with the VR changes from `Shipwright-VR` |
+| Game | `port/soh` | Ship of Harkinian 9.2.3 "Ackbar Delta" with the VR changes from `Shipwright-VR` |
 | Engine | `port/libultraship` | The Fast3D renderer, the GLES backend, and the OpenXR session |
 | Android wrapper | `port/Android` | The Gradle project, `MainActivity`, and the manifest for Horizon OS |
 

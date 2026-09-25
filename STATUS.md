@@ -38,8 +38,9 @@ the gauntlet plates, the bow on Epona, and the hookshot tip.
 
 - Any issue in the table above. Each one is small and independent.
 - Tests on the Meta Quest 3. We tested only on the Quest 3S.
-- An easier method to make `oot.o2r`. At this time, you must build the host
-  tools. This is the most difficult step for players.
+- An extraction on the headset. At this time, players need Ship of Harkinian
+  for PC to make `oot.o2r`. The APK could ask for the dump and make the file
+  on the headset.
 
 Before you start, read [`docs/architecture.md`](docs/architecture.md) and
 [`CONTRIBUTING.md`](CONTRIBUTING.md).

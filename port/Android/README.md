@@ -41,6 +41,10 @@ The game assets come from **your** legal copy of the game: a dump of a
 cartridge or disc that you own. They **never** go into the repository or into
 the APK.
 
+Players can make `oot.o2r` with Ship of Harkinian 9.2.3 for PC. Read the main
+[`README.md`](../../README.md). As a developer, you can also make it with the
+tools of this repository:
+
 1. Put your `.z64` file in `port/OTRExporter/`. The `.gitignore` blocks this
    file.
 2. Run:
