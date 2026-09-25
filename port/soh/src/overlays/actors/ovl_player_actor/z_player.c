@@ -3070,7 +3070,9 @@ s32 func_8083501C(Player* this, PlayState* play) {
     if ((!Player_HoldsHookshot(this) || func_80834FBC(this)) && !func_80834758(play, this) &&
         !func_80834F2C(this, play)) {
         return false;
-    } else if (this->rideActor != NULL) {
+    } else if (this->rideActor != NULL && !(VR_IsInitialized() && VR_GetFirstPerson())) {
+        // SOH [VR] Not in VR first person: the view already is first person, and this aim mode
+        // stops Epona obeying the stick and eats the first A (the dismount press) to leave it.
         this->unk_6AD = 2; // OTRTODO: THIS IS A BAD IDEA BUT IT FIXES THE HORSE FIRST PERSON?
     }
 
@@ -3204,9 +3206,10 @@ s32 func_808353D8(Player* this, PlayState* play) {
 
         // SOH [VR] Stay shouldered between shots in VR first person: the un-targeted vanilla
         // path lowers the bow here, and the lower-animation window ate the next press — the
-        // "fires once then goes dead" bug.
+        // "fires once then goes dead" bug. Not on horseback, though: a bow held shouldered keeps
+        // Epona from obeying the stick, so she can't stop and Link can never dismount.
         if (Player_IsZTargeting(this) || (this->unk_6AD != 0) || (this->stateFlags1 & PLAYER_STATE1_FIRST_PERSON) ||
-            (VR_IsInitialized() && VR_GetFirstPerson())) {
+            (VR_IsInitialized() && VR_GetFirstPerson() && !(this->stateFlags1 & PLAYER_STATE1_ON_HORSE))) {
             if (this->unk_834 == 0) {
                 this->unk_834++;
             }
