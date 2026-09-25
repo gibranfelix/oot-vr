@@ -550,9 +550,13 @@ void Player_SetModelsForHoldingShield(Player* this) {
         ((this->itemAction < 0) || (this->itemAction == this->heldItemAction))) {
         if ((CVarGetInteger(CVAR_CHEAT("ShieldTwoHanded"), 0) && (this->heldItemAction != PLAYER_IA_DEKU_STICK) ||
              !Player_HoldsTwoHandedWeapon(this)) &&
-            !Player_IsChildWithHylianShield(this)) {
+            (!Player_IsChildWithHylianShield(this) || VrCombat_ShieldHeld(this))) {
             this->rightHandType = PLAYER_MODELTYPE_RH_SHIELD;
-            if (LINK_IS_CHILD && (CVarGetInteger(CVAR_ENHANCEMENT("EquipmentAlwaysVisible"), 0)) &&
+            if (Player_IsChildWithHylianShield(this)) {
+                // SOH [VR] The child model has no Hylian shield in hand (only on the back, which
+                // first person hides): borrow the adult's, as EquipmentAlwaysVisible does below.
+                this->rightHandDLists = &sPlayerDListGroups[PLAYER_MODELTYPE_RH_SHIELD][0];
+            } else if (LINK_IS_CHILD && (CVarGetInteger(CVAR_ENHANCEMENT("EquipmentAlwaysVisible"), 0)) &&
                 (this->currentShield == PLAYER_SHIELD_MIRROR)) {
                 this->rightHandDLists = &sPlayerDListGroups[PLAYER_MODELTYPE_RH_SHIELD][0];
             } else if (LINK_IS_ADULT && (CVarGetInteger(CVAR_ENHANCEMENT("EquipmentAlwaysVisible"), 0)) &&

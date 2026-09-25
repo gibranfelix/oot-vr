@@ -56,8 +56,10 @@ extern "C" bool VrCombat_ShieldHeld(Player* player) {
         return false;
     }
     // Vanilla holdability rules: child Link carries the Hylian shield on his back (crouch
-    // blocking stays vanilla there), and two-handed weapons occupy both hands.
-    if (Player_IsChildWithHylianShield(player)) {
+    // blocking stays vanilla there), and two-handed weapons occupy both hands. The back is
+    // hidden in first person, though, so by default the child holds it like the adult does;
+    // gVrChildHylianInHand 0 restores the vanilla rule.
+    if (Player_IsChildWithHylianShield(player) && !CVarGetInteger("gVrChildHylianInHand", 1)) {
         return false;
     }
     if (Player_HoldsTwoHandedWeapon(player) &&
