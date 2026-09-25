@@ -4,6 +4,10 @@
 #
 #   port/Android/build-apk.sh            -> port/Android/app/build/outputs/apk/debug/app-debug.apk
 #
+# Release build (CI): set BUILD_TYPE=release and the signing variables ANDROID_STORE_FILE,
+# ANDROID_STORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD. Optional: VERSION_NAME and
+# VERSION_CODE. Output: port/Android/app/build/outputs/apk/release/app-release.apk
+#
 # The game's own assets (oot.o2r) are NOT part of this: they come from your cartridge and never
 # enter the repository or the APK. See port/Android/README.md for how to push them to the headset.
 set -euo pipefail
@@ -45,8 +49,20 @@ mkdir -p "$ANDROID_DIR/app/src/main/assets"
 cp "$PORT/soh.o2r" "$ANDROID_DIR/app/src/main/assets/soh.o2r"
 
 # 4. Package. gradle only zips things up here; it never runs CMake (see app/build.gradle).
-echo "==> gradle"
-(cd "$ANDROID_DIR" && ./gradlew assembleDebug --no-daemon -q)
+BUILD_TYPE="${BUILD_TYPE:-debug}"
+GRADLE_ARGS=(--no-daemon -q)
+[ -n "${VERSION_NAME:-}" ] && GRADLE_ARGS+=(-PappVersionName="$VERSION_NAME")
+[ -n "${VERSION_CODE:-}" ] && GRADLE_ARGS+=(-PappVersionCode="$VERSION_CODE")
+if [ "$BUILD_TYPE" = release ]; then
+    : "${ANDROID_STORE_FILE:?set ANDROID_STORE_FILE for a release build}"
+    GRADLE_ARGS+=(-PstoreFile="$ANDROID_STORE_FILE" -PstorePassword="$ANDROID_STORE_PASSWORD"
+                  -PkeyAlias="$ANDROID_KEY_ALIAS" -PkeyPassword="$ANDROID_KEY_PASSWORD")
+    TASK=assembleRelease
+else
+    TASK=assembleDebug
+fi
+echo "==> gradle $TASK"
+(cd "$ANDROID_DIR" && ./gradlew "$TASK" "${GRADLE_ARGS[@]}")
 
-APK="$ANDROID_DIR/app/build/outputs/apk/debug/app-debug.apk"
+APK="$ANDROID_DIR/app/build/outputs/apk/$BUILD_TYPE/app-$BUILD_TYPE.apk"
 echo "==> $APK ($(du -h "$APK" | cut -f1))"

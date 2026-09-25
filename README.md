@@ -38,12 +38,13 @@ version that Ship of Harkinian 9.2.3 supports.
 
 ### 2. Install the APK
 
-1. Download the APK from [Releases](https://github.com/oot-vr/oot-vr/releases).
+1. Download `oot-vr-<version>.apk` from
+   [Releases](https://github.com/oot-vr/oot-vr/releases).
 2. Connect the headset to the PC with a USB cable.
 3. Run these commands:
 
    ```
-   adb install -r oot-vr.apk
+   adb install -r oot-vr-<version>.apk
    adb shell mkdir -p /sdcard/Android/data/org.oot.vr/files
    adb push oot.o2r /sdcard/Android/data/org.oot.vr/files/oot.o2r
    ```

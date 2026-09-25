@@ -17,11 +17,16 @@ SDL3. Thus, we do not merge upstream changes. We copy each fix by hand. Read
 
 ## How to find VR code
 
-All VR changes in upstream files have the comment marker `SOH [VR]`. To find
-them, run:
+Ship of Harkinian marks its changes with comments of the form `SOH [Category]`.
+This port uses two categories:
+
+- `SOH [VR]`: a VR change in an upstream file.
+- `SOH [Quest]`: a change for Android or for the Quest that is not VR.
+
+To find them, run:
 
 ```
-git grep -n 'SOH \[VR\]' port
+git grep -n -e 'SOH \[VR\]' -e 'SOH \[Quest\]' port
 ```
 
 The VR code that is new has its own files:

@@ -55,8 +55,9 @@ submodules. Read [`docs/adr/0002`](docs/adr/0002-one-repository-with-the-port-in
   [`port/Android/README.md`](port/Android/README.md).
 - **Build on a Linux file system.** The build needs symlinks and the execute
   bit. NTFS and FAT disks do not have them.
-- **Mark VR changes in upstream files** with the comment `SOH [VR]`. Then
-  `git grep 'SOH \[VR\]'` finds all of them.
+- **Mark changes in upstream files** with a comment. Use `SOH [VR]` for VR
+  changes. Use `SOH [Quest]` for Android or Quest changes that are not VR. Then
+  `git grep` finds all of them.
 - **New files in `port/`.** The `.gitignore` of Ship of Harkinian is a Visual
   Studio template. It ignores directories with the names `debug/` and `log/`,
   and it ignores `*.png` and `Makefile`. `libultraship` has source code in
@@ -75,8 +76,8 @@ Examine each pull request for these problems. Each one is a P1 problem.
   not track the file.
 - The pull request changes line endings in `port/libultraship`, `port/ZAPDTR`,
   or `port/OTRExporter`.
-- The pull request changes an upstream file for VR, but the change does not
-  have the `SOH [VR]` marker.
+- The pull request changes an upstream file, but the change does not have the
+  `SOH [VR]` or `SOH [Quest]` marker.
 - The pull request adds a VR call without a `vr_is_initialized()` or
   `VR_IsInitialized()` check. The game must also run with VR off.
 - The pull request adds documentation that does not use ASD-STE100.
