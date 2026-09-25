@@ -7,7 +7,7 @@ decisions that are difficult to change are in [`docs/adr/`](docs/adr/).
 ## Destination
 
 The state in which this project is complete. The roadmap issue
-([#2](ISSUE:2)) contains it. The destination is not a task list and not a date.
+([#1](https://github.com/oot-vr/oot-vr/issues/1)) contains it. The destination is not a task list and not a date.
 It describes what success is.
 
 ## Standalone

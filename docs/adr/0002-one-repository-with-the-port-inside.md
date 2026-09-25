@@ -35,7 +35,7 @@ does not change their line endings.
 ## What we lose
 
 - **The commit history of the forks.** The code came in as a snapshot. The
-  issues [#9](ISSUE:9), [#10](ISSUE:10), [#15](ISSUE:15), and [#16](ISSUE:16)
+  issues [#8](https://github.com/oot-vr/oot-vr/issues/8), [#9](https://github.com/oot-vr/oot-vr/issues/9), [#14](https://github.com/oot-vr/oot-vr/issues/14), and [#15](https://github.com/oot-vr/oot-vr/issues/15)
   keep the reasons for each change.
 - **An upstream fix is not a `git merge`.** It is a manual cherry-pick or a
   patch. The VR changes in `interpreter.cpp` are in 8 functions. While those 8

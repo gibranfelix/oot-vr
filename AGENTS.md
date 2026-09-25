@@ -16,7 +16,7 @@ Ship of Harkinian and `libultraship`.
    issues, commits, and code.
 4. [`docs/adr/`](docs/adr/): the decisions that are difficult to change. If
    your change goes against an ADR, say so in the pull request.
-5. The roadmap is issue [#2](ISSUE:2). Its sub-issues are the tasks.
+5. The roadmap is issue [#1](https://github.com/oot-vr/oot-vr/issues/1). Its sub-issues are the tasks.
 
 ## Documentation language
 
