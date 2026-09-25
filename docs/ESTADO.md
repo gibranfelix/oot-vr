@@ -88,6 +88,11 @@ backend, había que dejar de compilarla a stubs.
 6. ~~**Forkear `MotionControls-2` o reimplantar — ticket [#14](https://github.com/gibranfelix/zelda-oot-vr/issues/14).**~~ **Resuelto
    2026-09-10**: forkear, citando a ShinyWindow. El argumento de licencia para
    reimplantar no se sostenía.
+7. ~~**Publicar el repo.**~~ **Resuelto 2026-09-25**: público, como la escena de
+   SoH — lo nuestro MIT, lo de terceros sin licencia y dicho así (`docs/adr/0003`,
+   `NOTICE.md`). Antes de cambiar la visibilidad faltan el nombre sin la marca,
+   decidir qué documentación interna se publica y probar un clon limpio en otra
+   máquina.
 
 Las otras siete decisiones de encuadre se heredan de Mario sin cambio.
 

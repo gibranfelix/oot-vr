@@ -3,8 +3,8 @@
 Port de **The Legend of Zelda: Ocarina of Time** al Meta Quest 3S, en primera
 persona y standalone — nativo en el visor, sin PC.
 
-Proyecto personal. **Este repo no contiene assets del juego**: hace falta un dump
-de tu propio cartucho.
+**Este repo no contiene assets del juego**: hace falta un dump de tu propio
+cartucho.
 
 ## Créditos
 
@@ -28,6 +28,13 @@ Este port no parte de cero. Se apoya en el trabajo de otra gente:
 
 Zelda y Ocarina of Time son marcas de Nintendo. Este proyecto no está asociado
 con Nintendo de ninguna forma.
+
+## Licencia
+
+Lo que escribió este proyecto es MIT (`LICENSE`). **El resto no**: Ship of
+Harkinian, su capa VR y el envoltorio Android no tienen licencia, y este repo no
+puede dársela. El detalle por directorio está en `NOTICE.md`; el porqué de
+publicarlo así, en `docs/adr/0003`.
 
 ## El código
 
