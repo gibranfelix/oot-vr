@@ -1,17 +1,15 @@
-Alcance de esta licencia
------------------------
+Scope of this license
+---------------------
 
-Esta licencia cubre únicamente lo que escribió este proyecto: los archivos fuera
-de `port/` y los cambios hechos dentro de `port/` a partir del commit a9b68e4
-("Bring the game into this repository").
+This license applies only to the work of this project:
 
-NO cubre el código de terceros que vive en `port/`. Buena parte de él —Ship of
-Harkinian, su capa VR y el envoltorio Android— no tiene licencia, y nadie aquí
-puede dársela. Ver `NOTICE.md` para el detalle por directorio.
+- all files outside `port/`;
+- the changes inside `port/` after commit 0d33d53 ("Bring the game into this
+  repository").
 
-Scope of this license: it covers only what this project wrote — files outside
-`port/` and changes made inside `port/` since commit a9b68e4. It does NOT cover
-third-party code in `port/`, much of which is unlicensed. See `NOTICE.md`.
+This license does not apply to the third-party code in `port/`. Much of that
+code has no license, and this project cannot give it one. Read `NOTICE.md` for
+the license of each directory.
 
 --------------------------------------------------------------------------------
 

@@ -1,61 +1,53 @@
-# Contexto del dominio
+# Domain context
 
-Glosario del proyecto. Sin detalles de implementación: los términos, no cómo se
-construyen. Las decisiones difíciles de revertir viven en `docs/adr/`.
+This file defines the terms that this project uses. It does not tell how the
+code works. Read [`docs/architecture.md`](docs/architecture.md) for that. The
+decisions that are difficult to change are in [`docs/adr/`](docs/adr/).
 
-## Destino
+## Destination
 
-El estado en el que este esfuerzo se declara terminado. Está escrito en
-el mapa ([issue #2](https://github.com/gibranfelix/zelda-oot-vr/issues/2)) y se confirmó el 2026-09-10. No es una lista de
-tareas ni una fecha: es una descripción de cómo se ve la victoria.
+The state in which this project is complete. The roadmap issue
+([#2](ISSUE:2)) contains it. The destination is not a task list and not a date.
+It describes what success is.
 
 ## Standalone
 
-El juego corre **nativo en el visor**, sin PC. Es el eje del destino y lo que lo
-distingue de las alternativas que ya existen. Ver `docs/adr/0001`.
+The game runs natively on the headset, without a PC. This is the main
+requirement of the destination. Other VR ports of Ocarina of Time need a PC.
+Read [`docs/adr/0001`](docs/adr/0001-standalone-not-pcvr.md).
 
 ## PCVR
 
-El juego corre en un PC y el visor es una pantalla conectada por cable o Link.
-En este proyecto **no es un destino, es un banco de pruebas**: sirve para poner
-decisiones de diseño delante del usuario antes de pagar el coste de construir.
+The game runs on a PC. The headset is a display that connects with a cable or
+with Air Link. In this project, PCVR is not a destination. It is only a test
+bench.
 
-## Suelo práctico
+## Practical floor
 
-El criterio de calidad del destino. Lo que importa es **llegar al final**, no la
-ausencia de fallos: guardar seguido, recargar tras un cuelgue y esquivar algún
-punto roto son aceptables. Se eligió frente a "sin crashes" porque sobre un juego
-de 25-30 horas encadenadas ese listón no es evaluable hasta el final.
+The quality level of the destination. The player must be able to get to the end
+of the game. Crashes are acceptable when the player can save frequently, load
+again, and go around the problem. A "no crashes" level is not possible to
+measure in a game of 25 to 30 hours.
 
-## Línea principal
+## Main line
 
-El alcance del destino: Deku, Dodongo, Jabu, los cinco templos de adulto, Ganon.
-**El contenido opcional no es criterio de éxito** — ni las Gold Skulltulas, ni
-las máscaras, ni los minijuegos de precisión. Que un minijuego resulte inviable
-en VR no invalida el proyecto.
+The scope of the destination: the Deku Tree, Dodongo's Cavern, Jabu-Jabu's
+Belly, the five adult temples, and Ganon. Optional content is not part of the
+destination: Gold Skulltulas, masks, and precision minigames. If a minigame does
+not work in VR, the project did not fail.
 
-## Comodidad
+## VR comfort
 
-Ambiguo en este proyecto y conviene no mezclarlos:
+The player must not feel sick. VR comfort is part of the destination. The
+target is sessions of one hour without discomfort.
 
-- **Comodidad de uso**: no depender de un PC para jugar. Es la razón del
-  standalone.
-- **Comodidad en VR**: no marearse. Es **criterio de éxito** del destino, medido
-  contra el usuario y no contra un estándar externo: sesiones de una hora sin
-  malestar.
+## Port assets and game assets
 
-Cuando el mapa o un ticket dice "comodidad" a secas, se refiere al segundo.
+Two different sets of files. They go to the headset in different ways.
 
-## Distribución privada
+- `soh.o2r` contains the **port** assets. The build makes this file, and the
+  APK contains it.
+- `oot.o2r` contains the **game** assets. The player makes this file from a dump
+  of a cartridge that the player owns.
 
-El artefacto es para el usuario, no para publicar. **Publicar sigue siendo una
-opción abierta** si el resultado gusta, y es esa puerta la que hace obligatoria
-la disciplina de licencias: se copia código solo de lo MIT (`libultraship` y sus
-forks); de lo que no tiene licencia (`Shipwright`, `zeldaret/oot`) se copia la
-forma y lo que explican los comentarios, nunca el texto.
-
-## Assets del port / assets del juego
-
-Dos cosas distintas que viajan por caminos distintos. `soh.o2r` son los assets
-del **port** y van dentro del APK. `oot.o2r` son los del **juego** y los genera
-el usuario desde su propio cartucho. Este repo nunca contiene los segundos.
+This repository never contains game assets.

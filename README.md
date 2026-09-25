@@ -1,53 +1,101 @@
-# zelda oot vr
+# oot-vr
 
-Port de **The Legend of Zelda: Ocarina of Time** al Meta Quest 3S, en primera
-persona y standalone — nativo en el visor, sin PC.
+*The Legend of Zelda: Ocarina of Time* in first person on the Meta Quest 3S.
+The game runs natively on the headset. You do not need a PC to play.
 
-**Este repo no contiene assets del juego**: hace falta un dump de tu propio
-cartucho.
+**Status: alpha.** You can play the main story from Kokiri Forest to Ganon's
+Tower. Some problems are known. Read [`STATUS.md`](STATUS.md) before you play.
 
-## Créditos
+> [!IMPORTANT]
+> This repository does not contain game assets. You must use a dump of your own
+> cartridge. Do not ask for ROMs in the issues.
 
-Este port no parte de cero. Se apoya en el trabajo de otra gente:
+## Features
 
-- **[ShinyWindow](https://github.com/ShinyWindow)** —
-  [`Shipwright-VR`](https://github.com/ShinyWindow/Shipwright-VR) y
-  [`libultraship-vr`](https://github.com/ShinyWindow/libultraship-vr). La capa de
-  VR sale de aquí: la sesión OpenXR, el estéreo por ojo, la cámara en primera
-  persona, el combate físico y los cientos de excepciones de control que hicieron
-  falta para que OoT funcione en VR. `libultraship-vr` es MIT.
-- **[Harbour Masters](https://github.com/HarbourMasters)** —
-  [Ship of Harkinian](https://github.com/HarbourMasters/Shipwright), el port de
-  OoT sobre el que se construye todo lo demás.
-- **[Kenix3](https://github.com/Kenix3)** —
-  [`libultraship`](https://github.com/Kenix3/libultraship), MIT.
-- **[linkzenic](https://github.com/linkzenic)** —
-  [`Shipwright-Android`](https://github.com/linkzenic/Shipwright-Android), la
-  referencia de SoH corriendo en Android arm64 con GLES3.
-- **[zeldaret](https://github.com/zeldaret/oot)** — la decompilación de OoT.
+- Stereo 3D. Each eye gets its own render pass.
+- First-person camera at the eye height of Link. The camera follows your head.
+- Motion controls. You swing the sword with your hand. You hold up the shield
+  with your hand.
+- Automatic world scale. The scale changes when Link changes from child to
+  adult.
+- Menus show on a panel that floats in front of you.
 
-Zelda y Ocarina of Time son marcas de Nintendo. Este proyecto no está asociado
-con Nintendo de ninguna forma.
+We tested the port only on the Meta Quest 3S.
 
-## Licencia
+## Install
 
-Lo que escribió este proyecto es MIT (`LICENSE`). **El resto no**: Ship of
-Harkinian, su capa VR y el envoltorio Android no tienen licencia, y este repo no
-puede dársela. El detalle por directorio está en `NOTICE.md`; el porqué de
-publicarlo así, en `docs/adr/0003`.
+You need a PC with `adb` for these steps. You do these steps one time only.
 
-## El código
+### 1. Make `oot.o2r` from your ROM
 
-Vive en `port/`. Para construir el APK:
+The game assets come from your ROM. The APK does not contain them. Use a ROM
+version that Ship of Harkinian 9.2.3 supports.
 
-```
-port/Android/build-apk.sh
-```
+1. Build the host tools. Follow [`port/Android/README.md`](port/Android/README.md).
+2. Put your `.z64` file in `port/OTRExporter/`.
+3. Run `cmake --build port/build-host --target ExtractAssets`.
+4. Get the file `port/oot.o2r`.
 
-Luego, con el visor conectado, ver `port/Android/README.md`.
+### 2. Install the APK
 
-## Por dónde empezar
+1. Download the APK from [Releases](https://github.com/oot-vr/oot-vr/releases).
+2. Connect the headset to the PC with a USB cable.
+3. Run these commands:
 
-- `docs/ESTADO.md` — qué está decidido y cuál es el siguiente paso.
-- `AGENTS.md` — cómo se trabaja en este repo.
-- `CONTEXT.md` — glosario del proyecto.
+   ```
+   adb install -r oot-vr.apk
+   adb shell mkdir -p /sdcard/Android/data/org.oot.vr/files
+   adb push oot.o2r /sdcard/Android/data/org.oot.vr/files/oot.o2r
+   ```
+
+4. Put on the headset.
+5. Open **OoT VR** from **Unknown Sources**.
+
+If the game does not start, read the "If the game does not start" section in
+[`port/Android/README.md`](port/Android/README.md).
+
+## Build from source
+
+Read [`port/Android/README.md`](port/Android/README.md). One script builds the
+APK: `port/Android/build-apk.sh`.
+
+## Documentation
+
+| File | Contents |
+|---|---|
+| [`STATUS.md`](STATUS.md) | What works, what does not work, where to help |
+| [`docs/architecture.md`](docs/architecture.md) | How the VR layer connects to the game and the engine |
+| [`CONTEXT.md`](CONTEXT.md) | The terms that this project uses |
+| [`docs/adr/`](docs/adr/) | Decisions that are difficult to change |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to send changes |
+| [`AGENTS.md`](AGENTS.md) | Rules for contributors and for AI agents |
+
+## Credits
+
+This port uses the work of other people:
+
+- **[ShinyWindow](https://github.com/ShinyWindow)**:
+  [`Shipwright-VR`](https://github.com/ShinyWindow/Shipwright-VR) and
+  [`libultraship-vr`](https://github.com/ShinyWindow/libultraship-vr). The VR
+  layer comes from these projects: the OpenXR session, the stereo render, the
+  first-person camera, the physical combat, and many control fixes.
+- **[Harbour Masters](https://github.com/HarbourMasters)**:
+  [Ship of Harkinian](https://github.com/HarbourMasters/Shipwright), the port of
+  Ocarina of Time that all of this uses.
+- **[Kenix3](https://github.com/Kenix3)**:
+  [`libultraship`](https://github.com/Kenix3/libultraship).
+- **[linkzenic](https://github.com/linkzenic)**:
+  [`Shipwright-Android`](https://github.com/linkzenic/Shipwright-Android), Ship
+  of Harkinian on Android arm64 with GLES3.
+- **[zeldaret](https://github.com/zeldaret/oot)**: the decompilation of Ocarina
+  of Time.
+
+## License
+
+Not all of this repository has a license. The code that this project wrote is
+MIT ([`LICENSE`](LICENSE)). Ship of Harkinian, its VR layer, and the Android
+wrapper do not have a license. [`NOTICE.md`](NOTICE.md) gives the license of
+each directory.
+
+Zelda and Ocarina of Time are trademarks of Nintendo. This project has no
+connection with Nintendo.

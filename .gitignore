@@ -1,4 +1,4 @@
-# Nunca commitear ROMs ni assets extraídos.
+# Never commit ROMs or extracted game assets.
 *.z64
 *.n64
 *.v64
@@ -19,3 +19,6 @@ obj/
 libs/
 
 .DS_Store
+
+# Local notes
+.scratch/

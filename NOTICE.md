@@ -1,34 +1,37 @@
-# Licencias por directorio
+# Licenses by directory
 
-Este repo junta código de varias fuentes, y no todo tiene licencia. Si vas a
-reutilizar algo, mira aquí primero. El porqué de publicarlo así está en
-`docs/adr/0003`.
+This repository contains code from many sources. Not all of this code has a
+license. Before you use a part of it, read this file.
 
-| Directorio | Origen | Licencia |
+| Directory | Source | License |
 |---|---|---|
-| todo lo que está fuera de `port/` | este proyecto | MIT (`LICENSE`) |
-| `port/libultraship` | [Kenix3](https://github.com/Kenix3/libultraship), capa VR de [ShinyWindow](https://github.com/ShinyWindow/libultraship-vr) | MIT (`port/libultraship/LICENSE`) |
-| `port/libultraship/src/fast`, `port/libultraship/include/fast` | Emill, MaikelChan (Fast3D) | MIT (`LICENSE.txt` propio) |
+| All files outside `port/` | This project | MIT (`LICENSE`) |
+| `port/libultraship` | [Kenix3](https://github.com/Kenix3/libultraship), VR layer from [ShinyWindow](https://github.com/ShinyWindow/libultraship-vr) | MIT (`port/libultraship/LICENSE`) |
+| `port/libultraship/src/fast`, `port/libultraship/include/fast` | Emill, MaikelChan (Fast3D) | MIT (its own `LICENSE.txt`) |
 | `port/ZAPDTR` | [zeldaret](https://github.com/zeldaret) | MIT (`port/ZAPDTR/LICENSE`) |
-| `port/ZAPDTR/lib/libgfxd` | glank | MIT (`LICENSE` propio) |
+| `port/ZAPDTR/lib/libgfxd` | glank | MIT (its own `LICENSE`) |
 | `port/OTRExporter` | [Harbour Masters](https://github.com/HarbourMasters) | MIT (`port/OTRExporter/LICENSE`) |
-| `port/soh` y el resto de `port/` | [Ship of Harkinian](https://github.com/HarbourMasters/Shipwright), capa VR de [`Shipwright-VR`](https://github.com/ShinyWindow/Shipwright-VR) | **sin licencia** |
-| `port/Android` | [`linkzenic/Shipwright-Android`](https://github.com/linkzenic/Shipwright-Android), adaptado a Quest | **sin licencia** |
+| `port/soh` and all other files in `port/` | [Ship of Harkinian](https://github.com/HarbourMasters/Shipwright), VR layer from [`Shipwright-VR`](https://github.com/ShinyWindow/Shipwright-VR) | **No license** |
+| `port/Android` | [`linkzenic/Shipwright-Android`](https://github.com/linkzenic/Shipwright-Android), changed for the Quest | **No license** |
 
-Ship of Harkinian se apoya en la decompilación
-[`zeldaret/oot`](https://github.com/zeldaret/oot), que tampoco tiene licencia.
+Ship of Harkinian uses the decompilation
+[`zeldaret/oot`](https://github.com/zeldaret/oot). The decompilation also has no
+license.
 
-**Sin licencia** quiere decir que sus autores no han dado permiso para copiarlo
-ni redistribuirlo. Este repo lo publica igual que el resto de la escena de SoH,
-pero eso no te da a ti ningún permiso sobre ese código. Los cambios que este
-proyecto hizo dentro de esos directorios, a partir del commit `a9b68e4`, sí son
-MIT por nuestra parte, aunque no por la de los autores originales.
+**No license** means that the authors did not give permission to copy or
+distribute the code. This repository publishes that code in the same way as the
+other public forks of Ship of Harkinian. This does not give you permission to
+use that code.
 
-## Assets del juego
+This project also changed files in those directories. Our changes are MIT. The
+original code in the same files keeps the rights of its authors.
 
-Este repo **no contiene assets de Ocarina of Time**. `soh.o2r` se genera con
-recursos propios de Ship of Harkinian; `oot.o2r` sale del dump de tu propio
-cartucho y nunca debe acabar en el repo ni en una release.
+## Game assets
 
-Zelda y Ocarina of Time son marcas de Nintendo. Este proyecto no está asociado
-con Nintendo de ninguna forma.
+This repository does not contain assets of Ocarina of Time. The build makes
+`soh.o2r` from assets that Ship of Harkinian owns. You make `oot.o2r` from a
+dump of your own cartridge. Do not put `oot.o2r` in the repository or in a
+release.
+
+Zelda and Ocarina of Time are trademarks of Nintendo. This project has no
+connection with Nintendo.

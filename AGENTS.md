@@ -1,69 +1,82 @@
-# zelda oot vr
+# AGENTS.md
 
-Port standalone de **The Legend of Zelda: Ocarina of Time** al Meta Quest 3S, en
-primera persona, corriendo nativo en el visor sin PC.
+Rules for contributors and for AI agents in this repository.
 
-Construido sobre Ship of Harkinian / libultraship. **Este repo no contiene assets
-del juego.** Hace falta un dump del cartucho propio; el `.gitignore` bloquea
-`*.z64`, `*.otr` y `*.o2r`, y ningún build debe poder producir un artefacto
-commiteable con assets dentro.
+oot-vr is a standalone port of *The Legend of Zelda: Ocarina of Time* to the
+Meta Quest 3S. The game runs in first person, natively on the headset. It uses
+Ship of Harkinian and `libultraship`.
 
-## Dónde está el código
+## Start here
 
-Todo en **`port/`**: el juego, el motor (`port/libultraship`), las herramientas de
-extracción (`port/ZAPDTR`, `port/OTRExporter`) y el envoltorio de Quest
-(`port/Android`). No hay submódulos ni forks aparte; es desarrollo nuestro. Por
-qué, y qué se pierde con ello: `docs/adr/0002`.
+1. [`STATUS.md`](STATUS.md): what works, what does not work, and the open
+   decisions.
+2. [`docs/architecture.md`](docs/architecture.md): where the VR layer connects
+   to the game and to the engine.
+3. [`CONTEXT.md`](CONTEXT.md): the terms of this project. Use these terms in
+   issues, commits, and code.
+4. [`docs/adr/`](docs/adr/): the decisions that are difficult to change. If
+   your change goes against an ADR, say so in the pull request.
+5. The roadmap is issue [#2](ISSUE:2). Its sub-issues are the tasks.
 
-- **APK**: `port/Android/build-apk.sh`, una sola orden.
-- **Compila desde `/home`, no desde `/mnt/data`**: es NTFS por fuseblk y no
-  soporta symlinks ni bit de ejecución.
-- **Archivos nuevos dentro de `port/`**: el `.gitignore` de Shipwright es una
-  plantilla de Visual Studio que ignora carpetas llamadas `debug/` y `log/`,
-  `*.png` y `Makefile`. `libultraship` tiene código real en `src/fast/debug/` y
-  `src/libultraship/log/`. Si un archivo nuevo "no aparece" en `git status`, es
-  eso: añádelo con `git add -f`.
-- **No toques los finales de línea** de `port/libultraship`, `port/ZAPDTR` ni
-  `port/OTRExporter`: `port/.gitattributes` los marca `-text` porque algunos son
-  parches que se aplican con `git apply` al configurar.
+## Documentation language
 
-## NO CONFUNDIR con el proyecto de Mario
+Write all documentation in **ASD-STE100 Simplified Technical English**. This
+rule applies to Markdown files, issues, pull requests, and release notes.
 
-Existe un proyecto hermano en `../mario-64`: un port
-standalone de Super Mario 64 al mismo visor, con el mismo encuadre. **Son dos
-esfuerzos separados con mapas separados.** Comparten las restricciones de
-plataforma (Horizon OS, OpenXR, GLES, sideloading) y nada más.
+- Write short sentences: 20 words maximum in procedures, 25 words maximum in
+  descriptions.
+- Write one instruction in each sentence. Use the imperative for instructions.
+- Use the active voice.
+- Use one word for one meaning. Do not use synonyms for the same thing.
+- Use the terms in `CONTEXT.md`.
+- Write paragraphs of 6 sentences maximum.
+- Do not use contractions or slang.
 
-Si estás trabajando aquí, no toques el repo de Mario. Si necesitas su
-investigación como referencia, hay una copia en
-`.scratch/oot-quest-3s/research/reference/sm64-landscape.md`.
+## Game assets
 
-## Por dónde empezar
+**This repository must never contain game assets.**
 
-1. `docs/ESTADO.md` — qué está decidido, qué está pendiente, cuál es el siguiente
-   paso exacto. **Léelo primero, siempre.**
-2. **El mapa de wayfinder es el issue #2** — https://github.com/gibranfelix/zelda-oot-vr/issues/2 — destino,
-   decisiones de encuadre, niebla y fuera de alcance.
-3. **Los tickets son sus sub-issues** en GitHub. La frontera son los abiertos,
-   sin bloqueo pendiente y sin asignar. Cómo se opera: `docs/agents/issue-tracker.md`.
-4. `.scratch/oot-quest-3s/research/` — los hechos verificados. No los
-   reinvestigues; si algo cambió, corrige el archivo.
+- The `.gitignore` blocks `*.z64`, `*.n64`, `*.v64`, `*.otr`, and `*.o2r`.
+- No build can make an output that contains game assets and that Git can
+  commit.
+- The APK contains only `soh.o2r`. The player makes `oot.o2r` from a dump of a
+  cartridge that the player owns.
+- Do not write ROM file names, ROM sources, or ROM paths in issues, commits, or
+  documentation.
 
-Para avanzar el mapa: `/wayfinder https://github.com/gibranfelix/zelda-oot-vr/issues/2`.
+## Code
 
-## Agent skills
+All code is in `port/`: the game (`port/soh`), the engine
+(`port/libultraship`), the extraction tools (`port/ZAPDTR`,
+`port/OTRExporter`), and the Quest wrapper (`port/Android`). There are no
+submodules. Read [`docs/adr/0002`](docs/adr/0002-one-repository-with-the-port-inside.md).
 
-### Issue tracker
+- **Build the APK** with `port/Android/build-apk.sh`. Read
+  [`port/Android/README.md`](port/Android/README.md).
+- **Build on a Linux file system.** The build needs symlinks and the execute
+  bit. NTFS and FAT disks do not have them.
+- **Mark VR changes in upstream files** with the comment `SOH [VR]`. Then
+  `git grep 'SOH \[VR\]'` finds all of them.
+- **New files in `port/`.** The `.gitignore` of Ship of Harkinian is a Visual
+  Studio template. It ignores directories with the names `debug/` and `log/`,
+  and it ignores `*.png` and `Makefile`. `libultraship` has source code in
+  `src/fast/debug/` and `src/libultraship/log/`. If `git status` does not show
+  a new file, add it with `git add -f`.
+- **Do not change the line endings** in `port/libultraship`, `port/ZAPDTR`, or
+  `port/OTRExporter`. `port/.gitattributes` marks them `-text`. Some files are
+  patches that the build applies with `git apply`.
 
-GitHub Issues on `gibranfelix/zelda-oot-vr`, via `gh`. The wayfinder map is issue #2.
-See `docs/agents/issue-tracker.md`.
+## Code Review Rules
 
-### Triage labels
+Examine each pull request for these problems. Each one is a P1 problem.
 
-The five canonical roles, each label equal to its name.
-See `docs/agents/triage-labels.md`.
-
-### Domain docs
-
-Single-context: `CONTEXT.md` and `docs/adr/` at the repo root.
-See `docs/agents/domain.md`.
+- The pull request adds game assets, ROM data, or a ROM path.
+- The pull request adds a file in a `debug/` or `log/` directory, but Git does
+  not track the file.
+- The pull request changes line endings in `port/libultraship`, `port/ZAPDTR`,
+  or `port/OTRExporter`.
+- The pull request changes an upstream file for VR, but the change does not
+  have the `SOH [VR]` marker.
+- The pull request adds a VR call without a `vr_is_initialized()` or
+  `VR_IsInitialized()` check. The game must also run with VR off.
+- The pull request adds documentation that does not use ASD-STE100.
