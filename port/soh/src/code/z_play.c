@@ -1434,8 +1434,20 @@ void Play_Draw(PlayState* play) {
                 f32 vrHeadSide = CVarGetFloat("gVrHeadOffsetSide", 0.0f);
                 if (vrHeadFwd != 0.0f || vrHeadSide != 0.0f) {
                     s16 vrBodyYaw = vrPlayer->actor.shape.rot.y;
-                    vrHead.x += Math_SinS(vrBodyYaw) * vrHeadFwd - Math_CosS(vrBodyYaw) * vrHeadSide;
-                    vrHead.z += Math_CosS(vrBodyYaw) * vrHeadFwd + Math_SinS(vrBodyYaw) * vrHeadSide;
+                    Vec3f vrHeadFrom = vrHead;
+                    Vec3f vrHeadTo = vrHead;
+                    CollisionPoly* vrHeadPoly;
+                    s32 vrHeadBgId;
+                    vrHeadTo.x += Math_SinS(vrBodyYaw) * vrHeadFwd - Math_CosS(vrBodyYaw) * vrHeadSide;
+                    vrHeadTo.z += Math_CosS(vrBodyYaw) * vrHeadFwd + Math_SinS(vrBodyYaw) * vrHeadSide;
+                    vrHead = vrHeadTo;
+                    // The body's own collision stops at its centre, not at the offset head: sweep
+                    // the offset too, so walking into a wall doesn't push the eye into it.
+                    if (CVarGetInteger("gVrCameraWallCollision", 1)) {
+                        BgCheck_EntitySphVsWall3(&play->colCtx, &vrHead, &vrHeadTo, &vrHeadFrom,
+                                                 CVarGetFloat("gVrHeadWallRadius", 10.0f), &vrHeadPoly,
+                                                 &vrHeadBgId, &vrPlayer->actor, 0.0f);
+                    }
                 }
             }
             // Roomscale: push the COMBINED anchor (body head minus the physical-walk displacement

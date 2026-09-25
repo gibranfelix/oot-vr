@@ -1996,7 +1996,11 @@ bool vr_begin_frame() {
         }
     }
 
-    // Build matrices for each eye
+    // Build matrices for each eye. The near plane has to sit closer than the nearest a wall can
+    // get to the eye: pressed against one, the child's eye is only ~8 units from it (body
+    // collision radius 14 minus the 6-unit forward head offset), and at the old 10 the wall was
+    // clipped away, showing the sky behind it. 24-bit depth still resolves ~0.02 units at 1000.
+    xr.near_clip = fmaxf(CVarGetFloat("gVrNearClip", 3.0f), 0.5f);
     for (int eye = 0; eye < 2; eye++) {
         build_projection_matrix(xr.views[eye].fov, xr.near_clip, xr.far_clip, xr.projection[eye]);
         pose_to_view_matrix(xr.views[eye].pose, xr.world_scale, xr.view[eye]);
