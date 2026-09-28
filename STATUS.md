@@ -25,8 +25,9 @@ Last update: 2026-09-25.
 | The game starts two times at each launch | [#25](https://github.com/gibranfelix/oot-vr/issues/25) |
 | When you put your head into a wall, you can see behind it | [#26](https://github.com/gibranfelix/oot-vr/issues/26) |
 
-We did not test the first-start setup (ROM selection and extraction) on a
-headset yet. The method with Ship of Harkinian for PC works.
+The first-start setup works on a Quest 3S: the panel asks for the ROM, the
+headset makes `oot.o2r`, and the game starts in VR. We tested it with the
+European GameCube version.
 
 Some fixes are not tested on the headset yet: the shield with two-hand weapons,
 the gauntlet plates, the bow on Epona, and the hookshot tip.
