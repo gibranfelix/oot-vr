@@ -9,7 +9,7 @@ engine. Read it before you change VR code.
 |---|---|---|
 | Game | `port/soh` | Ship of Harkinian 9.2.3 "Ackbar Delta" with the VR changes from `Shipwright-VR` |
 | Engine | `port/libultraship` | The Fast3D renderer, the GLES backend, and the OpenXR session |
-| Android wrapper | `port/Android` | The Gradle project, `MainActivity`, and the manifest for Horizon OS |
+| Android wrapper | `port/Android` | The Gradle project, `MainActivity`, `SetupActivity`, and the manifest for Horizon OS |
 
 The game and the Android wrapper use SDL2. Upstream `libultraship` changed to
 SDL3. Thus, we do not merge upstream changes. We copy each fix by hand.
@@ -89,10 +89,39 @@ Each VR pass renders into an OpenXR swapchain. The frame buffers of the
 
 ## Android wrapper
 
-The `MainActivity` of `linkzenic/Shipwright-Android` has approximately 1500
-lines. It has a ROM picker, an extraction dialog, and a touch overlay. The VR
-build does not use these parts. The player makes `oot.o2r` on a PC, and the
-input comes from OpenXR. Our `MainActivity` has approximately 110 lines.
+The wrapper has two activities. Horizon OS runs them as a hybrid app.
+
+| Activity | Type | Contents |
+|---|---|---|
+| `MainActivity` | Immersive, launcher | The game. It extends `SDLActivity`. |
+| `SetupActivity` | 2D panel | The first-start setup: ROM selection and extraction. |
+
+### First start
+
+1. `MainActivity` starts. If the external files folder has no `oot.o2r` and no
+   `oot-mq.o2r`, it asks Home to open `SetupActivity`. Then it ends. The SDL
+   thread does not start, so VR does not start.
+2. `SetupActivity` opens the system file picker. It copies the selected file to
+   the app cache.
+3. `SetupActivity` calls the extractor in `libsoh.so` through JNI
+   (`RomExtractor.java` and `port/soh/soh/Extractor/AndroidRomExtractor.cpp`).
+   The extractor checks the ROM without dialogs, and then runs ZAPD. ZAPD uses
+   the XML files of the ROM version. The APK contains these files in
+   `extractor-xml/`.
+4. The archive goes first to a staging folder. Only a complete archive moves to
+   the external files folder.
+5. `SetupActivity` deletes the ROM copy and the work files. Then it starts
+   `MainActivity`, and VR starts.
+
+With this order, the OpenXR session never has to come back from a 2D window.
+The logic of `SetupActivity` is in small Java classes without Android
+dependencies. Unit tests examine them on the host:
+`port/Android/app/src/test/`.
+
+ZAPD keeps global state. After a failed extraction, the setup asks the player
+to close the app, and then it ends the process.
+
+### Extractor configuration files
 
 The wrapper keeps the extractor configuration files (300 KB). `RunExtract()`
 needs this directory at each start, also when `oot.o2r` is present. Without the
