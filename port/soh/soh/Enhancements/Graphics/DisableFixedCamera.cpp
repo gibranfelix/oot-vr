@@ -169,7 +169,12 @@ extern "C" void DisableFixedCamera_CheckCameraState(PlayState* play) {
         sStoreLastCamType = -1;
     }
     // prevents normal cam from taking effect during open cutscene to avoid crash
-    if (play->sceneNum == SCENE_LINKS_HOUSE && gSaveContext.cutsceneIndex == 0xFFF1) {
+    // SOH [Quest] Issue #32: cover every intro cutscene in Link's house, not only 0xFFF1. The
+    // wake-up scene uses 0xFFF0. At its end, a cutscene command sets the house viewpoint, which
+    // changes the camera data of the ACTIVE camera: the cutscene camera, which has no player. With
+    // the camera data already patched to CAM_SET_NORMAL0, that camera ran Camera_Normal1 and
+    // crashed in Player_GetHeight.
+    if (play->sceneNum == SCENE_LINKS_HOUSE && gSaveContext.cutsceneIndex >= 0xFFF0) {
         return;
     }
     // Only compute player state if we're in a relevant scene
