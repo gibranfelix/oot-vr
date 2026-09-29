@@ -25,6 +25,9 @@ void VR_GameTickEnd(void);
 // last world frame stays frozen-but-head-tracked behind it. The game sets this every frame.
 void VR_SetFlatScreen(bool enabled);
 bool VR_IsFlatScreen(void);
+// Aspect ratio of the HUD target during gameplay (wide for the wrist HUD, 4:3 otherwise), so the
+// game anchors HUD elements to that target's edges instead of the eye's.
+float VR_GetHudAspectRatio(void);
 
 // First-person camera (game-side integration).
 // The game pushes Link's head position each frame as the world-space anchor;

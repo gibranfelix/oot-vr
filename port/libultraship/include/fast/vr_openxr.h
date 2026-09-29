@@ -158,6 +158,8 @@ void vr_begin_hud();
 void vr_end_hud();
 bool vr_is_rendering_hud();
 bool vr_is_rendering_screen();
+// Aspect of the HUD render target for the current HUD mode (wide for the wrist HUD, 4:3 otherwise).
+float vr_get_hud_aspect();
 
 // Flat-screen mode: 2D contexts (file select, pause) render the whole frame to a world-locked
 // floating panel instead of the stereo eyes; the frozen world stays behind it, still head-tracked.

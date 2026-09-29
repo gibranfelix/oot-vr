@@ -32,6 +32,10 @@ bool VR_IsFlatScreen(void) {
     return vr_get_flat_screen();
 }
 
+float VR_GetHudAspectRatio(void) {
+    return vr_get_hud_aspect();
+}
+
 bool VR_IsInitialized() {
     return vr_is_initialized();
 }

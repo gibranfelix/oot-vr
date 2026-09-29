@@ -32,7 +32,24 @@ static const std::map<int32_t, const char*> vrHudAttachOptions = {
     { 0, "Head (Floating)" },
     { 1, "Left Hand" },
     { 2, "Right Hand" },
+    { 3, "Wrist" },
 };
+
+// HUD Attachment modes: 0 = head, 1/2 = the whole HUD on one hand, 3 = wrist (split HUD). The
+// wrist mode keeps its text boxes on the head panel, so it shares the head sliders.
+static bool VrHudHasHeadPanel() {
+    const int32_t attach = CVarGetInteger("gVrHudAttach", 0);
+    return attach == 0 || attach == 3;
+}
+
+static bool VrHudIsOnHand() {
+    const int32_t attach = CVarGetInteger("gVrHudAttach", 0);
+    return attach == 1 || attach == 2;
+}
+
+static bool VrHudIsWrist() {
+    return CVarGetInteger("gVrHudAttach", 0) == 3;
+}
 
 static const std::map<int32_t, const char*> vrItemSelHandOptions = {
     { 0, "Sword Hand" },
@@ -1356,30 +1373,34 @@ void SohMenu::AddMenuVRSettings() {
                      .Tooltip("Where the HUD (hearts, rupees, C-button items) lives: floating in "
                               "front of your face, or pinned to a controller like a wrist panel - "
                               "glance at your hand to check your status. Falls back to head-locked "
-                              "while that controller isn't tracked."));
+                              "while that controller isn't tracked.\n\n"
+                              "Wrist splits the HUD: hearts, magic, keys, rupees and the minimap on "
+                              "the off-hand wrist (look at the back of the wrist to show them), the "
+                              "item buttons above the sword-hand controller, and text boxes in "
+                              "front of your face."));
     AddWidget(hudPath, "HUD Distance: %.1f m", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrHudDistance")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = CVarGetInteger("gVrHudAttach", 0) != 0; })
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudHasHeadPanel(); })
         .Options(FloatSliderOptions().Min(0.5f).Max(5.0f).DefaultValue(2.0f).Step(0.1f).Format("%.1f"));
     AddWidget(hudPath, "HUD Size: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrHudSize")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = CVarGetInteger("gVrHudAttach", 0) != 0; })
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudHasHeadPanel(); })
         .Options(FloatSliderOptions().Min(0.2f).Max(3.0f).DefaultValue(1.5f).Step(0.05f).Format("%.2f"));
     AddWidget(hudPath, "HUD Horizontal: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrHudOffX")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = CVarGetInteger("gVrHudAttach", 0) != 0; })
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudHasHeadPanel(); })
         .Options(FloatSliderOptions().Min(-1.5f).Max(1.5f).DefaultValue(0.0f).Step(0.02f).Format("%.2f"));
     AddWidget(hudPath, "HUD Vertical: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrHudOffY")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = CVarGetInteger("gVrHudAttach", 0) != 0; })
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudHasHeadPanel(); })
         .Options(FloatSliderOptions().Min(-1.5f).Max(1.5f).DefaultValue(0.0f).Step(0.02f).Format("%.2f"));
     AddWidget(hudPath, "Hand HUD Size: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrHudHandSize")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = CVarGetInteger("gVrHudAttach", 0) == 0; })
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsOnHand(); })
         .Options(FloatSliderOptions().Min(0.1f).Max(1.0f).DefaultValue(0.35f).Step(0.01f).Format("%.2f"));
     AddWidget(hudPath, "Hand HUD Sideways: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrHudHandOffX")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = CVarGetInteger("gVrHudAttach", 0) == 0; })
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsOnHand(); })
         .Options(FloatSliderOptions()
                      .Min(-0.5f)
                      .Max(0.5f)
@@ -1390,15 +1411,15 @@ void SohMenu::AddMenuVRSettings() {
                               "the right hand, so one tuning fits both)."));
     AddWidget(hudPath, "Hand HUD Up: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrHudHandOffY")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = CVarGetInteger("gVrHudAttach", 0) == 0; })
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsOnHand(); })
         .Options(FloatSliderOptions().Min(-0.5f).Max(0.5f).DefaultValue(0.10f).Step(0.01f).Format("%.2f"));
     AddWidget(hudPath, "Hand HUD Forward: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrHudHandOffZ")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = CVarGetInteger("gVrHudAttach", 0) == 0; })
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsOnHand(); })
         .Options(FloatSliderOptions().Min(-0.5f).Max(0.5f).DefaultValue(-0.08f).Step(0.01f).Format("%.2f"));
     AddWidget(hudPath, "Hand HUD Tilt: %.0f deg", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrHudHandPitch")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = CVarGetInteger("gVrHudAttach", 0) == 0; })
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsOnHand(); })
         .Options(FloatSliderOptions()
                      .Min(-90.0f)
                      .Max(90.0f)
@@ -1407,6 +1428,49 @@ void SohMenu::AddMenuVRSettings() {
                      .Format("%.0f")
                      .Tooltip("Tilt about the grip so the panel faces your eyes at a natural "
                               "wrist-watch angle."));
+    AddWidget(hudPath, "Show Wrist HUD Only When Looking", WIDGET_CVAR_CHECKBOX)
+        .CVar("gVrWristHudGlance")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsWrist(); })
+        .Options(CheckboxOptions()
+                     .DefaultValue(true)
+                     .Tooltip("Show hearts, rupees and the minimap only while you turn the back of "
+                              "your wrist toward your eyes and look at it. Off: always show them."));
+    AddWidget(hudPath, "Wrist HUD Size: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrWristHudSize")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsWrist(); })
+        .Options(FloatSliderOptions()
+                     .Min(0.08f)
+                     .Max(0.5f)
+                     .DefaultValue(0.20f)
+                     .Step(0.01f)
+                     .Format("%.2f")
+                     .Tooltip("Width of the wrist panel (hearts and minimap). The item buttons "
+                              "above the controller use the same scale."));
+    AddWidget(hudPath, "Wrist HUD Sideways: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrWristHudOffX")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsWrist(); })
+        .Options(FloatSliderOptions()
+                     .Min(-0.3f)
+                     .Max(0.3f)
+                     .DefaultValue(-0.04f)
+                     .Step(0.01f)
+                     .Format("%.2f")
+                     .Tooltip("Offset along the grip's sideways axis. Negative moves the panel to the "
+                              "back of the hand (mirrored automatically for the right hand)."));
+    AddWidget(hudPath, "Wrist HUD Up: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrWristHudOffY")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsWrist(); })
+        .Options(FloatSliderOptions().Min(-0.3f).Max(0.3f).DefaultValue(0.02f).Step(0.01f).Format("%.2f"));
+    AddWidget(hudPath, "Wrist HUD Along Forearm: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrWristHudOffZ")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsWrist(); })
+        .Options(FloatSliderOptions()
+                     .Min(-0.3f)
+                     .Max(0.4f)
+                     .DefaultValue(0.10f)
+                     .Step(0.01f)
+                     .Format("%.2f")
+                     .Tooltip("Positive moves the panel from the grip back toward the elbow."));
 
     AddWidget(hudPath, "Menu Screen", WIDGET_SEPARATOR_TEXT);
     AddWidget(hudPath, "Menu Screen Distance: %.1f m", WIDGET_CVAR_SLIDER_FLOAT)
@@ -1807,7 +1871,12 @@ void SohMenu::AddMenuVRSettings() {
                      "gVrHudHandOffX=%.2f\n"
                      "gVrHudHandOffY=%.2f\n"
                      "gVrHudHandOffZ=%.2f\n"
-                     "gVrHudHandPitch=%.0f\n",
+                     "gVrHudHandPitch=%.0f\n"
+                     "gVrWristHudGlance=%d\n"
+                     "gVrWristHudSize=%.2f\n"
+                     "gVrWristHudOffX=%.2f\n"
+                     "gVrWristHudOffY=%.2f\n"
+                     "gVrWristHudOffZ=%.2f\n",
                      CVarGetInteger("gVrMotionHands", 1), CVarGetInteger("gVrLeftHanded", 0),
                      CVarGetInteger("gVrHandMirrorSword", 1), CVarGetInteger("gVrHandMirrorShield", 1),
                      CVarGetInteger("gVrHandMirrorAxis", 2),
@@ -1828,7 +1897,10 @@ void SohMenu::AddMenuVRSettings() {
                      CVarGetFloat("gVrHudSize", 1.5f), CVarGetFloat("gVrHudOffX", 0.0f),
                      CVarGetFloat("gVrHudOffY", 0.0f), CVarGetFloat("gVrHudHandSize", 0.35f),
                      CVarGetFloat("gVrHudHandOffX", 0.0f), CVarGetFloat("gVrHudHandOffY", 0.10f),
-                     CVarGetFloat("gVrHudHandOffZ", -0.08f), CVarGetFloat("gVrHudHandPitch", -40.0f));
+                     CVarGetFloat("gVrHudHandOffZ", -0.08f), CVarGetFloat("gVrHudHandPitch", -40.0f),
+                     CVarGetInteger("gVrWristHudGlance", 1), CVarGetFloat("gVrWristHudSize", 0.20f),
+                     CVarGetFloat("gVrWristHudOffX", -0.04f), CVarGetFloat("gVrWristHudOffY", 0.02f),
+                     CVarGetFloat("gVrWristHudOffZ", 0.10f));
             ImGui::SetClipboardText(buf);
         });
 }

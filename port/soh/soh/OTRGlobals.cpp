@@ -117,6 +117,7 @@
 
 #include "soh/config/ConfigUpdaters.h"
 #include "soh/ShipInit.hpp"
+#include <vr_interface.h> // SOH [VR]
 
 #ifdef _MSC_VER
 #define strdup _strdup
@@ -2215,12 +2216,27 @@ extern "C" float OTRGetAspectRatio() {
     return Ship::Context::GetRawInstance()->GetWindow()->GetAspectRatio();
 }
 
+// SOH [VR] The HUD anchors its elements to the screen edges. In VR the overlay does not render at
+// the window (eye) aspect but onto a 2D target, so anchor to that target's aspect instead:
+// otherwise the near-square eye aspect pulls the left and right groups on top of each other.
+// Flat-screen contexts (no PlayState, pause) render onto the 4:3 menu panel. Decide that from the
+// game state, as graph.c does, because the VR flag only changes after this tick's display list.
+static float OTRGetHudAspectRatio() {
+    if (VR_IsInitialized()) {
+        if ((gPlayState == NULL) || (gPlayState->pauseCtx.state != 0)) {
+            return 4.0f / 3.0f;
+        }
+        return VR_GetHudAspectRatio();
+    }
+    return OTRGetAspectRatio();
+}
+
 extern "C" float OTRGetDimensionFromLeftEdge(float v) {
-    return (SCREEN_WIDTH / 2 - SCREEN_HEIGHT / 2 * OTRGetAspectRatio() + (v));
+    return (SCREEN_WIDTH / 2 - SCREEN_HEIGHT / 2 * OTRGetHudAspectRatio() + (v)); // SOH [VR]
 }
 
 extern "C" float OTRGetDimensionFromRightEdge(float v) {
-    return (SCREEN_WIDTH / 2 + SCREEN_HEIGHT / 2 * OTRGetAspectRatio() - (SCREEN_WIDTH - v));
+    return (SCREEN_WIDTH / 2 + SCREEN_HEIGHT / 2 * OTRGetHudAspectRatio() - (SCREEN_WIDTH - v)); // SOH [VR]
 }
 
 // Gets the width of the current render target area

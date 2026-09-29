@@ -1,6 +1,6 @@
 # Status
 
-Last update: 2026-09-25.
+Last update: 2026-09-29.
 
 ## What works
 
@@ -10,6 +10,9 @@ Last update: 2026-09-25.
 - The physical sword and shield with the Touch controllers.
 - Automatic world scale for child Link and adult Link.
 - Menus and the pause screen on a floating panel.
+- The wrist HUD. Hearts, magic, and rupees show on the off-hand wrist when you
+  look at it. The item buttons show above the sword-hand controller. We tested
+  it in the Twinrova fight.
 
 ## Known problems
 
@@ -31,6 +34,10 @@ European GameCube version.
 
 Some fixes are not tested on the headset yet: the shield with two-hand weapons,
 the gauntlet plates, the bow on Epona, and the hookshot tip.
+
+The wrist HUD needs more work. The wrist panel is small. It also shows when you
+raise the shield, because the back of the hand then points at your eyes. We did
+not test the minimap on the wrist yet.
 
 ## Open decisions
 

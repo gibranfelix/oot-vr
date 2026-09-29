@@ -146,6 +146,46 @@ static void vr_apply_dimensions(uint32_t width, uint32_t height) {
 // several times per game tick. Cheap invariant, expensive to get wrong.
 static void vr_restore_eye_dimensions();
 
+// HUD target. The swapchain is wide so that the wrist HUD (gVrHudAttach = 3) can render the game's
+// overlay at a 10:3 aspect: the game anchors hearts/rupees to the left edge, the item buttons and
+// minimap to the right edge and text boxes to the centre, so at this width the groups land in
+// separate areas of the image and each one can be cut out onto its own quad. The other HUD modes
+// render at 4:3 into the left kHudClassicW columns only.
+static constexpr uint32_t kHudTexW = 2560;
+static constexpr uint32_t kHudTexH = 768;
+static constexpr uint32_t kHudClassicW = 1024;
+static constexpr int kHudAttachWrist = 3;
+
+// Wrist HUD areas in N64 screen units (320x240 space; x extends past 0..320 on the wide target).
+// kHudWideLeft is the left edge of the wide target: 160 - 120 * (kHudTexW / kHudTexH).
+struct HudRegion {
+    float x0, y0, x1, y1;
+};
+static constexpr float kHudWideLeft = 160.0f - 120.0f * ((float)kHudTexW / (float)kHudTexH);
+static constexpr float kHudWideRight = 320.0f - kHudWideLeft;
+static constexpr float kHudPxPerUnit = (float)kHudTexH / 240.0f;
+// Hearts, magic meter (up to the double-magic length), timers (with their intro position) and the
+// Visual Stone of Agony.
+static constexpr HudRegion kWristHudStatusTop = { kHudWideLeft, 0.0f, kHudWideLeft + 170.0f, 100.0f };
+// Small keys and rupees.
+static constexpr HudRegion kWristHudStatusBottom = { kHudWideLeft, 176.0f, kHudWideLeft + 110.0f, 240.0f };
+// Overworld and dungeon minimaps.
+static constexpr HudRegion kWristHudMinimap = { kHudWideRight - 120.0f, 128.0f, kHudWideRight, 240.0f };
+// B, A and C buttons with the action label and ammo counts, and the optional D-pad items.
+static constexpr HudRegion kWristHudButtons = { kHudWideRight - 195.0f, 0.0f, kHudWideRight, 90.0f };
+// The original 4:3 screen: text boxes, title cards and other centred overlay content.
+static constexpr HudRegion kWristHudCentre = { 0.0f, 0.0f, 320.0f, 240.0f };
+// Quads a HUD mode can submit: the centre, three status quads and the buttons.
+static constexpr int kMaxHudLayers = 5;
+
+static bool vr_hud_is_wrist() {
+    return CVarGetInteger("gVrHudAttach", 0) == kHudAttachWrist;
+}
+
+static uint32_t vr_hud_render_width() {
+    return vr_hud_is_wrist() ? kHudTexW : kHudClassicW;
+}
+
 // --------------------------------------------------------------------------
 // Internal state
 // --------------------------------------------------------------------------
@@ -286,6 +326,15 @@ static struct {
     uint32_t hud_image_index;
     void* hud_commands;
     bool rendering_hud;
+    // The HUD image holds the wide wrist layout (latched per HUD pass, so the quads crop the image
+    // that was rendered even on the frames right after a mode change).
+    bool hud_rendered_wide;
+    // Wrist HUD: smoothed visibility of the status panel (0..1) and the seconds it stays up after
+    // the player stops looking at the wrist.
+    float wrist_hud_alpha;
+    float wrist_hud_linger;
+    // Physical head pose in local_space (no snap-turn), to turn the wrist quads toward the eyes.
+    XrPosef head_pose_raw;
 
     // Flat-screen mode: 2D contexts (file select, pause menu) render the whole frame onto a
     // world-locked floating panel instead of the stereo eyes. The last-rendered world frame keeps
@@ -1511,11 +1560,11 @@ bool vr_init() {
         return false;
     }
 
-    // --- Create HUD swapchain (1024x768, 4:3) ---
+    // --- Create HUD swapchain (wide; see kHudTexW) ---
     {
         auto& sc = xr.hud_swapchain;
-        sc.width = 1024;
-        sc.height = 768;
+        sc.width = kHudTexW;
+        sc.height = kHudTexH;
         sc.format = chosen_format;
 
         XrSwapchainCreateInfo swapchain_ci = { XR_TYPE_SWAPCHAIN_CREATE_INFO };
@@ -1943,6 +1992,10 @@ bool vr_begin_frame() {
     // last world frame described by the frustum it was rendered from, so the compositor reprojects
     // it correctly instead of stretching it onto a pose it never matched.
     const bool refresh_submit = !xr.flat_screen && xr.plan_render_eyes;
+    xr.head_pose_raw.orientation = xr.views[0].pose.orientation;
+    xr.head_pose_raw.position = { 0.5f * (xr.views[0].pose.position.x + xr.views[1].pose.position.x),
+                                  0.5f * (xr.views[0].pose.position.y + xr.views[1].pose.position.y),
+                                  0.5f * (xr.views[0].pose.position.z + xr.views[1].pose.position.z) };
     for (int eye = 0; eye < 2; eye++) {
         if (refresh_submit || !xr.eyes_ever_rendered) {
             xr.submit_pose[eye] = xr.views[eye].pose;
@@ -2009,6 +2062,230 @@ bool vr_begin_frame() {
     return true;
 }
 
+// --------------------------------------------------------------------------
+// HUD quad layers
+// --------------------------------------------------------------------------
+
+// A HUD quad that shows the given pixel rectangle of the HUD swapchain (top-left origin, the N64
+// screen's orientation).
+static XrCompositionLayerQuad vr_hud_quad(int32_t x, int32_t y_top, int32_t w, int32_t h) {
+    XrCompositionLayerQuad q = { XR_TYPE_COMPOSITION_LAYER_QUAD };
+    q.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+    q.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
+    q.subImage.swapchain = xr.hud_swapchain.handle;
+#if VR_GFX_GLES
+    // GL images have a bottom-left origin: the N64 top row is the highest image row.
+    q.subImage.imageRect.offset = { x, static_cast<int32_t>(xr.hud_swapchain.height) - (y_top + h) };
+#else
+    q.subImage.imageRect.offset = { x, y_top };
+#endif
+    q.subImage.imageRect.extent = { w, h };
+    q.subImage.imageArrayIndex = 0;
+    return q;
+}
+
+// A HUD quad that shows one wrist HUD area of the wide HUD target.
+static XrCompositionLayerQuad vr_hud_region_quad(const HudRegion& r) {
+    return vr_hud_quad(static_cast<int32_t>(lroundf((r.x0 - kHudWideLeft) * kHudPxPerUnit)),
+                       static_cast<int32_t>(lroundf(r.y0 * kHudPxPerUnit)),
+                       static_cast<int32_t>(lroundf((r.x1 - r.x0) * kHudPxPerUnit)),
+                       static_cast<int32_t>(lroundf((r.y1 - r.y0) * kHudPxPerUnit)));
+}
+
+// Place a quad at `local` (meters, in the panel plane) from a panel centre with the given facing.
+static void vr_hud_place(XrCompositionLayerQuad& q, XrSpace space, const glm::vec3& centre, const glm::quat& rot,
+                         float local_x, float local_y, float width, float height) {
+    const glm::vec3 p = centre + rot * glm::vec3(local_x, local_y, 0.0f);
+    q.space = space;
+    q.pose.position = { p.x, p.y, p.z };
+    q.pose.orientation = { rot.x, rot.y, rot.z, rot.w };
+    q.size = { width, height };
+}
+
+// Orientation whose +Z (a quad's front) points from `from` to `to`, kept upright against world up.
+static glm::quat vr_face_toward(const glm::vec3& from, const glm::vec3& to, const glm::quat& fallback) {
+    glm::vec3 n = to - from;
+    const float len = glm::length(n);
+    if (len < 1e-4f) {
+        return fallback;
+    }
+    n /= len;
+    glm::vec3 right = glm::cross(glm::vec3(0.0f, 1.0f, 0.0f), n);
+    if (glm::length(right) < 1e-3f) {
+        right = fallback * glm::vec3(1.0f, 0.0f, 0.0f);
+        right -= n * glm::dot(right, n);
+    }
+    right = glm::normalize(right);
+    return glm::quat_cast(glm::mat3(right, glm::cross(n, right), n));
+}
+
+// Where a wrist HUD panel sits: at `offset` in the hand's grip frame (x mirrored for the right hand
+// so one tuning fits both), turned toward the eyes. While the hand is untracked the panel is
+// head-locked at `fallback` (view space) instead, and this returns false.
+static bool vr_wrist_hud_anchor(int hand, glm::vec3 offset, const glm::vec3& fallback, XrSpace* space,
+                                glm::vec3* pos, glm::quat* rot) {
+    if (!xr.hand_active[hand]) {
+        *space = xr.view_space;
+        *pos = fallback;
+        *rot = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+        return false;
+    }
+    const XrPosef& gp = xr.grip_pose_raw[hand];
+    const glm::quat gq(gp.orientation.w, gp.orientation.x, gp.orientation.y, gp.orientation.z);
+    if (hand == 1) {
+        offset.x = -offset.x;
+    }
+    const XrPosef& hp = xr.head_pose_raw;
+    *space = xr.local_space;
+    *pos = glm::vec3(gp.position.x, gp.position.y, gp.position.z) + gq * offset;
+    *rot = vr_face_toward(*pos, glm::vec3(hp.position.x, hp.position.y, hp.position.z), gq);
+    return true;
+}
+
+// True while the player looks at the back of `hand`'s wrist: the back of the hand turns toward the
+// eyes and the head points at the panel. OpenXR grip poses put the left palm on +X and the right
+// palm on -X, so the back of the hand is -X (left) / +X (right).
+static bool vr_wrist_hud_glanced(int hand, const glm::vec3& panel_pos) {
+    const XrPosef& gp = xr.grip_pose_raw[hand];
+    const glm::quat gq(gp.orientation.w, gp.orientation.x, gp.orientation.y, gp.orientation.z);
+    const XrPosef& hp = xr.head_pose_raw;
+    const glm::quat hq(hp.orientation.w, hp.orientation.x, hp.orientation.y, hp.orientation.z);
+    const glm::vec3 to_head = glm::normalize(glm::vec3(hp.position.x, hp.position.y, hp.position.z) - panel_pos);
+    const glm::vec3 back_of_hand = gq * glm::vec3(hand == 0 ? -1.0f : 1.0f, 0.0f, 0.0f);
+    const glm::vec3 head_forward = hq * glm::vec3(0.0f, 0.0f, -1.0f);
+    const float kMinFacing = 0.25f;   // back of the hand within ~75 deg of the eyes
+    const float kMinGaze = 0.87f;     // panel within ~30 deg of where the head points
+    return glm::dot(back_of_hand, to_head) > kMinFacing && glm::dot(head_forward, -to_head) > kMinGaze;
+}
+
+// Build the HUD quads for this frame. gVrHudAttach: 0 = head-locked (classic), 1/2 = the whole HUD
+// pinned to the left/right controller, 3 = wrist HUD: the status (hearts, magic, keys, rupees,
+// minimap) on the off-hand wrist, shown when the player looks at it; the item buttons above the
+// sword-hand controller; centred text head-locked. Hand-attached quads use the RAW grip pose in
+// local_space (compositor quads must not carry the artificial snap-turn) and fall back to
+// head-locked while that hand is untracked. Returns the number of quads written.
+static uint32_t vr_build_hud_layers(XrCompositionLayerQuad* out, XrCompositionLayerColorScaleBiasKHR* fades) {
+    const int hud_attach = CVarGetInteger("gVrHudAttach", 0);
+    const glm::vec3 head_hud_pos(CVarGetFloat("gVrHudOffX", 0.0f), CVarGetFloat("gVrHudOffY", 0.0f),
+                                 -CVarGetFloat("gVrHudDistance", 2.0f));
+    const float head_hud_width = fmaxf(CVarGetFloat("gVrHudSize", 1.5f), 0.05f);
+    const glm::quat identity(1.0f, 0.0f, 0.0f, 0.0f);
+
+    // Crop the layout the last HUD pass rendered: right after a mode change the image can still hold
+    // the other one (a 4:3 image with the wrist mode selected shows head-locked).
+    if (!xr.hud_rendered_wide) {
+        out[0] = vr_hud_quad(0, 0, static_cast<int32_t>(kHudClassicW), static_cast<int32_t>(kHudTexH));
+        const int hud_hand = hud_attach - 1;
+        if ((hud_attach == 1 || hud_attach == 2) && xr.hand_active[hud_hand]) {
+            const float kDeg = 3.14159265358979323846f / 180.0f;
+            const XrPosef& gp = xr.grip_pose_raw[hud_hand];
+            const glm::quat gq(gp.orientation.w, gp.orientation.x, gp.orientation.y, gp.orientation.z);
+            // Positional offset in the grip frame (meters), mirrored in X for the right hand so one
+            // tuning works symmetrically on either side.
+            glm::vec3 off(CVarGetFloat("gVrHudHandOffX", 0.0f), CVarGetFloat("gVrHudHandOffY", 0.10f),
+                          CVarGetFloat("gVrHudHandOffZ", -0.08f));
+            if (hud_hand == 1) {
+                off.x = -off.x;
+            }
+            const glm::vec3 p = glm::vec3(gp.position.x, gp.position.y, gp.position.z) + gq * off;
+            // Tilt about the grip X axis so the panel faces the player's eyes at a natural wrist angle.
+            const glm::quat q =
+                gq * glm::angleAxis(CVarGetFloat("gVrHudHandPitch", -40.0f) * kDeg, glm::vec3(1.0f, 0.0f, 0.0f));
+            const float w = fmaxf(CVarGetFloat("gVrHudHandSize", 0.35f), 0.05f);
+            vr_hud_place(out[0], xr.local_space, p, q, 0.0f, 0.0f, w, w * 0.75f);
+        } else {
+            vr_hud_place(out[0], xr.view_space, head_hud_pos, identity, 0.0f, 0.0f, head_hud_width,
+                         head_hud_width * 0.75f);
+        }
+        return 1;
+    }
+
+    uint32_t count = 0;
+
+    // Centred overlay content (text boxes, title cards): head-locked like the classic HUD.
+    out[count] = vr_hud_region_quad(kWristHudCentre);
+    vr_hud_place(out[count++], xr.view_space, head_hud_pos, identity, 0.0f, 0.0f, head_hud_width,
+                 head_hud_width * 0.75f);
+
+    const int sword_hand = CVarGetInteger("gVrLeftHanded", 0) ? 0 : 1;
+    const int off_hand = 1 - sword_hand;
+
+    // Status block, in N64 units: the hearts/magic area above the keys/rupees area, the minimap to
+    // their right. `scale` converts N64 units to meters so the whole block is gVrWristHudSize wide.
+    const float kBlockW = 290.0f;
+    const float kBlockH = 164.0f;
+    float scale = fmaxf(CVarGetFloat("gVrWristHudSize", 0.20f), 0.05f) / kBlockW;
+    XrSpace space;
+    glm::vec3 pos;
+    glm::quat rot;
+    const glm::vec3 status_offset(CVarGetFloat("gVrWristHudOffX", -0.04f), CVarGetFloat("gVrWristHudOffY", 0.02f),
+                                  CVarGetFloat("gVrWristHudOffZ", 0.10f));
+    const bool status_tracked =
+        vr_wrist_hud_anchor(off_hand, status_offset, glm::vec3(off_hand == 0 ? -0.3f : 0.3f, -0.25f, -0.7f), &space,
+                            &pos, &rot);
+    if (!status_tracked) {
+        scale *= 2.0f; // head-locked fallback sits farther away than the wrist
+    }
+
+    const bool glanced = !status_tracked || !CVarGetInteger("gVrWristHudGlance", 1) ||
+                         vr_wrist_hud_glanced(off_hand, pos);
+    const float dt = xr.frame_state.predictedDisplayPeriod > 0
+                         ? (float)((double)xr.frame_state.predictedDisplayPeriod * 1e-9)
+                         : 1.0f / 72.0f;
+    const float kFadeIn = 0.12f;  // seconds
+    const float kFadeOut = 0.2f;  // seconds
+    const float kLinger = 0.4f;   // seconds the panel stays up after the glance ends
+    if (glanced) {
+        xr.wrist_hud_linger = kLinger;
+        xr.wrist_hud_alpha = fminf(xr.wrist_hud_alpha + dt / kFadeIn, 1.0f);
+    } else {
+        xr.wrist_hud_linger -= dt;
+        if (xr.wrist_hud_linger <= 0.0f) {
+            xr.wrist_hud_alpha = fmaxf(xr.wrist_hud_alpha - dt / kFadeOut, 0.0f);
+        }
+    }
+    const float alpha = xr.wrist_hud_alpha;
+    const bool status_visible = xr.color_scale_supported ? alpha > 0.01f : alpha >= 0.5f;
+    if (status_visible) {
+        struct {
+            const HudRegion& region;
+            float centre_x, centre_y; // area centre in the block, N64 units from its top-left
+        } const areas[] = {
+            { kWristHudStatusTop, 85.0f, 50.0f },
+            { kWristHudStatusBottom, 55.0f, 132.0f },
+            { kWristHudMinimap, 230.0f, 108.0f },
+        };
+        for (const auto& a : areas) {
+            XrCompositionLayerQuad& q = out[count];
+            q = vr_hud_region_quad(a.region);
+            vr_hud_place(q, space, pos, rot, (a.centre_x - kBlockW * 0.5f) * scale,
+                         -(a.centre_y - kBlockH * 0.5f) * scale, (a.region.x1 - a.region.x0) * scale,
+                         (a.region.y1 - a.region.y0) * scale);
+            if (xr.color_scale_supported && alpha < 0.999f) {
+                XrCompositionLayerColorScaleBiasKHR& fade = fades[count];
+                fade = { XR_TYPE_COMPOSITION_LAYER_COLOR_SCALE_BIAS_KHR };
+                fade.colorScale = { alpha, alpha, alpha, alpha }; // premultiplied alpha
+                fade.colorBias = { 0.0f, 0.0f, 0.0f, 0.0f };
+                q.next = &fade;
+            }
+            count++;
+        }
+    }
+
+    // Item buttons above the sword-hand controller, always visible: the A-button action label
+    // changes with the situation.
+    float button_scale = fmaxf(CVarGetFloat("gVrWristHudSize", 0.20f), 0.05f) / kBlockW;
+    if (!vr_wrist_hud_anchor(sword_hand, glm::vec3(0.0f, 0.08f, 0.0f),
+                             glm::vec3(sword_hand == 0 ? -0.3f : 0.3f, -0.25f, -0.7f), &space, &pos, &rot)) {
+        button_scale *= 2.0f;
+    }
+    out[count] = vr_hud_region_quad(kWristHudButtons);
+    vr_hud_place(out[count++], space, pos, rot, 0.0f, 0.0f, (kWristHudButtons.x1 - kWristHudButtons.x0) * button_scale,
+                 (kWristHudButtons.y1 - kWristHudButtons.y0) * button_scale);
+
+    return count;
+}
+
 void vr_end_frame() {
     if (!xr.frame_began) return;
     xr.frame_began = false;
@@ -2055,54 +2332,10 @@ void vr_end_frame() {
         }
     }
 
-    // HUD quad layer (alpha-blended). Attachment via gVrHudAttach: 0 = head-locked (classic),
-    // 1/2 = pinned to the left/right controller like a wrist panel. Hand modes use the RAW grip
-    // pose in local_space (compositor quads must not carry the artificial snap-turn) and fall back
-    // to head-locked while that hand is untracked.
-    XrCompositionLayerQuad hud_layer = { XR_TYPE_COMPOSITION_LAYER_QUAD };
-    hud_layer.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
-    hud_layer.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
-    hud_layer.subImage.swapchain = xr.hud_swapchain.handle;
-    hud_layer.subImage.imageRect.offset = { 0, 0 };
-    hud_layer.subImage.imageRect.extent = {
-        static_cast<int32_t>(xr.hud_swapchain.width),
-        static_cast<int32_t>(xr.hud_swapchain.height)
-    };
-    hud_layer.subImage.imageArrayIndex = 0;
-
-    float hud_width;
-    const int hud_attach = CVarGetInteger("gVrHudAttach", 0);
-    const int hud_hand = hud_attach - 1;
-    if ((hud_attach == 1 || hud_attach == 2) && xr.hand_active[hud_hand]) {
-        const float kDeg = 3.14159265358979323846f / 180.0f;
-        const XrPosef& gp = xr.grip_pose_raw[hud_hand];
-        const glm::quat gq(gp.orientation.w, gp.orientation.x, gp.orientation.y, gp.orientation.z);
-        // Positional offset in the grip frame (meters), mirrored in X for the right hand so one
-        // tuning works symmetrically on either side.
-        glm::vec3 off(CVarGetFloat("gVrHudHandOffX", 0.0f), CVarGetFloat("gVrHudHandOffY", 0.10f),
-                      CVarGetFloat("gVrHudHandOffZ", -0.08f));
-        if (hud_hand == 1) {
-            off.x = -off.x;
-        }
-        const glm::vec3 p = glm::vec3(gp.position.x, gp.position.y, gp.position.z) + gq * off;
-        // Tilt about the grip X axis so the panel faces the player's eyes at a natural wrist angle.
-        const glm::quat q =
-            gq * glm::angleAxis(CVarGetFloat("gVrHudHandPitch", -40.0f) * kDeg, glm::vec3(1.0f, 0.0f, 0.0f));
-        hud_layer.space = xr.local_space;
-        hud_layer.pose.position = { p.x, p.y, p.z };
-        hud_layer.pose.orientation = { q.x, q.y, q.z, q.w };
-        hud_width = CVarGetFloat("gVrHudHandSize", 0.35f);
-    } else {
-        hud_layer.space = xr.view_space;
-        hud_layer.pose = { { 0, 0, 0, 1 },
-                           { CVarGetFloat("gVrHudOffX", 0.0f), CVarGetFloat("gVrHudOffY", 0.0f),
-                             -CVarGetFloat("gVrHudDistance", 2.0f) } };
-        hud_width = CVarGetFloat("gVrHudSize", 1.5f);
-    }
-    if (hud_width < 0.05f) {
-        hud_width = 0.05f;
-    }
-    hud_layer.size = { hud_width, hud_width * 0.75f }; // 4:3, matching the HUD swapchain
+    // HUD quad layers (alpha-blended); see vr_build_hud_layers.
+    XrCompositionLayerQuad hud_layers[kMaxHudLayers];
+    XrCompositionLayerColorScaleBiasKHR hud_fades[kMaxHudLayers];
+    const uint32_t hud_layer_count = vr_build_hud_layers(hud_layers, hud_fades);
 
     // Flat-screen quad (world-locked panel with the whole 2D frame: file select, pause menu)
     XrCompositionLayerQuad screen_layer = { XR_TYPE_COMPOSITION_LAYER_QUAD };
@@ -2124,7 +2357,7 @@ void vr_end_frame() {
 
     // Assemble layers back-to-front. The projection (world) layer is only submitted once its
     // swapchains have ever been rendered (at boot we go straight into flat-screen file select).
-    const XrCompositionLayerBaseHeader* layers[3];
+    const XrCompositionLayerBaseHeader* layers[2 + kMaxHudLayers];
     uint32_t layer_count = 0;
     if (xr.eyes_ever_rendered) {
         layers[layer_count++] = reinterpret_cast<const XrCompositionLayerBaseHeader*>(&projection_layer);
@@ -2137,7 +2370,9 @@ void vr_end_frame() {
     // the game has detached the overlay (hud_commands NULL — flat-screen contexts route it into
     // the panel instead), so a stale HUD image doesn't float over the pause menu.
     if (xr.hud_ever_rendered && xr.hud_commands != nullptr) {
-        layers[layer_count++] = reinterpret_cast<const XrCompositionLayerBaseHeader*>(&hud_layer);
+        for (uint32_t i = 0; i < hud_layer_count; i++) {
+            layers[layer_count++] = reinterpret_cast<const XrCompositionLayerBaseHeader*>(&hud_layers[i]);
+        }
     }
 
     XrFrameEndInfo end_info = { XR_TYPE_FRAME_END_INFO };
@@ -2927,7 +3162,8 @@ void vr_begin_hud() {
 
     const float clear_color[4] = { 0.0f, 0.0f, 0.0f, 0.0f }; // Transparent
     vr_gfx_bind_target(sc, image_index, clear_color);
-    vr_apply_dimensions(sc.width, sc.height);
+    xr.hud_rendered_wide = vr_hud_is_wrist();
+    vr_apply_dimensions(xr.hud_rendered_wide ? kHudTexW : kHudClassicW, sc.height);
 }
 
 void vr_end_hud() {
@@ -2997,9 +3233,13 @@ void vr_get_2d_target_size(uint32_t* w, uint32_t* h) {
         *w = xr.screen_swapchain.width;
         *h = xr.screen_swapchain.height;
     } else {
-        *w = xr.hud_swapchain.width;
+        *w = xr.hud_rendered_wide ? kHudTexW : kHudClassicW;
         *h = xr.hud_swapchain.height;
     }
+}
+
+float vr_get_hud_aspect() {
+    return (float)vr_hud_render_width() / (float)kHudTexH;
 }
 
 // --------------------------------------------------------------------------
@@ -3153,6 +3393,7 @@ void vr_begin_hud() {}
 void vr_end_hud() {}
 bool vr_is_rendering_hud() { return false; }
 bool vr_is_rendering_screen() { return false; }
+float vr_get_hud_aspect() { return 0.0f; }
 void vr_set_flat_screen(bool) {}
 bool vr_get_flat_screen() { return false; }
 void vr_begin_screen() {}

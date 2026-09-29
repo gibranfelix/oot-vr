@@ -2921,6 +2921,12 @@ void Actor_DrawLensOverlay(GraphicsContext* gfxCtx) {
 
     s32 x = OTRGetRectDimensionFromLeftEdge(0) << 2;
     s32 w = OTRGetRectDimensionFromRightEdge(SCREEN_WIDTH) << 2;
+    // SOH [VR] The screen edges follow the HUD target's aspect in VR, not the eye's. The mask is
+    // drawn in the eye passes, where 0..SCREEN_WIDTH already spans the whole eye view.
+    if (VR_IsInitialized()) {
+        x = 0;
+        w = SCREEN_WIDTH << 2;
+    }
 
     gDPSetTileSize(POLY_XLU_DISP++, G_TX_RENDERTILE, (SCREEN_WIDTH / 2 - LENS_MASK_WIDTH) << 2,
                    (SCREEN_HEIGHT / 2 - LENS_MASK_HEIGHT) << 2, (SCREEN_WIDTH / 2 + LENS_MASK_WIDTH - 1) << 2,
