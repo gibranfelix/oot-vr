@@ -26,6 +26,48 @@ Tower. Some problems are known. Read [`STATUS.md`](STATUS.md) before you play.
 
 We tested the port only on the Meta Quest 3S.
 
+## Controls
+
+These are the default controls. The right hand holds the sword. The left hand
+holds the shield and uses the items.
+
+| Control | Action |
+|---|---|
+| Left thumbstick | Move Link. |
+| Right thumbstick ← → ↓ | Put the item of C-Left, C-Right, or C-Down in your hand. |
+| Right thumbstick ↑ | Talk to Navi, when Navi has a message. |
+| Right thumbstick click (hold) | Open the item selector. Move your hand to an item, then release the click. |
+| Left trigger | Use the item in your hand. For the bow, hold to pull the string and release to shoot. |
+| Right trigger | Z-target. |
+| Both grips (hold) | Hold the sword and the shield. Release the grips to put them away. |
+| A button | The N64 A button: action, talk, roll. |
+| B button | The N64 B button. |
+| Left Menu button | Start: open the pause screen. |
+| Left grip | In the pause screen, go to the next page. |
+
+To attack, swing the sword with your right hand. To block, hold the shield in
+front of you with your left hand. To turn, turn your body.
+
+The right thumbstick does not turn the view. To turn with the thumbstick,
+enable **Artificial Turning** in VR Settings. Then the right thumbstick turns
+the view and does not select items. At the moment, you must use a keyboard
+to open VR Settings ([#34](https://github.com/gibranfelix/oot-vr/issues/34)).
+
+### Ocarina
+
+When you play the ocarina, the controls change:
+
+| Note | Control |
+|---|---|
+| A (D4) | Right trigger |
+| C-Down (F4) | Left trigger |
+| C-Right (A4) | A button |
+| C-Left (B4) | X button |
+| C-Up (D5) | Y button |
+| C-Up, C-Down, C-Left, C-Right | Right thumbstick ↑ ↓ ← → |
+| Half step up / down | Right grip / left grip |
+| Put the ocarina away | B button |
+
 ## Install
 
 You need:

@@ -355,15 +355,17 @@ void PadMgr_HandleRetraceMsg(PadMgr* padMgr) {
                 { BTN_Z, BTN_R, BTN_CLEFT, BTN_CRIGHT, BTN_START, 0 },
                 { BTN_B, 0, BTN_A, BTN_CDOWN, 0, 0 },
             };
-            // SELECTOR (selector on): the Alyx-style selector equips and the holding hand's
-            // TRIGGER uses the item, so both triggers are reserved (unbound, and skipped below)
-            // and the C buttons no longer pull anything out — they are left unbound here
-            // (ocarina notes live in the dedicated set below). Everything the triggers used to
-            // carry moves:
-            // Z-target to the sword-hand grip, the shield stays on the off-hand grip, A and B
-            // on the face buttons. Start is bound on BOTH the left stick click and the left menu
-            // button, because whichever stick click the selector is set to is eaten by it.
-            // Keep in sync with sVrInputDefsSelector in SohMenuVRSettings.cpp.
+            // SELECTOR (selector on): the Alyx-style selector equips, the sword-hand TRIGGER is
+            // always Z-target and the off-hand TRIGGER always uses the held item
+            // (VrItemSelect_TriggerItemMask), so both triggers are reserved (unbound, and
+            // skipped below). The C buttons no longer pull anything out — they are left unbound
+            // here (ocarina notes live in the dedicated set below). A and B are on the face
+            // buttons. The sword-hand grip is unbound: both grips together draw the sword
+            // (VrItemSelect.cpp QuickSwapTick), and a Z on it would blip when one grip lands
+            // first. The off-hand grip keeps R, which physical combat retires in play, so it only
+            // pages the pause menu. Start is on the left menu button only: a stick click is too
+            // easy to press while running. Keep in sync with sVrInputDefsSelector in
+            // SohMenuVRSettings.cpp.
             static const char* sVrBindSelCvars[2][6] = {
                 { "gVrBindSelLTrigger", "gVrBindSelLGrip", "gVrBindSelLPrimary", "gVrBindSelLSecondary",
                   "gVrBindSelLStickClick", "gVrBindSelLMenu" },
@@ -371,8 +373,8 @@ void PadMgr_HandleRetraceMsg(PadMgr* padMgr) {
                   "gVrBindSelRStickClick", "gVrBindSelRMenu" },
             };
             static const s32 sVrBindSelDefaults[2][6] = {
-                { 0, BTN_R, 0, 0, BTN_START, BTN_START },
-                { 0, BTN_Z, BTN_A, BTN_B, 0, 0 },
+                { 0, BTN_R, 0, 0, 0, BTN_START },
+                { 0, 0, BTN_A, BTN_B, 0, 0 },
             };
             // OCARINA (the ocarina interface is up, in EITHER profile): the five notes get their
             // own bindable set, because neither gameplay profile has all five note buttons — in
@@ -446,12 +448,12 @@ void PadMgr_HandleRetraceMsg(PadMgr* padMgr) {
                 }
             }
 
-            // SOH [VR] Selector mode: the trigger of the hand HOLDING the item is that item's
-            // button. Mirrored as raw button STATE, not a one-frame emulated press, so the
+            // SOH [VR] Selector mode: the off-hand trigger is the held item's button, and the
+            // sword-hand trigger is Z-target. Mirrored as raw button STATE, not a one-frame emulated press, so the
             // vanilla pad path derives press, held and release from it by itself — press nocks
             // the bow, holding keeps it drawn, releasing looses the arrow, and every other item
             // (bombs, bottles, boomerang aim-and-throw, magic) obeys its own vanilla rules with
-            // nothing re-implemented. Returns 0 when nothing is held in that hand.
+            // nothing re-implemented. Returns 0 when the trigger has no job.
             for (vrHandIdx = 0; vrHandIdx < 2; vrHandIdx++) {
                 if (((vrHandIdx == 0) ? vrL : vrR) & VR_BTN_TRIGGER) {
                     vrPad->button |= VrItemSelect_TriggerItemMask(vrHandIdx);
@@ -498,14 +500,18 @@ void PadMgr_HandleRetraceMsg(PadMgr* padMgr) {
             vrPad->stick_y = (s8)CLAMP(ly * 127.0f, -128.0f, 127.0f);
         }
 
-        // Right thumbstick -> C-buttons ONLY where the game genuinely owns the stick as the
-        // stock C-stick: flat-screen menus (the pause inventory ASSIGNS items with C presses)
-        // and THIRD PERSON. In first-person play the stick NEVER fires items or C-buttons —
-        // a stick position is far too easy to graze mid-play; items live on the bindable VR
-        // Inputs and the Alyx-style selector, and the X axis belongs to artificial turning.
+        // Right thumbstick -> C-buttons. The stock C-stick in flat-screen menus (the pause
+        // inventory ASSIGNS items with C presses) and in THIRD PERSON. In first person the stick
+        // is the C-stick only while artificial turning is off (on, its X axis turns and the stick
+        // fires nothing). There, selector mode reads the stick itself (VrItemSelect.cpp
+        // StickFlickTick: a flick EQUIPS the C item into the hand); classic mode gets the raw
+        // C-buttons (z_player.c keeps C-up out of the first-person look mode in VR).
         float rx = 0.0f, ry = 0.0f;
         VR_GetThumbstick(VR_HAND_RIGHT, &rx, &ry);
-        if (!vrOcaStickClaimed[VR_HAND_RIGHT] && (VR_IsFlatScreen() || !VR_GetFirstPerson())) {
+        s32 vrStockCStick = VR_IsFlatScreen() || !VR_GetFirstPerson();
+        s32 vrFirstPersonCStick =
+            !vrStockCStick && !VrItemSelect_ModeActive() && !CVarGetInteger("gVrSnapTurnOn", 0);
+        if (!vrOcaStickClaimed[VR_HAND_RIGHT] && (vrStockCStick || vrFirstPersonCStick)) {
             if (ry > 0.5f) vrPad->button |= BTN_CUP;
             if (ry < -0.5f) vrPad->button |= BTN_CDOWN;
             if (rx > 0.5f) vrPad->button |= BTN_CRIGHT;

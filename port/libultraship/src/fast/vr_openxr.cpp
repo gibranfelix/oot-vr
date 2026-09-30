@@ -1891,7 +1891,7 @@ bool vr_begin_frame() {
     // the same head-pivot turn accumulation, so the physics sim and every game-facing pose
     // compose identically. Suspended in flat-screen mode (right stick navigates menus) and in
     // third person (the stock game owns the camera and the right stick is pure C-buttons).
-    if (xr.input_initialized && !xr.flat_screen && xr.first_person && CVarGetInteger("gVrSnapTurnOn", 1)) {
+    if (xr.input_initialized && !xr.flat_screen && xr.first_person && CVarGetInteger("gVrSnapTurnOn", 0)) {
         static int snap_latch = 0;
         const float sx = xr.thumbstick_x[1];
         if (CVarGetInteger("gVrTurnStyle", 0) == 1) {

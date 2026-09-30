@@ -35,8 +35,9 @@ s8 Player_ItemToItemAction(s32 item);
 // suppressed at the source (no turning/C-buttons from the thumb resting on a clicked stick)
 // and padmgr skips the held input's normal button binding via VrItemSelect_ConsumesInput.
 //
-// SELECTOR MODE also changes how items are USED. The selector equips; the TRIGGER of the hand
-// the item ended up in fires it. That is two rules, both below:
+// SELECTOR MODE also changes how items are USED. The selector equips; the OFF-HAND TRIGGER fires
+// the held item, in either hand, and the sword-hand trigger is always Z-target. That is two
+// rules, both below:
 //
 //  1. No button may CHANGE the held item (VB_CHANGE_HELD_ITEM_AND_USE_ITEM below). One rule
 //     covers "C buttons no longer pull out items" AND "B no longer draws the sword" — drawing
@@ -45,15 +46,15 @@ s8 Player_ItemToItemAction(s32 item);
 //     everywhere the item system isn't the consumer: the pause menu still assigns items, third
 //     person is untouched, and ocarina notes (a separate consumer of the same buttons) are
 //     unaffected.
-//  2. The holding hand's trigger mirrors that item's own button as raw pad STATE (padmgr,
+//  2. The off-hand trigger mirrors the held item's own button as raw pad STATE (padmgr,
 //     VrItemSelect_TriggerItemMask). State rather than a one-frame emulated press is what makes
 //     hold semantics work: press nocks the bow, holding keeps it drawn, RELEASE looses the
 //     arrow — identical to holding the item's C button on a controller, so every vanilla rule
 //     (ammo, magic, bottles, aim-and-throw) applies with nothing re-implemented. Both triggers
 //     are reserved outright in selector mode (VrItemSelect_TriggerConsumed) rather than falling
 //     back to a binding while the hands are empty: an input that changes meaning with hidden
-//     state is worse in VR than an idle one. The selector-mode binding profile in padmgr moves
-//     Z-target and the rest onto the grips and face buttons to pay for it.
+//     state is worse in VR than an idle one. For the same reason each trigger keeps one role
+//     whatever the hands hold, instead of following the item to its hand.
 
 namespace {
 
@@ -272,11 +273,48 @@ void QuickSwapTick() {
     VR_TriggerHaptic(VR_HAND_RIGHT, 0.4f, 0.0f, 25.0f);
 }
 
+// Right stick as the C-stick in selector-mode first person (only while artificial turning is off,
+// which otherwise owns the stick). A flick left/right/down equips that C item exactly like the
+// matching compass sector; the stick must come back to center before the next flick. Up is plain
+// C-up: the game decides if Navi talks (z_player.c keeps C-up out of the first-person look mode in
+// VR). The check can't live here — the player clears naviTextId at the end of its own update,
+// before this hook runs, and Navi sets it again only in her update.
+void StickFlickTick() {
+    static int sLatched = SEC_CENTER;
+    float x = 0.0f;
+    float y = 0.0f;
+    if (!sOpen && !CVarGetInteger("gVrSnapTurnOn", 0) && SelectorAvailable()) {
+        VR_GetThumbstick(VR_HAND_RIGHT, &x, &y);
+    }
+    if (sLatched != SEC_CENTER) {
+        if ((x * x) + (y * y) < (0.3f * 0.3f)) {
+            sLatched = SEC_CENTER;
+        }
+        return;
+    }
+    int sector = SEC_CENTER;
+    if ((y * y) >= (x * x)) {
+        sector = (y > 0.5f) ? SEC_UP : (y < -0.5f) ? SEC_DOWN : SEC_CENTER;
+    } else {
+        sector = (x > 0.5f) ? SEC_RIGHT : (x < -0.5f) ? SEC_LEFT : SEC_CENTER;
+    }
+    if (sector == SEC_CENTER) {
+        return;
+    }
+    sLatched = sector;
+    if (sector == SEC_UP) {
+        GameInteractor::RawAction::EmulateButtonPress(BTN_CUP);
+    } else {
+        ExecuteSector(sector);
+    }
+}
+
 void ItemSelectTick() {
     if (sEquipGrace > 0) {
         sEquipGrace--;
     }
     QuickSwapTick();
+    StickFlickTick();
     const bool avail = SelectorAvailable();
 
     if (!sOpen) {
@@ -538,8 +576,9 @@ extern "C" bool VrOcarina_InPlay(void) {
 extern "C" bool VrItemSelect_SwapConsumed(int32_t vrHand, uint16_t vrBtnMask) {
     // The chord's inputs keep their normal bindings when squeezed alone (the grips stay
     // Z-target / R); only while BOTH hands hold the chord input are those bindings suspended,
-    // so the swap doesn't also recenter the camera or flash a shield stance. Stands down
-    // during ocarina play like every other selector reservation.
+    // so the swap doesn't also recenter the camera or flash a shield stance. Z-target stays on
+    // the sword-hand trigger meanwhile. Stands down during ocarina play like every other
+    // selector reservation.
     (void)vrHand;
     if (!CVarGetInteger("gVrItemSelect", 1) || OcarinaInPlay()) {
         return false;
@@ -555,18 +594,27 @@ extern "C" uint16_t VrItemSelect_TriggerItemMask(int32_t vrHand) {
     if (!SelectorModeInPlay() || gPlayState == NULL) {
         return 0;
     }
-    // While the ocarina is up its own binding set rules: without this, the holding hand's
+    // While the ocarina is up its own binding set rules: without this, the off-hand
     // trigger would keep mirroring the ocarina's equip C button and blare that note.
     if (OcarinaInPlay()) {
         return 0;
     }
     Player* player = GET_PLAYER(gPlayState);
-    if (player == NULL || HeldItemVrHand(player) != vrHand) {
+    if (player == NULL) {
         return 0;
     }
-    // Physical combat owns the weapons it covers: the swing IS the attack, so the sword hand's
-    // trigger stays idle rather than also emitting B. Weapons physical combat does NOT cover
-    // (Deku stick, hammer, Biggoron's) keep button attacks, so they keep the mirror.
+    // Fixed roles, whatever is in the hands: the sword-hand trigger is always Z-target, and the
+    // off-hand trigger always uses the held item — in either hand. An input that never changes
+    // meaning is easier in VR than one that follows the held item.
+    if (vrHand == SwordHand()) {
+        return BTN_Z;
+    }
+    if (HeldItemVrHand(player) < 0) {
+        return 0;
+    }
+    // Physical combat owns the weapons it covers: the swing IS the attack, so the trigger stays
+    // idle rather than also emitting B. Weapons physical combat does NOT cover (Deku stick,
+    // hammer) keep button attacks, so they keep the mirror.
     if (VrCombat_Active() && VrCombat_MeleeCovered(player)) {
         return 0;
     }
