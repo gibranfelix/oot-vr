@@ -6392,7 +6392,11 @@ s32 Player_ActionHandler_0(Player* this, PlayState* play) {
         this->stateFlags2 |= PLAYER_STATE2_NAVI_ALERT;
     } else if ((this->naviTextId == 0 || CVarGetInteger(CVAR_ENHANCEMENT("NaviOnL"), 0)) &&
                !Player_CheckHostileLockOn(this) && CHECK_BTN_ALL(sControlInput->press.button, BTN_CUP) &&
-               (YREG(15) != 0x10) && (YREG(15) != 0x20) && !func_8083B8F4(this, play)) {
+               (YREG(15) != 0x10) && (YREG(15) != 0x20) &&
+               // SOH [VR] No first-person look mode in VR first person: the view already is first
+               // person, and the mode locks movement. C-Up with nothing to say just errors, so the
+               // right stick can send C-Up freely for Navi.
+               ((VR_IsInitialized() && VR_GetFirstPerson()) || !func_8083B8F4(this, play))) {
         Sfx_PlaySfxCentered(NA_SE_SY_ERROR);
     }
 

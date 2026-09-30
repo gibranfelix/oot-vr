@@ -275,9 +275,10 @@ void QuickSwapTick() {
 
 // Right stick as the C-stick in selector-mode first person (only while artificial turning is off,
 // which otherwise owns the stick). A flick left/right/down equips that C item exactly like the
-// matching compass sector; the stick must come back to center before the next flick. Up is C-up
-// only when Navi has something to say: with nothing to say, vanilla C-up enters the first-person
-// look mode, which the VR view does not need and which locks movement.
+// matching compass sector; the stick must come back to center before the next flick. Up is plain
+// C-up: the game decides if Navi talks (z_player.c keeps C-up out of the first-person look mode in
+// VR). The check can't live here — the player clears naviTextId at the end of its own update,
+// before this hook runs, and Navi sets it again only in her update.
 void StickFlickTick() {
     static int sLatched = SEC_CENTER;
     float x = 0.0f;
@@ -301,16 +302,10 @@ void StickFlickTick() {
         return;
     }
     sLatched = sector;
-    if (sector != SEC_UP) {
-        ExecuteSector(sector);
-        return;
-    }
-    Player* player = GET_PLAYER(gPlayState);
-    const Actor* focus = player->focusActor;
-    if ((player->naviTextId != 0) ||
-        ((focus != NULL) && (CHECK_FLAG_ALL(focus->flags, ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_TALK_WITH_C_UP) ||
-                             (focus->naviEnemyId != 0xFF)))) {
+    if (sector == SEC_UP) {
         GameInteractor::RawAction::EmulateButtonPress(BTN_CUP);
+    } else {
+        ExecuteSector(sector);
     }
 }
 

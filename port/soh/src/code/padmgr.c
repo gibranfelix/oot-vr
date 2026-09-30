@@ -504,16 +504,15 @@ void PadMgr_HandleRetraceMsg(PadMgr* padMgr) {
         // inventory ASSIGNS items with C presses) and in THIRD PERSON. In first person the stick
         // is the C-stick only while artificial turning is off (on, its X axis turns and the stick
         // fires nothing). There, selector mode reads the stick itself (VrItemSelect.cpp
-        // StickFlickTick: a flick EQUIPS the C item into the hand), and classic mode gets the
-        // three item directions only: first-person C-up is the vanilla look mode, which the VR
-        // view does not need and which locks movement.
+        // StickFlickTick: a flick EQUIPS the C item into the hand); classic mode gets the raw
+        // C-buttons (z_player.c keeps C-up out of the first-person look mode in VR).
         float rx = 0.0f, ry = 0.0f;
         VR_GetThumbstick(VR_HAND_RIGHT, &rx, &ry);
         s32 vrStockCStick = VR_IsFlatScreen() || !VR_GetFirstPerson();
         s32 vrFirstPersonCStick =
             !vrStockCStick && !VrItemSelect_ModeActive() && !CVarGetInteger("gVrSnapTurnOn", 0);
         if (!vrOcaStickClaimed[VR_HAND_RIGHT] && (vrStockCStick || vrFirstPersonCStick)) {
-            if (vrStockCStick && ry > 0.5f) vrPad->button |= BTN_CUP;
+            if (ry > 0.5f) vrPad->button |= BTN_CUP;
             if (ry < -0.5f) vrPad->button |= BTN_CDOWN;
             if (rx > 0.5f) vrPad->button |= BTN_CRIGHT;
             if (rx < -0.5f) vrPad->button |= BTN_CLEFT;
