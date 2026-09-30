@@ -56,6 +56,4 @@ jobs:
         run: |
           TAG="${GITHUB_REF_NAME}"
           cp port/Android/app/build/outputs/apk/release/app-release.apk "oot-vr-${TAG}.apk"
-          PRERELEASE=""
-          case "$TAG" in *alpha*|*beta*|*rc*) PRERELEASE="--prerelease" ;; esac
-          gh release create "$TAG" "oot-vr-${TAG}.apk" --title "$TAG" --generate-notes $PRERELEASE
+          gh release create "$TAG" "oot-vr-${TAG}.apk" --title "$TAG" --generate-notes --latest
