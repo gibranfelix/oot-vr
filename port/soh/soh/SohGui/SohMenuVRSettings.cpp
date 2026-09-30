@@ -62,7 +62,7 @@ static const std::map<int32_t, const char*> vrItemSelInputOptions = {
     { VR_BTN_THUMBCLICK, "Stick Click" }, { VR_BTN_MENU, "Menu Button" },
 };
 
-// Sword-swap chord choices: no Trigger entry (both triggers are reserved for using the held
+// Sword-swap chord choices: no Trigger entry (both triggers are reserved: Z-target and the held
 // item in selector mode), and 0 turns the chord off.
 static const std::map<int32_t, const char*> vrItemSelSwapOptions = {
     { 0, "Disabled" },
@@ -100,8 +100,8 @@ static const VrInputDef sVrInputDefsClassic[] = {
 static const VrInputDef sVrInputDefsSelector[] = {
     { "L Trigger", "gVrBindSelLTrigger", 0 },              { "L Grip", "gVrBindSelLGrip", BTN_R },
     { "X", "gVrBindSelLPrimary", 0 },                      { "Y", "gVrBindSelLSecondary", 0 },
-    { "L Stick", "gVrBindSelLStickClick", BTN_START },     { "L Menu", "gVrBindSelLMenu", BTN_START },
-    { "R Trigger", "gVrBindSelRTrigger", 0 },              { "R Grip", "gVrBindSelRGrip", BTN_Z },
+    { "L Stick", "gVrBindSelLStickClick", 0 },             { "L Menu", "gVrBindSelLMenu", BTN_START },
+    { "R Trigger", "gVrBindSelRTrigger", 0 },              { "R Grip", "gVrBindSelRGrip", 0 },
     { "A", "gVrBindSelRPrimary", BTN_A },                  { "B", "gVrBindSelRSecondary", BTN_B },
     { "R Stick", "gVrBindSelRStickClick", 0 },             { "R Menu", "gVrBindSelRMenu", 0 },
 };
@@ -361,8 +361,9 @@ static void VrInputBindings(WidgetInfo& info) {
     }
     if (VrSelectorProfile()) {
         ImGui::TextWrapped("Editing the ITEM SELECTOR binding set. Both triggers are reserved: the "
-                           "trigger of the hand holding an item uses that item. C buttons no "
-                           "longer pull items out — the selector does that — so they are free.");
+                           "sword-hand trigger is Z-target, and the other trigger uses the held "
+                           "item. C buttons no longer pull items out — the selector and the right "
+                           "stick do that — so they are free.");
     } else {
         ImGui::TextWrapped("Editing the CLASSIC binding set: items are used by pressing the C "
                            "button you assigned them to in the inventory.");
@@ -596,14 +597,15 @@ void SohMenu::AddMenuVRSettings() {
     AddWidget(comfortPath, "Artificial Turning (Right Stick)", WIDGET_CVAR_CHECKBOX)
         .CVar("gVrSnapTurnOn")
         .Options(CheckboxOptions()
-                     .DefaultValue(true)
-                     .Tooltip("Turn the world with the right thumbstick, snap or smooth. In "
-                              "first person the stick never presses C-buttons or items - those "
-                              "live on the bindable VR Inputs and the item selector (menus and "
-                              "third person keep the stock C-stick)."));
+                     .DefaultValue(false)
+                     .Tooltip("Turn the world with the right thumbstick, snap or smooth. Off "
+                              "(default): turn with your body, and the right stick is the "
+                              "C-stick - flick it to take a C item into your hand. On: in first "
+                              "person the stick only turns (menus and third person keep the "
+                              "stock C-stick)."));
     AddWidget(comfortPath, "Turning Style", WIDGET_CVAR_COMBOBOX)
         .CVar("gVrTurnStyle")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrSnapTurnOn", 1); })
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrSnapTurnOn", 0); })
         .Options(ComboboxOptions()
                      .DefaultIndex(0)
                      .ComboMap(vrTurnStyleOptions)
@@ -613,7 +615,7 @@ void SohMenu::AddMenuVRSettings() {
     AddWidget(comfortPath, "Snap Turn Angle: %.0f deg", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrSnapTurnDegrees")
         .PreFunc([](WidgetInfo& info) {
-            info.isHidden = !CVarGetInteger("gVrSnapTurnOn", 1) || CVarGetInteger("gVrTurnStyle", 0) != 0;
+            info.isHidden = !CVarGetInteger("gVrSnapTurnOn", 0) || CVarGetInteger("gVrTurnStyle", 0) != 0;
         })
         .Options(FloatSliderOptions()
                      .Min(10.0f)
@@ -625,7 +627,7 @@ void SohMenu::AddMenuVRSettings() {
     AddWidget(comfortPath, "Smooth Turn Speed: %.0f deg/s", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrSmoothTurnSpeed")
         .PreFunc([](WidgetInfo& info) {
-            info.isHidden = !CVarGetInteger("gVrSnapTurnOn", 1) || CVarGetInteger("gVrTurnStyle", 0) != 1;
+            info.isHidden = !CVarGetInteger("gVrSnapTurnOn", 0) || CVarGetInteger("gVrTurnStyle", 0) != 1;
         })
         .Options(FloatSliderOptions()
                      .Min(30.0f)
@@ -637,7 +639,7 @@ void SohMenu::AddMenuVRSettings() {
     AddWidget(comfortPath, "Smooth Turn Deadzone: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrSmoothTurnDeadzone")
         .PreFunc([](WidgetInfo& info) {
-            info.isHidden = !CVarGetInteger("gVrSnapTurnOn", 1) || CVarGetInteger("gVrTurnStyle", 0) != 1;
+            info.isHidden = !CVarGetInteger("gVrSnapTurnOn", 0) || CVarGetInteger("gVrTurnStyle", 0) != 1;
         })
         .Options(FloatSliderOptions()
                      .Min(0.05f)
@@ -650,7 +652,7 @@ void SohMenu::AddMenuVRSettings() {
     AddWidget(comfortPath, "Analog Turn Speed", WIDGET_CVAR_CHECKBOX)
         .CVar("gVrSmoothTurnAnalog")
         .PreFunc([](WidgetInfo& info) {
-            info.isHidden = !CVarGetInteger("gVrSnapTurnOn", 1) || CVarGetInteger("gVrTurnStyle", 0) != 1;
+            info.isHidden = !CVarGetInteger("gVrSnapTurnOn", 0) || CVarGetInteger("gVrTurnStyle", 0) != 1;
         })
         .Options(CheckboxOptions()
                      .DefaultValue(true)
@@ -1580,11 +1582,10 @@ void SohMenu::AddMenuVRSettings() {
                               "release without moving = empty hands. Haptic tick marks each "
                               "highlight.\n\n"
                               "This also changes how items are USED. The selector equips; the "
-                              "TRIGGER of the hand the item ended up in fires it — squeeze to "
-                              "draw the bow, let go to loose. Buttons can no longer pull items "
-                              "out or draw the sword (that is the selector's job), and both "
-                              "triggers are reserved, so this mode has its own binding set with "
-                              "Z-target and the rest moved onto the grips and face buttons. "
+                              "shield-hand TRIGGER fires the held item — squeeze to draw the bow, "
+                              "let go to loose — and the sword-hand trigger is Z-target. Buttons "
+                              "can no longer pull items out or draw the sword (that is the "
+                              "selector's job), so this mode has its own binding set. "
                               "Turning it off restores the classic scheme and its bindings "
                               "exactly as you left them."));
     AddWidget(buttonsPath, "Selector Hand", WIDGET_CVAR_COMBOBOX)
@@ -1615,7 +1616,8 @@ void SohMenu::AddMenuVRSettings() {
                               "controllers at once to stow whatever you're holding and draw the "
                               "sword (the shield already rides your off hand). While both are "
                               "down, the inputs' normal bindings pause so the swap doesn't also "
-                              "Z-target or raise R; squeezed alone they work as bound."));
+                              "Z-target or raise R; squeezed alone they work as bound. Z-target "
+                              "stays on the sword-hand trigger meanwhile."));
     AddWidget(buttonsPath, "Flick Distance: %.0f cm", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrItemSelDistance")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrItemSelect", 1); })

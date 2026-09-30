@@ -41,9 +41,10 @@ not test the minimap on the wrist yet.
 
 ## Open decisions
 
-- **Snap turn and Z-targeting** ([#5](https://github.com/gibranfelix/oot-vr/issues/5)). Z-targeting uses the right
-  stick for the view direction. Snap turn also needs the right stick. We must
-  decide how the two work together.
+- **Snap turn and Z-targeting** ([#5](https://github.com/gibranfelix/oot-vr/issues/5)). The default is now
+  physical turning. The right stick selects items, and the right trigger does
+  Z-targeting. Artificial turning is an option. We must decide if a lock-on
+  target turns the view by default.
 
 ## Where to help
 

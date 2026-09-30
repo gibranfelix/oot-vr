@@ -86,16 +86,16 @@ int32_t VrCombat_ShieldBlockJudge(struct Player* player);
 // that input's normal button binding so the opening click never leaks its bound action.
 bool VrItemSelect_ConsumesInput(int32_t vrHand, uint16_t vrBtnMask);
 
-// SELECTOR MODE (gVrItemSelect on, VR first person): the selector equips and the TRIGGER of the
-// hand the item ended up in uses it, replacing "press the C button you assigned it to".
+// SELECTOR MODE (gVrItemSelect on, VR first person): the selector equips and the OFF-HAND TRIGGER
+// uses the held item, in either hand, replacing "press the C button you assigned it to".
 // ModeActive: the mode owns item activation this frame (third person and flat screen stay stock).
-// TriggerItemMask: the N64 button the item held in this hand answers to, or 0 — padmgr ORs it into
+// TriggerItemMask: the N64 button this hand's trigger answers to, or 0 — padmgr ORs it into
 // the pad while that hand's trigger is DOWN, as button state rather than a one-frame press, so
 // press/hold/release all come out of the vanilla item path (that is what makes draw-and-hold and
-// release-to-fire work with nothing re-implemented). Returns 0 for weapons physical combat covers,
-// where the swing is the attack. TriggerConsumed: both triggers are reserved in selector mode, so
-// padmgr skips their normal bindings — the selector-mode binding profile rehouses Z-target and
-// friends on the grips and face buttons.
+// release-to-fire work with nothing re-implemented). The sword-hand trigger always answers BTN_Z
+// (Z-target); the off-hand trigger answers the held item's button, or 0 for empty hands and for
+// weapons physical combat covers, where the swing is the attack. TriggerConsumed: both triggers are reserved in selector mode, so
+// padmgr skips their normal bindings.
 bool VrItemSelect_ModeActive(void);
 uint16_t VrItemSelect_TriggerItemMask(int32_t vrHand);
 bool VrItemSelect_TriggerConsumed(int32_t vrHand, uint16_t vrBtnMask);
