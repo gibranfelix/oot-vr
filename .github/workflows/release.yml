@@ -43,12 +43,7 @@ jobs:
         run: ANDROID_NDK_HOME="$ANDROID_HOME/ndk/26.3.11579264" port/Android/build-apk.sh
 
       - name: Make sure that the APK has no game assets
-        run: |
-          APK=port/Android/app/build/outputs/apk/release/app-release.apk
-          if unzip -l "$APK" | grep -E '\.(z64|n64|v64)$|oot(-mq)?\.o2r$'; then
-            echo "The APK contains game assets. Stop." >&2
-            exit 1
-          fi
+        run: .github/scripts/check-no-game-assets.sh port/Android/app/build/outputs/apk/release/app-release.apk
 
       - name: Publish the release
         env:
