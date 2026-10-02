@@ -1,6 +1,6 @@
 # Status
 
-Last update: 2026-09-29.
+Last update: 2026-10-02.
 
 ## What works
 
@@ -39,16 +39,23 @@ The wrist HUD needs more work. The wrist panel is small. It also shows when you
 raise the shield, because the back of the hand then points at your eyes. We did
 not test the minimap on the wrist yet.
 
-## Open decisions
+## Roadmap
 
-- **Snap turn and Z-targeting** ([#5](https://github.com/gibranfelix/oot-vr/issues/5)). The default is now
-  physical turning. The right stick selects items, and the right trigger does
-  Z-targeting. Artificial turning is an option. We must decide if a lock-on
-  target turns the view by default.
+The roadmap ([#1](https://github.com/gibranfelix/oot-vr/issues/1)) is closed. The
+destination is reached: you can play the main story on a Quest 3S. The open
+issues are bugs and improvements.
+
+The default turn is physical turning. The right stick selects items, and the
+right trigger does Z-targeting. Artificial turning is an option.
 
 ## Where to help
 
-- Any issue in the table above. Each one is small and independent.
+- Any issue with the label
+  [`ready-for-agent`](https://github.com/gibranfelix/oot-vr/issues?q=is%3Aopen+label%3Aready-for-agent).
+  An agent can do it without more context. A person must test it on the headset.
+- Any issue with the label
+  [`ready-for-human`](https://github.com/gibranfelix/oot-vr/issues?q=is%3Aopen+label%3Aready-for-human).
+  It needs a decision or a test on the headset.
 - Tests on the Meta Quest 3. We tested only on the Quest 3S.
 
 Before you start, read [`docs/architecture.md`](docs/architecture.md) and
