@@ -16,10 +16,8 @@ All clips are recordings from a Meta Quest 3S.
 | Sword and shield against a Tektite. | Bow on Epona. |
 | ![Link holds the ocarina in Kokiri Forest](docs/media/ocarina.webp) | ![The pause screen on a panel that floats in front of the player](docs/media/floating-menu.webp) |
 | Ocarina. | Pause screen. |
-| ![Link uses the slingshot on the bridge in Lake Hylia](docs/media/lake-hylia.webp) | ![Link fights Ganon with the sword](docs/media/ganon.webp) |
-| Slingshot in Lake Hylia. | Ganon. |
-| ![The Great Fairy appears in front of Link](docs/media/great-fairy.webp) | |
-| Great Fairy. | |
+| ![Link fights Ganon with the sword](docs/media/ganon.webp) | ![The Great Fairy appears in front of Link](docs/media/great-fairy.webp) |
+| Ganon. | Great Fairy. |
 
 > [!IMPORTANT]
 > You must own a legal copy of *The Legend of Zelda: Ocarina of Time*. To play,
