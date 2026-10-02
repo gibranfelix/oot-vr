@@ -15,6 +15,8 @@ concurrency:
 jobs:
   apk:
     runs-on: ubuntu-24.04
+    env:
+      APK: port/Android/app/build/outputs/apk/debug/app-debug.apk
     steps:
       - uses: actions/checkout@v7
 
@@ -37,3 +39,23 @@ jobs:
 
       - name: Build the debug APK
         run: ANDROID_NDK_HOME="$ANDROID_HOME/ndk/26.3.11579264" port/Android/build-apk.sh
+
+      - name: Make sure that the APK has no game assets
+        run: .github/scripts/check-no-game-assets.sh "$APK"
+
+      # The artifact name comes from the file name, because archive: false uploads the APK as it is.
+      - name: Name the APK
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          if [ -n "$PR_NUMBER" ]; then PREFIX="pr$PR_NUMBER"; else PREFIX="main"; fi
+          cp "$APK" "oot-vr-debug-$PREFIX-${SHA:0:7}.apk"
+
+      - name: Upload the APK
+        uses: actions/upload-artifact@v7
+        with:
+          path: oot-vr-debug-*.apk
+          archive: false
+          retention-days: 14
+          if-no-files-found: error

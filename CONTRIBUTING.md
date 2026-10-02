@@ -35,6 +35,35 @@ your ROM.
 An automatic review can add comments to your pull request. A maintainer does
 the final review. Only a maintainer can merge.
 
+## Test a pull request on a headset
+
+Each pull request makes a debug APK. You do not need a local build to test it.
+
+1. Open the pull request.
+2. Open the **Checks** tab.
+3. Select the **Build** workflow.
+4. In **Artifacts**, download `oot-vr-debug-pr<number>-<commit>.apk`.
+5. Connect the headset to the computer with a USB cable.
+6. Install the APK with `adb install oot-vr-debug-pr<number>-<commit>.apk`.
+
+The debug APK has a signature that is different from the release APK. If the
+release version is on the headset, `adb install` stops with a signature error.
+Remove the release version first with `adb uninstall org.oot.vr`.
+The `adb uninstall` command also deletes your save data and `oot.o2r`. The app
+keeps them in `/sdcard/Android/data/org.oot.vr/files`. Copy this directory to
+the computer before you remove the release version:
+
+```
+adb pull /sdcard/Android/data/org.oot.vr/files oot-vr-files
+```
+
+All debug APKs have the same signature. A debug APK installs over a different
+debug APK with `adb install -r`, and your save data stays. A local debug build
+from before 2026-10-02 has a different signature. Remove it one time.
+
+GitHub keeps each debug APK for 14 days. A push to `main` also makes a debug
+APK, with the name `oot-vr-debug-main-<commit>.apk`.
+
 ## License
 
 When you send a pull request, you agree that your change is under the MIT
