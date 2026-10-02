@@ -80,7 +80,8 @@ close it. While the menu is open, the controls operate the menu, not Link:
 | Left grip / right grip | Go to the previous tab / the next tab. |
 
 The game does not stop while the menu is open. When you play the ocarina, the
-Y button plays a note and does not open the menu.
+Y button plays a note and does not open the menu. In the classic control
+scheme, C-Right is on the left Menu button because the Y button opens the menu.
 
 ### Ocarina
 

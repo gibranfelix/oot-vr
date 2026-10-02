@@ -83,12 +83,12 @@ shows it. In VR, the window layer draws the menu onto the floating panel.
    ImGui then moves the selection and activates the items. `Menu.cpp` changes
    the tab on the L1 and R1 keys (the grips).
 3. `Fast3dWindow` runs the GUI frame on each frame. After the GUI frame, it
-   draws the result onto the panel swapchain. The panel uses the GUI frame
-   size, thus the GUI frame uses the panel size while the menu is open.
+   draws the result onto the panel swapchain. While the menu is open, the GUI
+   frame has the size of the panel swapchain.
 4. `VR_GetControllerButton` and the other `VR_Get*` input functions send the
    controls through `VrMenuInput`. While the menu is open, the game sees
-   released controls. A button that is held when the menu closes stays
-   released for the game until the player releases it.
+   released controls. A button or a thumbstick that is held when the menu
+   closes stays released for the game until the player releases it.
 
 The left Y button is not available to the gameplay bindings. In the ocarina
 set, the game gets the Y button back (`VR_SetMenuButtonEnabled`). The binding

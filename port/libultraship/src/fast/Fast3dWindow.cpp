@@ -246,9 +246,9 @@ bool Fast3dWindow::DrawAndRunGraphicsCommands(Gfx* commands, const std::unordere
         // Entering or leaving a 2D context swaps which target holds the visible image, so force a
         // redraw on the transition rather than showing a stale panel (or a stale world behind it)
         // for up to a divisor's worth of frames.
-        const bool flatScreen = vr_get_panel_visible();
-        if (flatScreen != mVrFlatScreenPrev) {
-            mVrFlatScreenPrev = flatScreen;
+        const bool panelVisible = vr_get_panel_visible();
+        if (panelVisible != mVrFlatScreenPrev) {
+            mVrFlatScreenPrev = panelVisible;
             renderEyes = true;
         }
 

@@ -195,3 +195,52 @@ TEST(VrMenuInputTest, YHeldAcrossTheHoldDoesNotToggleAfterIt) {
     EXPECT_FALSE(h.Frame(kSecondary, 0));
     EXPECT_TRUE(h.menuVisible);
 }
+
+TEST(VrMenuInputTest, StickPushedAtCloseStaysCenteredForTheGameUntilReleased) {
+    Harness h;
+    h.OpenMenu();
+    h.Frame(kSecondary, 0, 0.0f, 0.9f); // closes with the left stick pushed
+    float x = 0.0f;
+    float y = 0.9f;
+    h.input.FilterGameStick(kLeft, &x, &y);
+    EXPECT_EQ(x, 0.0f);
+    EXPECT_EQ(y, 0.0f);
+    x = 0.05f;
+    y = 0.0f; // back to the center
+    h.input.FilterGameStick(kLeft, &x, &y);
+    x = 0.0f;
+    y = 0.9f;
+    h.input.FilterGameStick(kLeft, &x, &y);
+    EXPECT_EQ(y, 0.9f);
+}
+
+TEST(VrMenuInputTest, GameSticksReadCenteredWhileTheMenuIsOpen) {
+    Harness h;
+    h.OpenMenu();
+    float x = 0.7f;
+    float y = -0.7f;
+    h.input.FilterGameStick(kRight, &x, &y);
+    EXPECT_EQ(x, 0.0f);
+    EXPECT_EQ(y, 0.0f);
+}
+
+TEST(VrMenuInputTest, StickIsUntouchedWithTheMenuClosed) {
+    Harness h;
+    h.Frame(0, 0);
+    float x = 0.7f;
+    float y = -0.7f;
+    h.input.FilterGameStick(kRight, &x, &y);
+    EXPECT_EQ(x, 0.7f);
+    EXPECT_EQ(y, -0.7f);
+}
+
+TEST(VrMenuInputTest, HiddenButtonsCoverTheAnalogTriggerAndGrip) {
+    Harness h;
+    h.OpenMenu();
+    EXPECT_EQ(h.input.GameHiddenButtons(kRight), 0xFFFF);
+    h.Frame(kSecondary, kTrigger); // closes with the right trigger down
+    h.input.FilterGameButtons(kRight, kTrigger);
+    EXPECT_TRUE(h.input.GameHiddenButtons(kRight) & kTrigger);
+    h.input.FilterGameButtons(kRight, 0);
+    EXPECT_FALSE(h.input.GameHiddenButtons(kRight) & kTrigger);
+}

@@ -135,9 +135,7 @@ uint16_t VR_GetControllerButton(int hand) {
 
 void VR_GetThumbstick(int hand, float* x, float* y) {
     vr_get_thumbstick(hand, x, y);
-    if (vr_menu_input().GameInputBlocked()) {
-        *x = *y = 0.0f;
-    }
+    vr_menu_input().FilterGameStick(hand, x, y);
 }
 
 uint16_t VR_GetControllerButtonRaw(int hand) {
@@ -161,11 +159,11 @@ void VR_SetStickSuppressed(int hand, int32_t suppressed) {
 }
 
 float VR_GetTrigger(int hand) {
-    return vr_menu_input().GameInputBlocked() ? 0.0f : vr_get_trigger(hand);
+    return (vr_menu_input().GameHiddenButtons(hand) & VR_BTN_TRIGGER) ? 0.0f : vr_get_trigger(hand);
 }
 
 float VR_GetGrip(int hand) {
-    return vr_menu_input().GameInputBlocked() ? 0.0f : vr_get_grip(hand);
+    return (vr_menu_input().GameHiddenButtons(hand) & VR_BTN_GRIP) ? 0.0f : vr_get_grip(hand);
 }
 
 bool VR_GetHandMatrix(int hand, float out[4][4]) {

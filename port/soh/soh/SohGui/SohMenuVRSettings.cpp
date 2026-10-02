@@ -218,7 +218,10 @@ static void VrInputBindingRow(const VrN64RowDef& row) {
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.48f, 0.78f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.26f, 0.55f, 0.88f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.12f, 0.30f, 0.55f, 1.0f));
-        if (ImGui::SmallButton("Press a VR input... (wait 5 s, click, or Esc to cancel)")) {
+        char listenLabel[64];
+        snprintf(listenLabel, sizeof(listenLabel), "Press a VR input... (wait %.0f s, click, or Esc to cancel)",
+                 kVrListenTimeout);
+        if (ImGui::SmallButton(listenLabel)) {
             sVrListenRowMask = 0;
         }
         ImGui::PopStyleColor(3);

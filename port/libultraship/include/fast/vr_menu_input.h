@@ -34,6 +34,12 @@ class VrMenuInput {
     bool GameInputBlocked() const;
     // The buttons of one hand that the game may see. Call with the raw mask of that hand.
     uint16_t FilterGameButtons(int hand, uint16_t raw);
+    // The buttons of one hand that the game must see as released now, for the analog trigger and
+    // grip values. Up to date after the last FilterGameButtons call for that hand.
+    uint16_t GameHiddenButtons(int hand) const;
+    // The thumbstick of one hand as the game may see it. While the menu is open, and after it
+    // closes until the stick is back in the center, the stick reads centered.
+    void FilterGameStick(int hand, float* x, float* y);
 
     // State of a navigation key for this frame.
     bool NavKeyDown(NavKey key) const;
@@ -53,6 +59,8 @@ class VrMenuInput {
     bool mPrevToggleDown = false;
     // Buttons held when the menu closed: hidden from the game until released.
     uint16_t mGameLatched[2] = { 0, 0 };
+    // Sticks touched while the menu was open: centered for the game until they come back.
+    bool mStickLatched[2] = { false, false };
     // Buttons held when navigation started: no menu action until released.
     uint16_t mNavLatched[2] = { 0, 0 };
     bool mNavKeys[kNavKeyCount] = {};

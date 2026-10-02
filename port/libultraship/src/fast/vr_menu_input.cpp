@@ -15,6 +15,8 @@ constexpr uint16_t kToggleMask = kBtnSecondary;
 
 // Same dominant-axis rule and threshold as the stick C-buttons in padmgr.c.
 constexpr float kStickThreshold = 0.5f;
+// Same dead zone as the movement stick in padmgr.c.
+constexpr float kStickDeadZone = 0.15f;
 } // namespace
 
 bool VrMenuInput::UpdateFrame(const uint16_t buttons[2], float stickX, float stickY, bool menuVisible) {
@@ -31,6 +33,7 @@ bool VrMenuInput::UpdateFrame(const uint16_t buttons[2], float stickX, float sti
         // Everything held now stays hidden from the game after the menu closes.
         mGameLatched[kLeft] = buttons[kLeft];
         mGameLatched[kRight] = buttons[kRight];
+        mStickLatched[kLeft] = mStickLatched[kRight] = true;
     } else {
         mGameLatched[kLeft] &= buttons[kLeft];
         mGameLatched[kRight] &= buttons[kRight];
@@ -79,14 +82,38 @@ uint16_t VrMenuInput::FilterGameButtons(int hand, uint16_t raw) {
     }
     if (mMenuOpen) {
         mGameLatched[hand] = raw;
+    } else {
+        mGameLatched[hand] &= raw;
+    }
+    return raw & ~GameHiddenButtons(hand);
+}
+
+uint16_t VrMenuInput::GameHiddenButtons(int hand) const {
+    if (hand < kLeft || hand > kRight) {
         return 0;
     }
-    mGameLatched[hand] &= raw;
+    if (mMenuOpen) {
+        return 0xFFFF;
+    }
     uint16_t hidden = mGameLatched[hand];
     if (hand == kToggleHand && mOpenAllowed) {
         hidden |= kToggleMask;
     }
-    return raw & ~hidden;
+    return hidden;
+}
+
+void VrMenuInput::FilterGameStick(int hand, float* x, float* y) {
+    if (hand < kLeft || hand > kRight) {
+        return;
+    }
+    if (mMenuOpen) {
+        mStickLatched[hand] = true;
+    } else if (mStickLatched[hand] && ((*x * *x) + (*y * *y)) < (kStickDeadZone * kStickDeadZone)) {
+        mStickLatched[hand] = false;
+    }
+    if (mStickLatched[hand]) {
+        *x = *y = 0.0f;
+    }
 }
 
 bool VrMenuInput::NavKeyDown(NavKey key) const {
