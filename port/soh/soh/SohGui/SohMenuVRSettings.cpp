@@ -506,8 +506,13 @@ void SohMenu::AddMenuVRSettings() {
     AddSidebarEntry("VR Settings", "General", 1);
     WidgetPath generalPath = { "VR Settings", "General", SECTION_COLUMN_1 };
 
-    AddWidget(generalPath, "VR Mode (F9)", WIDGET_CVAR_CHECKBOX)
+    AddWidget(generalPath, "VR Mode", WIDGET_CVAR_CHECKBOX)
         .CVar("gVrEnabled")
+#ifdef __ANDROID__
+        // On the Quest there is no flat-screen play: with VR off the headset shows nothing, the
+        // Touch controllers cannot open this menu again, and the next start stays out of VR.
+        .PreFunc([](WidgetInfo& info) { info.isHidden = true; })
+#endif
         .Options(CheckboxOptions()
                      .DefaultValue(true)
                      .Tooltip("Switch between VR and regular flat-screen play at any time - F9 does "
