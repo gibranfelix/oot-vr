@@ -6,6 +6,20 @@ The game runs natively on the headset. You do not need a PC to play.
 **Status: alpha.** You can play the main story from Kokiri Forest to Ganon's
 Tower. Some problems are known. Read [`STATUS.md`](STATUS.md) before you play.
 
+[![Watch the trailer on YouTube](docs/media/trailer.jpg)](https://youtu.be/gzuzNRE-Qyo)
+
+Click the image to watch the trailer on YouTube. We recorded all the clips on
+a Meta Quest 3S.
+
+| | |
+|---|---|
+| ![Link holds the sword and the shield against two Stalchildren](docs/media/sword-shield.webp) | ![Link shoots the bow from the back of Epona](docs/media/epona-bow.webp) |
+| Swing the sword and hold up the shield with your hands. | Ride Epona and shoot the bow. |
+| ![Link holds the ocarina in Kokiri Forest](docs/media/ocarina.webp) | ![The pause screen on a panel that floats in front of the player](docs/media/floating-menu.webp) |
+| Hold the ocarina in your hands. | The pause screen floats in front of you. |
+| ![Link walks on the bridge in Lake Hylia](docs/media/lake-hylia.webp) | ![Link fights Ganon with the sword](docs/media/ganon.webp) |
+| Explore Hyrule at the scale of Link. | Fight Ganon at the end of the story. |
+
 > [!IMPORTANT]
 > You must own a legal copy of *The Legend of Zelda: Ocarina of Time*. To play,
 > you make a dump of your own cartridge or disc.
