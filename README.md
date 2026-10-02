@@ -8,19 +8,18 @@ Tower. Some problems are known. Read [`STATUS.md`](STATUS.md) before you play.
 
 [![Watch the trailer on YouTube](docs/media/trailer.jpg)](https://youtu.be/gzuzNRE-Qyo)
 
-Click the image to watch the trailer on YouTube. We recorded all the clips on
-a Meta Quest 3S.
+All clips are recordings from a Meta Quest 3S.
 
 | | |
 |---|---|
 | ![Link fights a Tektite with the sword and the shield](docs/media/tektite.webp) | ![Link shoots the bow from the back of Epona](docs/media/epona-bow.webp) |
-| Swing the sword and hold up the shield with your hands. | Ride Epona and shoot the bow. |
+| Sword and shield against a Tektite. | Bow on Epona. |
 | ![Link holds the ocarina in Kokiri Forest](docs/media/ocarina.webp) | ![The pause screen on a panel that floats in front of the player](docs/media/floating-menu.webp) |
-| Hold the ocarina in your hands. | The pause screen floats in front of you. |
-| ![Link walks on the bridge in Lake Hylia](docs/media/lake-hylia.webp) | ![Link fights Ganon with the sword](docs/media/ganon.webp) |
-| Explore Hyrule at the scale of Link. | Fight Ganon at the end of the story. |
+| Ocarina. | Pause screen. |
+| ![Link uses the slingshot on the bridge in Lake Hylia](docs/media/lake-hylia.webp) | ![Link fights Ganon with the sword](docs/media/ganon.webp) |
+| Slingshot in Lake Hylia. | Ganon. |
 | ![The Great Fairy appears in front of Link](docs/media/great-fairy.webp) | |
-| See the Great Fairy at full size in front of you. | |
+| Great Fairy. | |
 
 > [!IMPORTANT]
 > You must own a legal copy of *The Legend of Zelda: Ocarina of Time*. To play,
