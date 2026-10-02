@@ -14,7 +14,9 @@ Ship of Harkinian and `libultraship`.
    to the game and to the engine.
 3. [`CONTEXT.md`](CONTEXT.md): the terms of this project. Use these terms in
    issues, commits, and code.
-4. The roadmap is issue [#1](https://github.com/gibranfelix/oot-vr/issues/1). Its sub-issues are the tasks.
+4. The open issues. The label `ready-for-agent` shows the issues that an agent
+   can do. The label `ready-for-human` shows the issues that need a person. The
+   roadmap ([#1](https://github.com/gibranfelix/oot-vr/issues/1)) is closed.
 
 ## Documentation language
 

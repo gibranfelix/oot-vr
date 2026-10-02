@@ -6,7 +6,8 @@ code works. Read [`docs/architecture.md`](docs/architecture.md) for that.
 ## Destination
 
 The state in which this project is complete. The roadmap issue
-([#1](https://github.com/gibranfelix/oot-vr/issues/1)) contains it. The destination is not a task list and not a date.
+([#1](https://github.com/gibranfelix/oot-vr/issues/1)) contains it. The project
+got to the destination on 2026-10-02. The destination is not a task list and not a date.
 It describes what success is.
 
 ## Standalone
