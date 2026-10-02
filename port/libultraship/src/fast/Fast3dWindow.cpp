@@ -224,6 +224,11 @@ bool Fast3dWindow::DrawAndRunGraphicsCommands(Gfx* commands, const std::unordere
         return std::chrono::duration<float, std::milli>(std::chrono::steady_clock::now() - since).count();
     };
 
+    // SOH [VR] The SoH menu with the Touch controllers. Read the controllers before the frame plan:
+    // while the menu is open, it shows on the floating panel and the GUI frame runs on every frame.
+    const std::shared_ptr<Fast3dGui> fastGui = std::dynamic_pointer_cast<Fast3dGui>(wnd->GetGui());
+    const bool vrMenu = (fastGui != nullptr) && fastGui->UpdateVrMenu(vr);
+
     // SOH [VR] Decide up front which of this frame's expensive jobs actually run. vr_begin_frame
     // latches its submit poses from this, so it has to be set before the frame opens.
     bool renderEyes = true;
@@ -241,7 +246,7 @@ bool Fast3dWindow::DrawAndRunGraphicsCommands(Gfx* commands, const std::unordere
         // Entering or leaving a 2D context swaps which target holds the visible image, so force a
         // redraw on the transition rather than showing a stale panel (or a stale world behind it)
         // for up to a divisor's worth of frames.
-        const bool flatScreen = vr_get_flat_screen();
+        const bool flatScreen = vr_get_panel_visible();
         if (flatScreen != mVrFlatScreenPrev) {
             mVrFlatScreenPrev = flatScreen;
             renderEyes = true;
@@ -255,6 +260,15 @@ bool Fast3dWindow::DrawAndRunGraphicsCommands(Gfx* commands, const std::unordere
         // The companion window is a courtesy view. Presenting it every XR frame costs an ImGui
         // frame, a full-eye-resolution mirror blit and a desktop Present, all on the critical path.
         presentDesktop = (mVrFrameCounter % desktopDivisor) == 0u;
+
+        // The open SoH menu covers the whole panel, and the GUI frame draws it there after the XR
+        // frame (see below). The game passes have nothing to show, and the menu must react on
+        // every frame.
+        if (vrMenu) {
+            renderEyes = false;
+            renderHud = false;
+            presentDesktop = true;
+        }
 
         mVrFrameCounter++;
         vr_set_frame_plan(renderEyes, renderHud, presentDesktop);
@@ -273,6 +287,7 @@ bool Fast3dWindow::DrawAndRunGraphicsCommands(Gfx* commands, const std::unordere
     float eyesMs = 0.0f;
     float hudMs = 0.0f;
     float desktopMs = 0.0f;
+    bool xrFrameBegun = false; // SOH [VR] the panel swapchain may be used after the XR frame
 
     // SOH [VR] Stereo path: run the interpreter once per eye into the OpenXR swapchains (or once
     // onto the flat-screen panel for 2D contexts), render the HUD quad, submit the XR frame, then
@@ -281,7 +296,8 @@ bool Fast3dWindow::DrawAndRunGraphicsCommands(Gfx* commands, const std::unordere
         // The port sets mInterpolationT per sub-frame (see soh RunCommands); mirror it into the VR
         // layer so the camera anchor interpolates in lockstep with the interpolated world.
         vr_set_interp_alpha(mInterpreter->mInterpolationT);
-        if (vr_begin_frame()) {
+        xrFrameBegun = vr_begin_frame();
+        if (xrFrameBegun) {
             // The divisor covers the flat-screen panel as well as the stereo pair: it is a quad
             // layer at a fixed pose showing a menu, so the compositor resubmits it perfectly and
             // there is even less to lose than with the eyes.
@@ -337,6 +353,14 @@ bool Fast3dWindow::DrawAndRunGraphicsCommands(Gfx* commands, const std::unordere
         const auto desktopStart = std::chrono::steady_clock::now();
         // Renders the game frame buffer to the final window and finishes the GUI
         gui->EndDraw();
+        // SOH [VR] Draw the finished GUI frame (the SoH menu) onto the floating panel. The XR frame
+        // is already submitted, thus the panel shows this image from the next XR frame on.
+        if (vrMenu && xrFrameBegun) {
+            vr_begin_screen();
+            fastGui->RenderDrawDataToCurrentTarget();
+            vr_end_screen();
+            mRenderingApi->StartDrawToFramebuffer(0, 1);
+        }
         // Finalize swap buffers
         mInterpreter->EndFrame();
         desktopMs = elapsedMsSince(desktopStart);

@@ -111,10 +111,28 @@ void     VR_SetStickSuppressed(int hand, int32_t suppressed);
 // forward direction. This is the ray for weapon aiming (slingshot/bow/hookshot).
 bool     VR_GetAimRay(int hand, float pos[3], float dir[3]);
 bool     VR_IsHandActive(int hand);
+// Controller state as the GAME sees it. While the SoH menu is open, the controllers operate the menu
+// and these read as released. A button still held when the menu closes reads as released until the
+// player lets go of it. The left Y button opens the menu, so the game never sees it (see
+// VR_SetMenuButtonEnabled).
 uint16_t VR_GetControllerButton(int hand);
 void     VR_GetThumbstick(int hand, float* x, float* y);
 float    VR_GetTrigger(int hand);
 float    VR_GetGrip(int hand);
+
+// --- SoH menu with the Touch controllers ---
+// The left Y button opens and closes the SoH menu on the floating panel. While the menu is open,
+// the controllers navigate it as an ImGui gamepad: left stick = move, A = accept, B = back,
+// grips = previous/next tab.
+// Raw controller state, never filtered. Only for menu code that reads the controllers itself.
+uint16_t VR_GetControllerButtonRaw(int hand);
+void     VR_GetThumbstickRaw(int hand, float* x, float* y);
+// The game sets this every tick. False gives the left Y button back to the game (the ocarina set
+// uses every input); the menu cannot open then, but an open menu still closes.
+void     VR_SetMenuButtonEnabled(bool enabled);
+// Call each frame while menu code reads the raw controllers (the VR Inputs binding listener): menu
+// navigation and the Y toggle stand down for the next frame.
+void     VR_HoldMenuNavigation(void);
 // Hand draw matrix (model-local -> game-world, engine MtxF layout) for pinning Link's hand limb to the
 // controller. Includes Link's model scale (set via VR_SetHandScale). False if untracked.
 bool     VR_GetHandMatrix(int hand, float out[4][4]);

@@ -165,6 +165,13 @@ float vr_get_hud_aspect();
 // floating panel instead of the stereo eyes; the frozen world stays behind it, still head-tracked.
 void vr_set_flat_screen(bool enabled);
 bool vr_get_flat_screen();
+// The SoH menu is open: the panel comes up (also during gameplay) and the HUD quad goes away. The
+// window layer draws the menu onto the panel with vr_begin_screen/vr_end_screen.
+void vr_set_menu_panel(bool enabled);
+// The panel is up: a 2D context (vr_get_flat_screen) or the SoH menu.
+bool vr_get_panel_visible();
+// Pixel size of the panel swapchain (4:3).
+void vr_get_screen_size(uint32_t* w, uint32_t* h);
 void vr_begin_screen();
 void vr_end_screen();
 void vr_get_2d_target_size(uint32_t* w, uint32_t* h);

@@ -8,6 +8,7 @@
 #include <variant>
 #include <spdlog/fmt/fmt.h>
 #include <tuple>
+#include <vr_interface.h> // SOH [VR]
 
 extern "C" {
 #include "z64.h"
@@ -676,6 +677,23 @@ void Menu::DrawElement() {
     bool headerSearch = !CVarGetInteger(CVAR_SETTING("Menu.SidebarSearch"), 0);
     if (headerSearch) {
         headerWidth += 200.0f;
+    }
+    // SOH [VR] With the Touch controllers, the grips (gamepad L1/R1) select the previous or next
+    // header tab. ImGui has no tab bar here that the gamepad navigation can step through.
+    if (VR_IsInitialized() && (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_NavEnableGamepad) &&
+        !menuOrder.empty()) {
+        const int tabStep =
+            (int)ImGui::IsKeyPressed(ImGuiKey_GamepadR1, false) - (int)ImGui::IsKeyPressed(ImGuiKey_GamepadL1, false);
+        if (tabStep != 0) {
+            const int tabCount = (int)menuOrder.size();
+            const int tabIndex = (int)GetVectorIndexOf(menuOrder, headerIndex);
+            headerIndex = menuOrder.at(((tabIndex + tabStep) % tabCount + tabCount) % tabCount);
+            if (headerSearch) {
+                menuSearch.Clear();
+            }
+            CVarSetString(headerCvar, headerIndex.c_str());
+            CVarSave();
+        }
     }
     for (auto& label : menuOrder) {
         ImVec2 size = ImGui::CalcTextSize(label.c_str());

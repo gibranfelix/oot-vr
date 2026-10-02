@@ -140,6 +140,14 @@ class Fast3dGui : public Ship::Gui {
 
     void RefreshImGuiGamepads() override;
 
+    // SOH [VR] SoH menu with the Touch controllers. Call once per frame, before the GUI frame:
+    // reads the controllers, opens or closes the menu on the left Y button, and feeds the menu
+    // navigation to ImGui as gamepad keys. Returns true while the menu is open in VR; the menu then
+    // shows on the floating panel. With vr false, it only releases what it still holds.
+    bool UpdateVrMenu(bool vr);
+    // SOH [VR] Draw the finished GUI frame into the render target that is bound now (the panel).
+    void RenderDrawDataToCurrentTarget();
+
   protected:
     void ImGuiWMInit() override;
     void ImGuiWMShutdown() override;
@@ -173,5 +181,9 @@ class Fast3dGui : public Ship::Gui {
     int16_t GetIntegerScaleFactor();
 
     std::unordered_map<std::string, Ship::GuiTextureMetadata> mGuiTextures; ///< Cached GPU texture registry.
+
+    // SOH [VR] SoH menu with the Touch controllers (UpdateVrMenu).
+    bool mVrMenuOpen = false;        ///< The menu is open in VR: the GUI renders at the panel size.
+    bool mVrNavKeysSent[8] = {};     ///< Gamepad key state sent to ImGui, per VrMenuInput::NavKey.
 };
 } // namespace Fast

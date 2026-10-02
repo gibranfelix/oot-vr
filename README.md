@@ -55,6 +55,7 @@ holds the shield and uses the items.
 | Both grips (hold) | Hold the sword and the shield. Release the grips to put them away. |
 | A button | The N64 A button: action, talk, roll. |
 | B button | The N64 B button. |
+| Y button | Open or close the SoH menu. |
 | Left Menu button | Start: open the pause screen. |
 | Left grip | In the pause screen, go to the next page. |
 
@@ -63,8 +64,23 @@ front of you with your left hand. To turn, turn your body.
 
 The right thumbstick does not turn the view. To turn with the thumbstick,
 enable **Artificial Turning** in VR Settings. Then the right thumbstick turns
-the view and does not select items. At the moment, you must use a keyboard
-to open VR Settings ([#34](https://github.com/gibranfelix/oot-vr/issues/34)).
+the view and does not select items.
+
+### SoH menu
+
+The SoH menu contains VR Settings and the settings of Ship of Harkinian. Push
+the Y button to open the menu on the floating panel. Push the Y button again to
+close it. While the menu is open, the controls operate the menu, not Link:
+
+| Control | Menu action |
+|---|---|
+| Left thumbstick | Move the selection. |
+| A button | Accept or activate. |
+| B button | Go back or cancel. |
+| Left grip / right grip | Go to the previous tab / the next tab. |
+
+The game does not stop while the menu is open. When you play the ocarina, the
+Y button plays a note and does not open the menu.
 
 ### Ocarina
 

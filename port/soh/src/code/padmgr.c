@@ -326,6 +326,10 @@ void PadMgr_HandleRetraceMsg(PadMgr* padMgr) {
     // PadMgr_ProcessInputs, which derives press/rel). OR'd in, so keyboard/gamepad still work alongside.
     if (VR_IsInitialized() && CVarGetInteger("gVrControllerInput", 1)) {
         OSContPad* vrPad = &padMgr->pads[0];
+        // The left Y button opens the SoH menu, so no gameplay binding gets it. The ocarina set
+        // uses every input: there, Y plays its note and the menu cannot open. Set before the reads
+        // below, which hide the button while it opens the menu.
+        VR_SetMenuButtonEnabled(!VrOcarina_InPlay());
         uint16_t vrL = VR_GetControllerButton(VR_HAND_LEFT);
         uint16_t vrR = VR_GetControllerButton(VR_HAND_RIGHT);
         // Set per hand while the ocarina stick-direction bindings claim that thumbstick (see the
@@ -341,7 +345,8 @@ void PadMgr_HandleRetraceMsg(PadMgr* padMgr) {
             // scheme back and forth from the menu without re-binding anything.
             //
             // CLASSIC (selector off): items are activated by the C buttons you assigned them to.
-            // Defaults: left = Z-target, R-shield, C-left, C-right, Start (stick click), none;
+            // Defaults: left = Z-target, R-shield, C-left, none (Y opens the SoH menu), Start
+            //           (stick click), C-right (menu button);
             //           right = B-sword, none, A, C-down, none, none.
             // C-Up ships deliberately UNBOUND — ocarina notes come from the dedicated OCARINA
             // set below, so no gameplay binding needs to carry a note.
@@ -352,7 +357,7 @@ void PadMgr_HandleRetraceMsg(PadMgr* padMgr) {
                   "gVrBindRMenu" },
             };
             static const s32 sVrBindDefaults[2][6] = {
-                { BTN_Z, BTN_R, BTN_CLEFT, BTN_CRIGHT, BTN_START, 0 },
+                { BTN_Z, BTN_R, BTN_CLEFT, 0, BTN_START, BTN_CRIGHT },
                 { BTN_B, 0, BTN_A, BTN_CDOWN, 0, 0 },
             };
             // SELECTOR (selector on): the Alyx-style selector equips, the sword-hand TRIGGER is
@@ -364,8 +369,8 @@ void PadMgr_HandleRetraceMsg(PadMgr* padMgr) {
             // (VrItemSelect.cpp QuickSwapTick), and a Z on it would blip when one grip lands
             // first. The off-hand grip keeps R, which physical combat retires in play, so it only
             // pages the pause menu. Start is on the left menu button only: a stick click is too
-            // easy to press while running. Keep in sync with sVrInputDefsSelector in
-            // SohMenuVRSettings.cpp.
+            // easy to press while running. Y is unbound: it opens the SoH menu. Keep in sync with
+            // sVrInputDefsSelector in SohMenuVRSettings.cpp.
             static const char* sVrBindSelCvars[2][6] = {
                 { "gVrBindSelLTrigger", "gVrBindSelLGrip", "gVrBindSelLPrimary", "gVrBindSelLSecondary",
                   "gVrBindSelLStickClick", "gVrBindSelLMenu" },
