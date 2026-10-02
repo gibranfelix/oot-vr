@@ -8,6 +8,7 @@
 #include <variant>
 #include <spdlog/fmt/fmt.h>
 #include <tuple>
+#include <vr_interface.h> // SOH [VR]
 
 extern "C" {
 #include "z64.h"
@@ -292,7 +293,29 @@ std::unordered_map<uint32_t, disabledInfo>& Menu::GetDisabledMap() {
     return disabledMap;
 }
 
+#ifdef __ANDROID__
+// SOH [Quest] Settings for a PC window and its system APIs. On the Quest they do nothing, or a wrong
+// API stops the game from starting.
+static bool QuestHidesWidget(const WidgetInfo& widget) {
+    static const char* const sPcOnlyWidgets[] = {
+        "Renderer API (Needs reload)", "Audio API (Needs reload)", "Toggle Fullscreen",
+        "Windowed Fullscreen",         "Allow multi-windows",      "Enable Vsync",
+    };
+    for (const char* name : sPcOnlyWidgets) {
+        if (widget.name == name) {
+            return true;
+        }
+    }
+    return false;
+}
+#endif
+
 void Menu::MenuDrawItem(WidgetInfo& widget, uint32_t width, UIWidgets::Colors menuThemeIndex) {
+#ifdef __ANDROID__
+    if (QuestHidesWidget(widget)) {
+        return;
+    }
+#endif
     disabledTempTooltip = "This setting is disabled because: \n";
     disabledValue = false;
     disabledTooltip = " ";
@@ -512,6 +535,16 @@ void Menu::MenuDrawItem(WidgetInfo& widget, uint32_t width, UIWidgets::Colors me
                 }
                 auto options = std::static_pointer_cast<UIWidgets::WindowButtonOptions>(widget.options);
                 options->color = menuThemeIndex;
+#ifdef __ANDROID__
+                // SOH [Quest] No popout windows: in the headset only the open menu shows on the panel,
+                // and the Touch controllers cannot move between windows. The contents stay in the menu.
+                if (options->embedWindow) {
+                    options->showButton = false;
+                    if (window->IsVisible()) {
+                        window->ToggleVisibility();
+                    }
+                }
+#endif
                 if (options->showButton) {
                     UIWidgets::WindowButton(widget.name.c_str(), widget.cVar, window, *options);
                 }
@@ -676,6 +709,23 @@ void Menu::DrawElement() {
     bool headerSearch = !CVarGetInteger(CVAR_SETTING("Menu.SidebarSearch"), 0);
     if (headerSearch) {
         headerWidth += 200.0f;
+    }
+    // SOH [VR] With the Touch controllers, the grips (gamepad L1/R1) select the previous or next
+    // header tab. ImGui has no tab bar here that the gamepad navigation can step through.
+    if (VR_IsInitialized() && (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_NavEnableGamepad) &&
+        !menuOrder.empty()) {
+        const int tabStep =
+            (int)ImGui::IsKeyPressed(ImGuiKey_GamepadR1, false) - (int)ImGui::IsKeyPressed(ImGuiKey_GamepadL1, false);
+        if (tabStep != 0) {
+            const int tabCount = (int)menuOrder.size();
+            const int tabIndex = (int)GetVectorIndexOf(menuOrder, headerIndex);
+            headerIndex = menuOrder.at(((tabIndex + tabStep) % tabCount + tabCount) % tabCount);
+            if (headerSearch) {
+                menuSearch.Clear();
+            }
+            CVarSetString(headerCvar, headerIndex.c_str());
+            CVarSave();
+        }
     }
     for (auto& label : menuOrder) {
         ImVec2 size = ImGui::CalcTextSize(label.c_str());

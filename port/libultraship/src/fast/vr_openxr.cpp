@@ -340,7 +340,9 @@ static struct {
     // world-locked floating panel instead of the stereo eyes. The last-rendered world frame keeps
     // being submitted behind it with its original pose, so it stays frozen-but-head-tracked.
     bool flat_screen;
-    bool flat_screen_prev;
+    bool flat_screen_prev; // last frame's vr_panel_shown(), to place the panel when it appears
+    // The SoH menu is open: the panel shows the menu (window layer), with or without a 2D context.
+    bool menu_panel;
     XrPosef flat_pose; // panel pose in local_space (RAW tracking coords — quads bypass the snap-turn)
     EyeSwapchain screen_swapchain;
     uint32_t screen_image_index;
@@ -906,6 +908,11 @@ static void vr_reset_snap_turn(); // defined with the snap-turn state below
 // Per-hand thumbstick suppression for modal hand gestures (Alyx-style item selector) —
 // applied at the source in update_input, so every stick consumer inherits it.
 static bool g_stick_suppressed[2] = { false, false };
+
+// The floating panel is up: a 2D context of the game, or the SoH menu.
+static bool vr_panel_shown() {
+    return xr.flat_screen || xr.menu_panel;
+}
 
 static void poll_events() {
     XrEventDataBuffer event = { XR_TYPE_EVENT_DATA_BUFFER };
@@ -1643,6 +1650,7 @@ void vr_shutdown() {
     xr.eyes_ever_rendered = false;
     xr.flat_screen = false;
     xr.flat_screen_prev = false;
+    xr.menu_panel = false;
 
 #if VR_GFX_D3D11
     xr.mirror_srv.Reset();
@@ -1862,7 +1870,7 @@ bool vr_begin_frame() {
     // Flat-screen panel placement: on entering a 2D context, drop the panel in front of the
     // player's current gaze. Uses the RAW located pose — quad layers are submitted in local_space
     // and never include the artificial snap-turn.
-    if (xr.flat_screen && !xr.flat_screen_prev) {
+    if (vr_panel_shown() && !xr.flat_screen_prev) {
         const XrPosef& vp = xr.views[0].pose;
         const glm::vec3 head(0.5f * (xr.views[0].pose.position.x + xr.views[1].pose.position.x),
                              0.5f * (xr.views[0].pose.position.y + xr.views[1].pose.position.y),
@@ -1881,7 +1889,7 @@ bool vr_begin_frame() {
         xr.flat_pose.position = { pos.x, pos.y, pos.z };
         xr.flat_pose.orientation = { q.x, q.y, q.z, q.w };
     }
-    xr.flat_screen_prev = xr.flat_screen;
+    xr.flat_screen_prev = vr_panel_shown();
 
     // Artificial turning (right stick X), the two styles every VR title offers: SNAP latches a
     // discrete turn on a threshold crossing (the stick must return to center before the next
@@ -1891,7 +1899,7 @@ bool vr_begin_frame() {
     // the same head-pivot turn accumulation, so the physics sim and every game-facing pose
     // compose identically. Suspended in flat-screen mode (right stick navigates menus) and in
     // third person (the stock game owns the camera and the right stick is pure C-buttons).
-    if (xr.input_initialized && !xr.flat_screen && xr.first_person && CVarGetInteger("gVrSnapTurnOn", 0)) {
+    if (xr.input_initialized && !vr_panel_shown() && xr.first_person && CVarGetInteger("gVrSnapTurnOn", 0)) {
         static int snap_latch = 0;
         const float sx = xr.thumbstick_x[1];
         if (CVarGetInteger("gVrTurnStyle", 0) == 1) {
@@ -1926,7 +1934,7 @@ bool vr_begin_frame() {
     // cone the world is left completely alone, so glancing around costs nothing and there is no
     // constant micro-rotation to make anyone sick; only the excess past the cone is taken out, and
     // never faster than the configured rate. Yaw only — pitch and roll are the player's alone.
-    if (xr.input_initialized && !xr.flat_screen && xr.first_person && g_lockon_ttl > 0.0f) {
+    if (xr.input_initialized && !vr_panel_shown() && xr.first_person && g_lockon_ttl > 0.0f) {
         float dt = xr.frame_state.predictedDisplayPeriod > 0
                        ? (float)((double)xr.frame_state.predictedDisplayPeriod * 1e-9)
                        : 1.0f / (float)vr_get_refresh_rate();
@@ -1991,7 +1999,7 @@ bool vr_begin_frame() {
     // mode, and on stereo-divisor reprojection frames, the projection layer keeps re-submitting the
     // last world frame described by the frustum it was rendered from, so the compositor reprojects
     // it correctly instead of stretching it onto a pose it never matched.
-    const bool refresh_submit = !xr.flat_screen && xr.plan_render_eyes;
+    const bool refresh_submit = !vr_panel_shown() && xr.plan_render_eyes;
     xr.head_pose_raw.orientation = xr.views[0].pose.orientation;
     xr.head_pose_raw.position = { 0.5f * (xr.views[0].pose.position.x + xr.views[1].pose.position.x),
                                   0.5f * (xr.views[0].pose.position.y + xr.views[1].pose.position.y),
@@ -2362,14 +2370,15 @@ void vr_end_frame() {
     if (xr.eyes_ever_rendered) {
         layers[layer_count++] = reinterpret_cast<const XrCompositionLayerBaseHeader*>(&projection_layer);
     }
-    if (xr.flat_screen && xr.screen_ever_rendered) {
+    if (vr_panel_shown() && xr.screen_ever_rendered) {
         layers[layer_count++] = reinterpret_cast<const XrCompositionLayerBaseHeader*>(&screen_layer);
     }
     // Same guard as the projection layer: the HUD quad's swapchain is uninitialised until the
     // first HUD pass, and with per-tick HUD rendering that may be a few frames in. Also skip while
     // the game has detached the overlay (hud_commands NULL — flat-screen contexts route it into
-    // the panel instead), so a stale HUD image doesn't float over the pause menu.
-    if (xr.hud_ever_rendered && xr.hud_commands != nullptr) {
+    // the panel instead), so a stale HUD image doesn't float over the pause menu. Also skip while the
+    // SoH menu is on the panel: the HUD would cover the menu.
+    if (xr.hud_ever_rendered && xr.hud_commands != nullptr && !xr.menu_panel) {
         for (uint32_t i = 0; i < hud_layer_count; i++) {
             layers[layer_count++] = reinterpret_cast<const XrCompositionLayerBaseHeader*>(&hud_layers[i]);
         }
@@ -3192,6 +3201,19 @@ bool vr_get_flat_screen() {
     return xr.initialized && xr.enabled && xr.flat_screen;
 }
 
+void vr_set_menu_panel(bool enabled) {
+    xr.menu_panel = enabled;
+}
+
+bool vr_get_panel_visible() {
+    return xr.initialized && xr.enabled && vr_panel_shown();
+}
+
+void vr_get_screen_size(uint32_t* w, uint32_t* h) {
+    *w = xr.screen_swapchain.width;
+    *h = xr.screen_swapchain.height;
+}
+
 // Render the game's full frame into the screen swapchain. Reuses the HUD's "2D rendering" flag so
 // gfx_pc uses the normal flat projection instead of the per-eye VR overrides.
 void vr_begin_screen() {
@@ -3396,6 +3418,9 @@ bool vr_is_rendering_screen() { return false; }
 float vr_get_hud_aspect() { return 0.0f; }
 void vr_set_flat_screen(bool) {}
 bool vr_get_flat_screen() { return false; }
+void vr_set_menu_panel(bool) {}
+bool vr_get_panel_visible() { return false; }
+void vr_get_screen_size(uint32_t* w, uint32_t* h) { *w = 1280; *h = 960; }
 void vr_begin_screen() {}
 void vr_end_screen() {}
 void vr_get_2d_target_size(uint32_t* w, uint32_t* h) { *w = 1024; *h = 768; }

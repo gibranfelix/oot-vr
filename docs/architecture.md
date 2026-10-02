@@ -47,6 +47,7 @@ The VR code that is new has its own files:
 | `port/libultraship/src/fast/vr_interface.cpp` | The C interface that the game calls (`VR_*` functions) |
 | `port/libultraship/include/vr_interface.h` | The declarations of the `VR_*` functions, with comments |
 | `port/libultraship/src/fast/vr_physics.cpp` | The collision mesh for the physical hands |
+| `port/libultraship/src/fast/vr_menu_input.cpp` | The SoH menu with the Touch controllers: the Y toggle, the menu navigation, and the input filter for the game |
 | `port/soh/soh/Enhancements/vr-combat/` | Sword swing, shield, and item selection |
 | `port/soh/soh/SohGui/SohMenuVRSettings.cpp` | The VR settings menu |
 
@@ -70,6 +71,32 @@ Each VR pass renders into an OpenXR swapchain. The frame buffers of the
 - `XR_USE_GRAPHICS_API_OPENGL_ES`: the Quest path. This path works.
 - `XR_USE_GRAPHICS_API_D3D11`, under `ENABLE_DX11`: the Windows path. We
   changed this path but we did not compile it again. Think that it is broken.
+
+## SoH menu with the Touch controllers
+
+The SoH menu is an ImGui window. Without VR, the companion window on the PC
+shows it. In VR, the window layer draws the menu onto the floating panel.
+
+1. `Fast3dGui::UpdateVrMenu` runs at the start of each frame. It reads the
+   controllers and opens or closes the menu on a push of the left Y button.
+2. While the menu is open, it sends the controls to ImGui as gamepad keys.
+   ImGui then moves the selection and activates the items. `Menu.cpp` changes
+   the tab on the L1 and R1 keys (the grips).
+3. `Fast3dWindow` runs the GUI frame on each frame. After the GUI frame, it
+   draws the result onto the panel swapchain. While the menu is open, the GUI
+   frame has the size of the panel swapchain.
+4. `VR_GetControllerButton` and the other `VR_Get*` input functions send the
+   controls through `VrMenuInput`. While the menu is open, the game sees
+   released controls. A button or a thumbstick that is held when the menu
+   closes stays released for the game until the player releases it.
+
+The left Y button is not available to the gameplay bindings. In the ocarina
+set, the game gets the Y button back (`VR_SetMenuButtonEnabled`). The binding
+listener in VR Settings reads the raw controls (`VR_GetControllerButtonRaw`).
+It stops the menu navigation with `VR_HoldMenuNavigation`.
+
+The host unit tests for `VrMenuInput` are in
+`port/libultraship/tests/vr_menu_input_tests.cpp`.
 
 ## Camera and movement
 

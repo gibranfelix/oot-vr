@@ -25,6 +25,8 @@ add_executable(lus_tests
     resource_type_tests.cpp
     archive_self_tests.cpp
     host_pointer_tests.cpp
+    # SOH [VR] Touch controller menu input (pure logic, no OpenXR)
+    vr_menu_input_tests.cpp
 )
 
 if(ENABLE_SCRIPTING)

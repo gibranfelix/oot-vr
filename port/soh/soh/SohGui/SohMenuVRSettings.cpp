@@ -91,8 +91,8 @@ struct VrInputDef {
 };
 static const VrInputDef sVrInputDefsClassic[] = {
     { "L Trigger", "gVrBindLTrigger", BTN_Z },      { "L Grip", "gVrBindLGrip", BTN_R },
-    { "X", "gVrBindLPrimary", BTN_CLEFT },          { "Y", "gVrBindLSecondary", BTN_CRIGHT },
-    { "L Stick", "gVrBindLStickClick", BTN_START }, { "L Menu", "gVrBindLMenu", 0 },
+    { "X", "gVrBindLPrimary", BTN_CLEFT },          { "Y", "gVrBindLSecondary", 0 },
+    { "L Stick", "gVrBindLStickClick", BTN_START }, { "L Menu", "gVrBindLMenu", BTN_CRIGHT },
     { "R Trigger", "gVrBindRTrigger", BTN_B },      { "R Grip", "gVrBindRGrip", 0 },
     { "A", "gVrBindRPrimary", BTN_A },              { "B", "gVrBindRSecondary", BTN_CDOWN },
     { "R Stick", "gVrBindRStickClick", 0 },         { "R Menu", "gVrBindRMenu", 0 },
@@ -153,9 +153,13 @@ static int VrStickDir(float x, float y) {
 }
 // Indices 0 and 6 are the two triggers: reserved by selector mode, so they are not bindable —
 // except in the ocarina set, where the reservations don't apply and triggers are prime note real
-// estate.
+// estate. Index 3 is the left Y button: it opens the SoH menu in both gameplay sets (padmgr.c,
+// VR_SetMenuButtonEnabled), so it is free only in the ocarina set.
 static bool VrInputReserved(int idx) {
-    return !sVrEditOcarina && VrSelectorProfile() && ((idx == 0) || (idx == 6));
+    if (sVrEditOcarina) {
+        return false;
+    }
+    return (idx == 3) || (VrSelectorProfile() && ((idx == 0) || (idx == 6)));
 }
 
 struct VrN64RowDef {
@@ -172,6 +176,10 @@ static uint16_t sVrListenPrevBtn[2] = { 0, 0 };
 // Previous frame's stick direction per hand (VrStickDir result), for the same rising-edge rule:
 // a stick already deflected when listening starts must not instantly bind.
 static int sVrListenPrevStickDir[2] = { -1, -1 };
+// When listening started (ImGui time). With the Touch controllers, the menu navigation stands down
+// while listening (every input can be the one to bind), so listening also ends after a time.
+static double sVrListenStartTime = 0.0;
+static const double kVrListenTimeout = 5.0;
 
 static void VrInputBindingRow(const VrN64RowDef& row) {
     ImGui::PushID(row.label);
@@ -210,17 +218,25 @@ static void VrInputBindingRow(const VrN64RowDef& row) {
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.22f, 0.48f, 0.78f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.26f, 0.55f, 0.88f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.12f, 0.30f, 0.55f, 1.0f));
-        if (ImGui::SmallButton("Press a VR input... (click or Esc to cancel)")) {
+        char listenLabel[64];
+        snprintf(listenLabel, sizeof(listenLabel), "Press a VR input... (wait %.0f s, click, or Esc to cancel)",
+                 kVrListenTimeout);
+        if (ImGui::SmallButton(listenLabel)) {
             sVrListenRowMask = 0;
         }
         ImGui::PopStyleColor(3);
-        if (ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
+        if (ImGui::IsKeyPressed(ImGuiKey_Escape, false) ||
+            (ImGui::GetTime() - sVrListenStartTime) > kVrListenTimeout) {
             sVrListenRowMask = 0;
+        }
+        if (sVrListenRowMask != 0) {
+            // The listener reads the raw controllers: hold the menu navigation and the Y toggle.
+            VR_HoldMenuNavigation();
         }
         static const uint16_t sVrBtnBits[6] = { VR_BTN_TRIGGER,   VR_BTN_GRIP,       VR_BTN_PRIMARY,
                                                 VR_BTN_SECONDARY, VR_BTN_THUMBCLICK, VR_BTN_MENU };
         for (int hand = 0; hand < 2 && sVrListenRowMask != 0; hand++) {
-            uint16_t curBtn = VR_GetControllerButton(hand);
+            uint16_t curBtn = VR_GetControllerButtonRaw(hand);
             uint16_t pressed = curBtn & ~sVrListenPrevBtn[hand];
             sVrListenPrevBtn[hand] = curBtn;
             for (int b = 0; b < 6; b++) {
@@ -241,7 +257,7 @@ static void VrInputBindingRow(const VrN64RowDef& row) {
         // threshold binds this row to that direction.
         for (int hand = 0; sVrEditOcarina && hand < 2 && sVrListenRowMask != 0; hand++) {
             float sx = 0.0f, sy = 0.0f;
-            VR_GetThumbstick(hand, &sx, &sy);
+            VR_GetThumbstickRaw(hand, &sx, &sy);
             const int dir = VrStickDir(sx, sy);
             const bool fresh = (dir >= 0) && (dir != sVrListenPrevStickDir[hand]);
             sVrListenPrevStickDir[hand] = dir;
@@ -260,10 +276,11 @@ static void VrInputBindingRow(const VrN64RowDef& row) {
         if (ImGui::SmallButton("+")) {
             if (VR_IsInitialized()) {
                 sVrListenRowMask = row.mask;
+                sVrListenStartTime = ImGui::GetTime();
                 for (int hand = 0; hand < 2; hand++) {
-                    sVrListenPrevBtn[hand] = VR_GetControllerButton(hand);
+                    sVrListenPrevBtn[hand] = VR_GetControllerButtonRaw(hand);
                     float sx = 0.0f, sy = 0.0f;
-                    VR_GetThumbstick(hand, &sx, &sy);
+                    VR_GetThumbstickRaw(hand, &sx, &sy);
                     sVrListenPrevStickDir[hand] = VrStickDir(sx, sy);
                 }
             } else {
@@ -363,10 +380,11 @@ static void VrInputBindings(WidgetInfo& info) {
         ImGui::TextWrapped("Editing the ITEM SELECTOR binding set. Both triggers are reserved: the "
                            "sword-hand trigger is Z-target, and the other trigger uses the held "
                            "item. C buttons no longer pull items out — the selector and the right "
-                           "stick do that — so they are free.");
+                           "stick do that — so they are free. Y is reserved: it opens this menu.");
     } else {
         ImGui::TextWrapped("Editing the CLASSIC binding set: items are used by pressing the C "
-                           "button you assigned them to in the inventory.");
+                           "button you assigned them to in the inventory. Y is reserved: it opens "
+                           "this menu.");
     }
     ImGui::Separator();
 
@@ -488,8 +506,13 @@ void SohMenu::AddMenuVRSettings() {
     AddSidebarEntry("VR Settings", "General", 1);
     WidgetPath generalPath = { "VR Settings", "General", SECTION_COLUMN_1 };
 
-    AddWidget(generalPath, "VR Mode (F9)", WIDGET_CVAR_CHECKBOX)
+    AddWidget(generalPath, "VR Mode", WIDGET_CVAR_CHECKBOX)
         .CVar("gVrEnabled")
+#ifdef __ANDROID__
+        // On the Quest there is no flat-screen play: with VR off the headset shows nothing, the
+        // Touch controllers cannot open this menu again, and the next start stays out of VR.
+        .PreFunc([](WidgetInfo& info) { info.isHidden = true; })
+#endif
         .Options(CheckboxOptions()
                      .DefaultValue(true)
                      .Tooltip("Switch between VR and regular flat-screen play at any time - F9 does "

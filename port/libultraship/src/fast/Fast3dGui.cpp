@@ -9,6 +9,10 @@
 #include "fast/resource/type/Texture.h"
 #include "ship/window/gui/resource/GuiTextureFactory.h"
 #include "ship/resource/File.h"
+// SOH [VR] SoH menu with the Touch controllers
+#include "fast/vr_menu_input.h"
+#include "fast/vr_openxr.h"
+#include "vr_interface.h"
 
 #ifdef __APPLE__
 #include <SDL_hints.h>
@@ -235,6 +239,73 @@ void Fast3dGui::ImGuiWMNewFrame() {
         default:
             break;
     }
+
+    // SOH [VR] While the menu is open in VR, the GUI lays out for the floating panel, not for the
+    // companion window that nobody sees in the headset. The Touch controllers are the gamepad: the
+    // backend above clears HasGamepad when it finds no SDL gamepad, so set it again after it.
+    if (mVrMenuOpen) {
+        uint32_t width = 0;
+        uint32_t height = 0;
+        vr_get_screen_size(&width, &height);
+        ImGuiIO& io = ImGui::GetIO();
+        io.DisplaySize = ImVec2(static_cast<float>(width), static_cast<float>(height));
+        io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
+        io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
+    }
+}
+
+// SOH [VR] See Fast3dGui.h. Runs every frame, also on the frames that skip the GUI frame, so that a
+// short push of the left Y button is not lost. The key events wait in the ImGui input queue until
+// the next GUI frame.
+bool Fast3dGui::UpdateVrMenu(bool vr) {
+    static const ImGuiKey kNavImGuiKeys[VrMenuInput::kNavKeyCount] = {
+        ImGuiKey_GamepadDpadUp,   ImGuiKey_GamepadDpadDown,  ImGuiKey_GamepadDpadLeft, ImGuiKey_GamepadDpadRight,
+        ImGuiKey_GamepadFaceDown, ImGuiKey_GamepadFaceRight, ImGuiKey_GamepadL1,       ImGuiKey_GamepadR1,
+    };
+    static_assert(sizeof(mVrNavKeysSent) / sizeof(mVrNavKeysSent[0]) == VrMenuInput::kNavKeyCount);
+
+    VrMenuInput& input = vr_menu_input();
+    const std::shared_ptr<Ship::GuiWindow> menu = GetMenu();
+    bool open = false;
+    if (vr && menu != nullptr) {
+        const uint16_t buttons[2] = { vr_get_controller_buttons(VR_HAND_LEFT),
+                                      vr_get_controller_buttons(VR_HAND_RIGHT) };
+        float stickX = 0.0f;
+        float stickY = 0.0f;
+        vr_get_thumbstick(VR_HAND_LEFT, &stickX, &stickY);
+        if (input.UpdateFrame(buttons, stickX, stickY, menu->IsVisible())) {
+            menu->ToggleVisibility();
+        }
+        open = menu->IsVisible();
+    }
+
+    ImGuiIO& io = ImGui::GetIO();
+    for (int key = 0; key < VrMenuInput::kNavKeyCount; key++) {
+        const bool down = open && input.NavKeyDown(static_cast<VrMenuInput::NavKey>(key));
+        if (down != mVrNavKeysSent[key]) {
+            io.AddKeyEvent(kNavImGuiKeys[key], down);
+            mVrNavKeysSent[key] = down;
+        }
+    }
+
+    if (open) {
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+    } else if (mVrMenuOpen) {
+        // Closed: back to the gamepad navigation setting of the player.
+        if (Ship::Context::GetRawInstance()->GetConsoleVariables()->GetInteger(CVAR_IMGUI_CONTROLLER_NAV, 0) &&
+            GetMenuOrMenubarVisible()) {
+            io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+        } else {
+            io.ConfigFlags &= ~ImGuiConfigFlags_NavEnableGamepad;
+        }
+    }
+    mVrMenuOpen = open;
+    vr_set_menu_panel(open);
+    return open;
+}
+
+void Fast3dGui::RenderDrawDataToCurrentTarget() {
+    ImGuiRenderDrawData(ImGui::GetDrawData());
 }
 
 // Bind ImGui's SDL2 gamepad backend to the controller(s) the

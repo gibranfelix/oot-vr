@@ -1,4 +1,5 @@
 ﻿#include "vr_interface.h"
+#include "fast/vr_menu_input.h"
 #include "fast/vr_openxr.h"
 #include "fast/vr_physics.h"
 
@@ -129,11 +130,28 @@ bool VR_IsHandActive(int hand) {
 }
 
 uint16_t VR_GetControllerButton(int hand) {
-    return vr_get_controller_buttons(hand);
+    return vr_menu_input().FilterGameButtons(hand, vr_get_controller_buttons(hand));
 }
 
 void VR_GetThumbstick(int hand, float* x, float* y) {
     vr_get_thumbstick(hand, x, y);
+    vr_menu_input().FilterGameStick(hand, x, y);
+}
+
+uint16_t VR_GetControllerButtonRaw(int hand) {
+    return vr_get_controller_buttons(hand);
+}
+
+void VR_GetThumbstickRaw(int hand, float* x, float* y) {
+    vr_get_thumbstick(hand, x, y);
+}
+
+void VR_SetMenuButtonEnabled(bool enabled) {
+    vr_menu_input().SetOpenAllowed(enabled);
+}
+
+void VR_HoldMenuNavigation(void) {
+    vr_menu_input().HoldNavigation();
 }
 
 void VR_SetStickSuppressed(int hand, int32_t suppressed) {
@@ -141,11 +159,11 @@ void VR_SetStickSuppressed(int hand, int32_t suppressed) {
 }
 
 float VR_GetTrigger(int hand) {
-    return vr_get_trigger(hand);
+    return (vr_menu_input().GameHiddenButtons(hand) & VR_BTN_TRIGGER) ? 0.0f : vr_get_trigger(hand);
 }
 
 float VR_GetGrip(int hand) {
-    return vr_get_grip(hand);
+    return (vr_menu_input().GameHiddenButtons(hand) & VR_BTN_GRIP) ? 0.0f : vr_get_grip(hand);
 }
 
 bool VR_GetHandMatrix(int hand, float out[4][4]) {
