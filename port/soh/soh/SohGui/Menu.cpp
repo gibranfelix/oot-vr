@@ -293,7 +293,29 @@ std::unordered_map<uint32_t, disabledInfo>& Menu::GetDisabledMap() {
     return disabledMap;
 }
 
+#ifdef __ANDROID__
+// SOH [Quest] Settings for a PC window and its system APIs. On the Quest they do nothing, or a wrong
+// API stops the game from starting.
+static bool QuestHidesWidget(const WidgetInfo& widget) {
+    static const char* const sPcOnlyWidgets[] = {
+        "Renderer API (Needs reload)", "Audio API (Needs reload)", "Toggle Fullscreen",
+        "Windowed Fullscreen",         "Allow multi-windows",      "Enable Vsync",
+    };
+    for (const char* name : sPcOnlyWidgets) {
+        if (widget.name == name) {
+            return true;
+        }
+    }
+    return false;
+}
+#endif
+
 void Menu::MenuDrawItem(WidgetInfo& widget, uint32_t width, UIWidgets::Colors menuThemeIndex) {
+#ifdef __ANDROID__
+    if (QuestHidesWidget(widget)) {
+        return;
+    }
+#endif
     disabledTempTooltip = "This setting is disabled because: \n";
     disabledValue = false;
     disabledTooltip = " ";
@@ -513,6 +535,16 @@ void Menu::MenuDrawItem(WidgetInfo& widget, uint32_t width, UIWidgets::Colors me
                 }
                 auto options = std::static_pointer_cast<UIWidgets::WindowButtonOptions>(widget.options);
                 options->color = menuThemeIndex;
+#ifdef __ANDROID__
+                // SOH [Quest] No popout windows: in the headset only the open menu shows on the panel,
+                // and the Touch controllers cannot move between windows. The contents stay in the menu.
+                if (options->embedWindow) {
+                    options->showButton = false;
+                    if (window->IsVisible()) {
+                        window->ToggleVisibility();
+                    }
+                }
+#endif
                 if (options->showButton) {
                     UIWidgets::WindowButton(widget.name.c_str(), widget.cVar, window, *options);
                 }
