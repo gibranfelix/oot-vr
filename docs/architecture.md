@@ -90,8 +90,8 @@ shows it. In VR, the window layer draws the menu onto the floating panel.
    released controls. A button or a thumbstick that is held when the menu
    closes stays released for the game until the player releases it.
 
-The left Y button is not available to the gameplay bindings. In the ocarina
-set, the game gets the Y button back (`VR_SetMenuButtonEnabled`). The binding
+The left Y button is not available to the bindings, also in the ocarina set.
+The binding
 listener in VR Settings reads the raw controls (`VR_GetControllerButtonRaw`).
 It stops the menu navigation with `VR_HoldMenuNavigation`.
 

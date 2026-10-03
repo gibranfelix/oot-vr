@@ -127,8 +127,8 @@ float    VR_GetGrip(int hand);
 // Raw controller state, never filtered. Only for menu code that reads the controllers itself.
 uint16_t VR_GetControllerButtonRaw(int hand);
 void     VR_GetThumbstickRaw(int hand, float* x, float* y);
-// The game sets this every tick. False gives the left Y button back to the game (the ocarina set
-// uses every input); the menu cannot open then, but an open menu still closes.
+// True by default. False gives the left Y button back to the game; the menu cannot open then, but
+// an open menu still closes. The game does not use it now: Y opens the menu at all times.
 void     VR_SetMenuButtonEnabled(bool enabled);
 // Call each frame while menu code reads the raw controllers (the VR Inputs binding listener): menu
 // navigation and the Y toggle stand down for the next frame.

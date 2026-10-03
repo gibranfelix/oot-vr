@@ -60,11 +60,23 @@ holds the shield and uses the items.
 | Left grip | In the pause screen, go to the next page. |
 
 To attack, swing the sword with your right hand. To block, hold the shield in
-front of you with your left hand. To turn, turn your body.
+front of you with your left hand.
 
-The right thumbstick does not turn the view. To turn with the thumbstick,
-enable **Artificial Turning** in VR Settings. Then the right thumbstick turns
-the view and does not select items.
+### Control schemes
+
+At the first start, the game asks how you want to turn. You can change the
+answer in VR Settings > VR Inputs > **Control Scheme**:
+
+| Scheme | How you turn | Right thumbstick |
+|---|---|---|
+| Default | Turn your body. | Put the item of C-Left, C-Right, or C-Down in your hand. |
+| Shipwright-VR | Push the right thumbstick. The view turns smoothly. | Turns the view. Use the item selector to take items. |
+
+The two schemes use the same buttons. The Shipwright-VR scheme comes from the
+PCVR mod [Shipwright-VR](https://github.com/ShinyWindow/Shipwright-VR).
+
+When you change a binding or a turn setting, Control Scheme shows **Custom**.
+Select **Reset to Scheme** to go back to the scheme.
 
 ### SoH menu
 
@@ -79,21 +91,18 @@ close it. While the menu is open, the controls operate the menu, not Link:
 | B button | Go back or cancel. |
 | Left grip / right grip | Go to the previous tab / the next tab. |
 
-The game does not stop while the menu is open. When you play the ocarina, the
-Y button plays a note and does not open the menu. In the classic control
+The game does not stop while the menu is open. The Y button also opens the
+menu when you play the ocarina. In the classic control
 scheme, C-Right is on the left Menu button because the Y button opens the menu.
 
 ### Ocarina
 
-When you play the ocarina, the controls change:
+When you play the ocarina, the controls change. They are the same as on the N64
+controller:
 
 | Note | Control |
 |---|---|
-| A (D4) | Right trigger |
-| C-Down (F4) | Left trigger |
-| C-Right (A4) | A button |
-| C-Left (B4) | X button |
-| C-Up (D5) | Y button |
+| A (D4) | A button |
 | C-Up, C-Down, C-Left, C-Right | Right thumbstick ↑ ↓ ← → |
 | Half step up / down | Right grip / left grip |
 | Put the ocarina away | B button |
