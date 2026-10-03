@@ -326,10 +326,8 @@ void PadMgr_HandleRetraceMsg(PadMgr* padMgr) {
     // PadMgr_ProcessInputs, which derives press/rel). OR'd in, so keyboard/gamepad still work alongside.
     if (VR_IsInitialized() && CVarGetInteger("gVrControllerInput", 1)) {
         OSContPad* vrPad = &padMgr->pads[0];
-        // The left Y button opens the SoH menu, so no gameplay binding gets it. The ocarina set
-        // uses every input: there, Y plays its note and the menu cannot open. Set before the reads
-        // below, which hide the button while it opens the menu.
-        VR_SetMenuButtonEnabled(!VrOcarina_InPlay());
+        // The left Y button opens the SoH menu at all times, so no binding set gets it: the reads
+        // below hide it from the game.
         uint16_t vrL = VR_GetControllerButton(VR_HAND_LEFT);
         uint16_t vrR = VR_GetControllerButton(VR_HAND_RIGHT);
         // Set per hand while the ocarina stick-direction bindings claim that thumbstick (see the
@@ -386,12 +384,12 @@ void PadMgr_HandleRetraceMsg(PadMgr* padMgr) {
             // selector mode the C notes had NOTHING to live on, which made the ocarina unplayable.
             // While VrOcarina_InPlay() this set replaces the gameplay bindings outright and every
             // selector reservation stands down (both triggers, the selector click, the held-item
-            // trigger mirror — see VrItemSelect.cpp), so notes may sit anywhere. Defaults, notes
-            // low to high: D4 (A) = R trigger, F4 (C-down) = L trigger, A4 (C-right) = A,
-            // B4 (C-left) = X, D5 (C-up) = Y; sharpen (R) = right grip, flatten (Z) = left grip;
-            // B (put the ocarina away) = B button. Pitch bend rides the left thumbstick, which is
-            // already the N64 analog stick below. Keep in sync with sVrInputDefsOcarina in
-            // SohMenuVRSettings.cpp.
+            // trigger mirror — see VrItemSelect.cpp), so notes may sit anywhere. Defaults follow
+            // the N64 pad: the A note = A button, the four C notes = the right thumbstick (the
+            // stick-direction set below); sharpen (R) = right grip, flatten (Z) = left grip;
+            // B (put the ocarina away) = B button. The triggers and X stay free, and Y opens the
+            // SoH menu. Pitch bend rides the left thumbstick, which is already the N64 analog
+            // stick below. Keep in sync with sVrInputDefsOcarina in SohMenuVRSettings.cpp.
             static const char* sVrBindOcaCvars[2][6] = {
                 { "gVrBindOcaLTrigger", "gVrBindOcaLGrip", "gVrBindOcaLPrimary", "gVrBindOcaLSecondary",
                   "gVrBindOcaLStickClick", "gVrBindOcaLMenu" },
@@ -399,8 +397,8 @@ void PadMgr_HandleRetraceMsg(PadMgr* padMgr) {
                   "gVrBindOcaRStickClick", "gVrBindOcaRMenu" },
             };
             static const s32 sVrBindOcaDefaults[2][6] = {
-                { BTN_CDOWN, BTN_Z, BTN_CLEFT, BTN_CUP, 0, 0 },
-                { BTN_A, BTN_R, BTN_CRIGHT, BTN_B, 0, 0 },
+                { 0, BTN_Z, 0, 0, 0, 0 },
+                { 0, BTN_R, BTN_A, BTN_B, 0, 0 },
             };
             // OCARINA stick directions: in this set ONLY, the four cardinal deflections of each
             // thumbstick are bindable inputs too (gameplay sticks keep their stock jobs: move and

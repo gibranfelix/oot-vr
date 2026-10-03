@@ -1,6 +1,10 @@
 #include "SohMenu.h"
+#include "soh/Enhancements/game-interactor/GameInteractor.h"
+#include "soh/OTRGlobals.h"
+#include "soh/ShipInit.hpp"
 #include <libultraship/bridge/consolevariablebridge.h>
 #include <imgui.h>
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -106,11 +110,11 @@ static const VrInputDef sVrInputDefsSelector[] = {
     { "R Stick", "gVrBindSelRStickClick", 0 },             { "R Menu", "gVrBindSelRMenu", 0 },
 };
 static const VrInputDef sVrInputDefsOcarina[] = {
-    { "L Trigger", "gVrBindOcaLTrigger", BTN_CDOWN }, { "L Grip", "gVrBindOcaLGrip", BTN_Z },
-    { "X", "gVrBindOcaLPrimary", BTN_CLEFT },         { "Y", "gVrBindOcaLSecondary", BTN_CUP },
+    { "L Trigger", "gVrBindOcaLTrigger", 0 },         { "L Grip", "gVrBindOcaLGrip", BTN_Z },
+    { "X", "gVrBindOcaLPrimary", 0 },                 { "Y", "gVrBindOcaLSecondary", 0 },
     { "L Stick", "gVrBindOcaLStickClick", 0 },        { "L Menu", "gVrBindOcaLMenu", 0 },
-    { "R Trigger", "gVrBindOcaRTrigger", BTN_A },     { "R Grip", "gVrBindOcaRGrip", BTN_R },
-    { "A", "gVrBindOcaRPrimary", BTN_CRIGHT },        { "B", "gVrBindOcaRSecondary", BTN_B },
+    { "R Trigger", "gVrBindOcaRTrigger", 0 },         { "R Grip", "gVrBindOcaRGrip", BTN_R },
+    { "A", "gVrBindOcaRPrimary", BTN_A },             { "B", "gVrBindOcaRSecondary", BTN_B },
     { "R Stick", "gVrBindOcaRStickClick", 0 },        { "R Menu", "gVrBindOcaRMenu", 0 },
     // Stick DIRECTIONS, bindable in the ocarina set only (indices 12+, order up/down/left/right
     // per hand — the listener below computes 12 + hand * 4 + dir). A hand with any direction
@@ -153,13 +157,16 @@ static int VrStickDir(float x, float y) {
 }
 // Indices 0 and 6 are the two triggers: reserved by selector mode, so they are not bindable —
 // except in the ocarina set, where the reservations don't apply and triggers are prime note real
-// estate. Index 3 is the left Y button: it opens the SoH menu in both gameplay sets (padmgr.c,
-// VR_SetMenuButtonEnabled), so it is free only in the ocarina set.
+// estate. Index 3 is the left Y button: it opens the SoH menu at all times (vr_menu_input.cpp
+// hides it from the game), so no set can bind it.
 static bool VrInputReserved(int idx) {
+    if (idx == 3) {
+        return true;
+    }
     if (sVrEditOcarina) {
         return false;
     }
-    return (idx == 3) || (VrSelectorProfile() && ((idx == 0) || (idx == 6)));
+    return VrSelectorProfile() && ((idx == 0) || (idx == 6));
 }
 
 struct VrN64RowDef {
@@ -243,7 +250,7 @@ static void VrInputBindingRow(const VrN64RowDef& row) {
                 if (pressed & sVrBtnBits[b]) {
                     const int idx = hand * 6 + b;
                     if (VrInputReserved(idx)) {
-                        continue; // reserved for using the held item — keep listening
+                        continue; // reserved (the held item or the SoH menu) — keep listening
                     }
                     const VrInputDef& input = VrInputDefs()[idx];
                     CVarSetInteger(input.cvar, CVarGetInteger(input.cvar, input.defaultMask) | row.mask);
@@ -365,8 +372,8 @@ static void VrInputBindings(WidgetInfo& info) {
         ImGui::TextWrapped("Editing the OCARINA binding set, used whenever the ocarina is out — in "
                            "either control scheme. Notes run low to high: D4, F4, A4, B4, D5. The "
                            "left thumbstick bends pitch, as the analog stick always did. Triggers "
-                           "are NOT reserved here: while playing, every input belongs to the "
-                           "ocarina. Thumbstick DIRECTIONS are bindable too (flick the stick while "
+                           "are NOT reserved here: while playing, every input except Y belongs to "
+                           "the ocarina. Y opens this menu. Thumbstick DIRECTIONS are bindable too (flick the stick while "
                            "a row is listening); binding any direction on a stick gives that whole "
                            "stick to notes while playing — left stick loses pitch bend, right "
                            "stick loses its C-stick role.");
@@ -399,6 +406,156 @@ static void VrInputBindings(WidgetInfo& info) {
         }
     }
 }
+
+// --- Control schemes (top of VR Inputs). A scheme is a value for the turning CVars, with the item
+// selector on and every selector and ocarina binding at its default: both schemes share the
+// bindings, they differ in what the right stick does in first person. Selecting a scheme writes
+// all of it; any later change to those CVars shows "Custom" until Reset to Scheme. gVrControlScheme
+// keeps the last selected scheme, gVrControlSchemeAsked records the first-start question.
+struct VrControlScheme {
+    const char* name;
+    const char* summary;
+    int32_t turnOn;
+    int32_t turnStyle;
+};
+static const VrControlScheme sVrControlSchemes[] = {
+    { "Default", "Turn with your body. Flick the right stick to take a C item into your hand.", 0, 0 },
+    { "Shipwright-VR", "Turn smoothly with the right stick. Use the item selector to take items.", 1, 1 },
+};
+static const int kVrControlSchemeCount = sizeof(sVrControlSchemes) / sizeof(sVrControlSchemes[0]);
+
+static bool VrBindingsAtDefault(const VrInputDef* defs, int count) {
+    for (int i = 0; i < count; i++) {
+        if (CVarGetInteger(defs[i].cvar, defs[i].defaultMask) != defs[i].defaultMask) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// The scheme that the current settings match, or -1 (Custom).
+static int VrCurrentControlScheme() {
+    if (!VrSelectorProfile() || !VrBindingsAtDefault(sVrInputDefsSelector, kVrButtonInputCount) ||
+        !VrBindingsAtDefault(sVrInputDefsOcarina, kVrOcarinaInputCount)) {
+        return -1;
+    }
+    const int32_t turnOn = CVarGetInteger("gVrSnapTurnOn", 0) != 0;
+    for (int i = 0; i < kVrControlSchemeCount; i++) {
+        const VrControlScheme& scheme = sVrControlSchemes[i];
+        if (turnOn == scheme.turnOn && (!turnOn || CVarGetInteger("gVrTurnStyle", 0) == scheme.turnStyle)) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+static void VrApplyControlScheme(int idx) {
+    const VrControlScheme& scheme = sVrControlSchemes[idx];
+    CVarSetInteger("gVrControlScheme", idx);
+    CVarSetInteger("gVrItemSelect", 1);
+    CVarSetInteger("gVrSnapTurnOn", scheme.turnOn);
+    CVarSetInteger("gVrTurnStyle", scheme.turnStyle);
+    for (int i = 0; i < kVrButtonInputCount; i++) {
+        CVarClear(sVrInputDefsSelector[i].cvar);
+    }
+    for (int i = 0; i < kVrOcarinaInputCount; i++) {
+        CVarClear(sVrInputDefsOcarina[i].cvar);
+    }
+    CVarSave();
+    // The selector hooks register on this CVar; the widgets do the same after a change.
+    ShipInit::Init("gVrItemSelect");
+    sVrListenRowMask = 0;
+}
+
+// First start in VR: the question replaces the scheme selection until the player answers it.
+static void VrControlSchemeQuestion() {
+    ImGui::PushFont(OTRGlobals::Instance->fontStandardLargest);
+    ImGui::TextUnformatted("How do you want to turn?");
+    ImGui::PopFont();
+    ImGui::Spacing();
+    const ImVec2 buttonSize(260.0f, 70.0f);
+    static const char* sAnswers[2] = { "With my body", "With the stick" };
+    for (int i = 0; i < 2; i++) {
+        if (i > 0) {
+            ImGui::SameLine();
+        }
+        ImGui::BeginGroup();
+        if (ImGui::Button(sAnswers[i], buttonSize)) {
+            VrApplyControlScheme(i);
+            CVarSetInteger("gVrControlSchemeAsked", 1);
+            CVarSave();
+            mSohMenu->Hide();
+        }
+        // Focus the first answer, so that A on the Touch controller answers at once.
+        if (i == 0 && ImGui::IsWindowAppearing()) {
+            ImGui::SetItemDefaultFocus();
+            ImGui::SetKeyboardFocusHere(-1);
+        }
+        ImGui::TextDisabled("%s", sVrControlSchemes[i].name);
+        ImGui::TextWrapped("%s", sVrControlSchemes[i].summary);
+        ImGui::EndGroup();
+    }
+    ImGui::Spacing();
+    ImGui::TextWrapped("You can change this later in VR Settings > VR Inputs.");
+    ImGui::Separator();
+}
+
+static void VrControlSchemeSelector(WidgetInfo& info) {
+    if (!CVarGetInteger("gVrControlSchemeAsked", 0)) {
+        VrControlSchemeQuestion();
+        return;
+    }
+    const int current = VrCurrentControlScheme();
+    const char* preview = (current >= 0) ? sVrControlSchemes[current].name : "Custom";
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted("Control Scheme");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(260.0f);
+    if (ImGui::BeginCombo("##VrControlScheme", preview)) {
+        for (int i = 0; i < kVrControlSchemeCount; i++) {
+            if (ImGui::Selectable(sVrControlSchemes[i].name, i == current)) {
+                VrApplyControlScheme(i);
+            }
+        }
+        ImGui::EndCombo();
+    }
+    if (current >= 0) {
+        ImGui::TextWrapped("%s", sVrControlSchemes[current].summary);
+    } else {
+        const int last = std::clamp(CVarGetInteger("gVrControlScheme", 0), 0, kVrControlSchemeCount - 1);
+        ImGui::TextWrapped("You changed the settings of %s.", sVrControlSchemes[last].name);
+        if (ImGui::Button("Reset to Scheme")) {
+            VrApplyControlScheme(last);
+        }
+    }
+    ImGui::Separator();
+}
+
+// Opens the SoH menu on VR Inputs at the first start in VR, for the control scheme question. Waits a
+// few game frames, so that the headset shows the game before the menu opens. Until the player
+// answers, the question comes back at each start.
+static void VrControlSchemeFirstStartTick() {
+    static bool sAskedThisSession = false;
+    static int sFramesInVr = 0;
+    if (sAskedThisSession || CVarGetInteger("gVrControlSchemeAsked", 0) || !VR_IsInitialized() ||
+        !VR_GetFirstPerson()) {
+        return;
+    }
+    if (++sFramesInVr < 60) {
+        return;
+    }
+    sAskedThisSession = true;
+    CVarSetString(CVAR_SETTING("Menu.ActiveHeader"), "VR Settings");
+    CVarSetString(CVAR_SETTING("Menu.VRSettingsSidebarSection"), "VR Inputs");
+    mSohMenu->Show();
+}
+
+static void RegisterVrControlSchemeFirstStart() {
+    COND_HOOK(OnGameFrameUpdate, !CVarGetInteger("gVrControlSchemeAsked", 0), VrControlSchemeFirstStartTick);
+}
+
+static RegisterShipInitFunc initVrControlSchemeFirstStart(RegisterVrControlSchemeFirstStart,
+                                                          { "gVrControlSchemeAsked" });
 
 // Live frame-cost breakdown. The interesting number is "XR wait": that is time spent blocked in
 // xrWaitFrame, i.e. spare headroom. When it trends toward zero the frame no longer fits and the
@@ -1592,6 +1749,7 @@ void SohMenu::AddMenuVRSettings() {
     AddSidebarEntry("VR Settings", "VR Inputs", 1);
     WidgetPath buttonsPath = { "VR Settings", "VR Inputs", SECTION_COLUMN_1 };
 
+    AddWidget(buttonsPath, "VrControlScheme", WIDGET_CUSTOM).CustomFunction(VrControlSchemeSelector).HideInSearch(true);
     AddWidget(buttonsPath, "VrInputBindings", WIDGET_CUSTOM).CustomFunction(VrInputBindings).HideInSearch(true);
 
     AddWidget(buttonsPath, "Item Select (Half-Life: Alyx Style)", WIDGET_SEPARATOR_TEXT);

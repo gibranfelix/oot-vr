@@ -47,8 +47,10 @@ The roadmap ([#1](https://github.com/gibranfelix/oot-vr/issues/1)) is closed. Th
 destination is reached: you can play the main story on a Quest 3S. The open
 issues are bugs and improvements.
 
-The default turn is physical turning. The right stick selects items, and the
-right trigger does Z-targeting. Artificial turning is an option.
+The player selects a control scheme at the first start. In the Default scheme,
+the player turns the body, and the right stick selects items. In the
+Shipwright-VR scheme, the right stick turns the view smoothly. In the two
+schemes, the right trigger does Z-targeting.
 
 ## Where to help
 
