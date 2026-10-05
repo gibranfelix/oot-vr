@@ -28,11 +28,13 @@ if [ ! -f "$PORT/soh.o2r" ]; then
 fi
 
 # 2. The game for arm64. The OpenXR loader is fetched by CMake (see the root CMakeLists).
+# SPDLOG_MIN_CUTOFF: compile out the trace log messages; they cost CPU on the headset (issue #47).
 echo "==> arm64 build"
 cmake -S "$PORT" -B "$PORT/build-quest" -G Ninja \
     -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
     -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-24 -DANDROID_STL=c++_static \
-    -DUSE_OPENGLES=ON -DSDL_SHARED=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_REMOTE_CONTROL=0
+    -DUSE_OPENGLES=ON -DSDL_SHARED=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_REMOTE_CONTROL=0 \
+    -DSPDLOG_MIN_CUTOFF=SPDLOG_LEVEL_DEBUG
 cmake --build "$PORT/build-quest" -j "$JOBS"
 
 # 3. Stage the three native libraries. Stripped: libsoh.so is ~1.1 GB with debug info, ~42 MB without.
