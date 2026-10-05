@@ -1,7 +1,7 @@
 # oot-vr
 
 _The Legend of Zelda: Ocarina of Time_ in first person on the Meta Quest 3S.
-The game runs natively on the headset. You do not need a PC to play.
+The game runs on the headset. You do not need a PC to play.
 
 **Status: alpha.** You can play the main story from Kokiri Forest to Ganon's
 Tower. Some problems are known. Read [`STATUS.md`](STATUS.md) before you play.
@@ -20,88 +20,82 @@ All clips are recordings from a Meta Quest 3S.
 | Ganon.                                                                          | Great Fairy.                                                                                     |
 
 > [!IMPORTANT]
-> You must own a legal copy of _The Legend of Zelda: Ocarina of Time_. To play,
-> you make a dump of your own cartridge or disc.
+> You must own a legal copy of _The Legend of Zelda: Ocarina of Time_. Make a
+> dump of your own cartridge or disc.
 >
 > This repository and its releases do not contain game assets. We do not supply
-> ROMs, and we do not help you get them. Do not ask for ROMs in the issues. Do
-> not share ROMs in the issues.
+> ROMs. Do not ask for ROMs or share ROMs in the issues.
 
 ## Features
 
-- Stereo 3D. Each eye gets its own render pass.
+- Stereo 3D.
 - First-person camera at the eye height of Link. The camera follows your head.
-- Motion controls. You swing the sword with your hand. You hold up the shield
-  with your hand.
-- Automatic world scale. The scale changes when Link changes from child to
-  adult.
-- Menus show on a panel that floats in front of you.
+- Motion controls: swing the sword and hold up the shield with your hands.
+- Automatic world scale for child Link and adult Link.
+- Menus on a panel that floats in front of you.
 
-We tested the port only on the Meta Quest 3S.
+Tested only on the Meta Quest 3S.
 
 ## Controls
 
-These are the default controls. The right hand holds the sword. The left hand
-holds the shield and uses the items.
+The right hand holds the sword. The left hand holds the shield and the items.
 
-| Control                       | Action                                                                                |
-| ----------------------------- | ------------------------------------------------------------------------------------- |
-| Left thumbstick               | Move Link.                                                                            |
-| Right thumbstick ← → ↓        | Put the item of C-Left, C-Right, or C-Down in your hand.                              |
-| Right thumbstick ↑            | Talk to Navi, when Navi has a message.                                                |
-| Right thumbstick click (hold) | Open the item selector. Move your hand to an item, then release the click.            |
-| Left trigger                  | Use the item in your hand. For the bow, hold to pull the string and release to shoot. |
-| Right trigger                 | Z-target.                                                                             |
-| Both grips (hold)             | Hold the sword and the shield. Release the grips to put them away.                    |
-| A button                      | The N64 A button: action, talk, roll.                                                 |
-| B button                      | The N64 B button.                                                                     |
-| Y button                      | Open or close the SoH menu.                                                           |
-| Left Menu button              | Start: open the pause screen.                                                         |
-| Left grip                     | In the pause screen, go to the next page.                                             |
+| Control                       | Action                                                                  |
+| ----------------------------- | ----------------------------------------------------------------------- |
+| Left thumbstick               | Move Link.                                                              |
+| Right thumbstick ← → ↓        | Put the C-Left, C-Right, or C-Down item in your hand.                   |
+| Right thumbstick ↑            | Talk to Navi.                                                           |
+| Right thumbstick click (hold) | Open the item selector. Move your hand to an item, then release.        |
+| Left trigger                  | Use the item. For the bow, hold to pull the string, release to shoot.   |
+| Right trigger                 | Z-target.                                                               |
+| Both grips (hold)             | Hold the sword and the shield.                                          |
+| A button                      | N64 A: action, talk, roll.                                              |
+| B button                      | N64 B.                                                                  |
+| Y button                      | Open or close the SoH menu.                                             |
+| Left Menu button              | Start: open the pause screen.                                           |
+| Left grip                     | Next page of the pause screen.                                          |
 
-To attack, swing the sword with your right hand. To block, hold the shield in
-front of you with your left hand.
+Swing the sword with your right hand to attack. Hold the shield in front of you
+to block.
 
 ### Control schemes
 
-At the first start, the game asks how you want to turn. You can change the
-answer in VR Settings > VR Inputs > **Control Scheme**:
+At the first start, the game asks how you want to turn. To change it, go to VR
+Settings > VR Inputs > **Control Scheme**.
 
-| Scheme        | How you turn                                        | Right thumbstick                                         |
-| ------------- | --------------------------------------------------- | -------------------------------------------------------- |
-| Default       | Turn your body.                                     | Put the item of C-Left, C-Right, or C-Down in your hand. |
-| Shipwright-VR | Push the right thumbstick. The view turns smoothly. | Turns the view. Use the item selector to take items.     |
+| Scheme        | Turn                                 | Right thumbstick                                      |
+| ------------- | ------------------------------------ | ----------------------------------------------------- |
+| Default       | Turn your body.                      | Put the C-Left, C-Right, or C-Down item in your hand. |
+| Shipwright-VR | Push the right thumbstick (smooth).  | Turns the view. Use the item selector for items.      |
 
-The two schemes use the same buttons. The Shipwright-VR scheme comes from the
-PCVR mod [Shipwright-VR](https://github.com/ShinyWindow/Shipwright-VR).
+The two schemes use the same buttons. The Shipwright-VR scheme comes from
+[Shipwright-VR](https://github.com/ShinyWindow/Shipwright-VR) for PC.
 
-When you change a binding or a turn setting, Control Scheme shows **Custom**.
-Select **Reset to Scheme** to go back to the scheme.
+A change to a binding or to turning shows **Custom**. Select **Reset to
+Scheme** to go back.
 
 ### SoH menu
 
 The SoH menu contains VR Settings and the settings of Ship of Harkinian. Push
-the Y button to open the menu on the floating panel. Push the Y button again to
-close it. While the menu is open, the controls operate the menu, not Link:
+the Y button to open or close it. While the menu is open, the controls operate
+the menu, not Link.
 
-| Control                         | Menu action                            |
-| ------------------------------- | -------------------------------------- |
-| Point a controller at the panel | Move the pointer.                      |
-| Trigger of the hand that points | Click.                                 |
-| Right thumbstick ↑ ↓            | Scroll, when the right hand points.    |
-| Left thumbstick                 | Move the selection.                    |
-| A button                        | Accept or activate.                    |
-| B button                        | Go back or cancel.                     |
-| Left grip / right grip          | Go to the previous tab / the next tab. |
+| Control                         | Menu action                             |
+| ------------------------------- | --------------------------------------- |
+| Point a controller at the panel | Move the pointer.                       |
+| Trigger of that hand            | Click.                                  |
+| Right thumbstick ↑ ↓            | Scroll.                                 |
+| Left thumbstick                 | Move the selection.                     |
+| A button                        | Accept.                                 |
+| B button                        | Go back.                                |
+| Left grip / right grip          | Previous tab / next tab.                |
 
-The game does not stop while the menu is open. The Y button also opens the
-menu when you play the ocarina. In the classic control
-scheme, C-Right is on the left Menu button because the Y button opens the menu.
+The game does not stop while the menu is open. In the classic control scheme,
+C-Right is on the left Menu button.
 
 ### Ocarina
 
-When you play the ocarina, the controls change. They are the same as on the N64
-controller:
+The ocarina uses the N64 layout:
 
 | Note                          | Control                  |
 | ----------------------------- | ------------------------ |
@@ -114,15 +108,15 @@ controller:
 
 You need:
 
-- a legal copy of Ocarina of Time: a cartridge or disc that you own;
-- a PC with Windows, macOS, or Linux, to install the game;
+- a cartridge or disc of Ocarina of Time that you own;
+- a PC with Windows, macOS, or Linux;
 - a USB-C cable for the headset.
 
-You do these steps one time only.
+Do these steps one time.
 
 ### 1. Make a dump of your game
 
-Make a dump of your own cartridge or disc. Use one of these versions:
+Use one of these versions:
 
 | Platform    | Region                 | Versions                                           |
 | ----------- | ---------------------- | -------------------------------------------------- |
@@ -133,112 +127,93 @@ Make a dump of your own cartridge or disc. Use one of these versions:
 | GameCube    | North America (NTSC-U) | Ocarina of Time, Master Quest                      |
 | GameCube    | Japan (NTSC-J)         | Ocarina of Time, Master Quest, Collector's Edition |
 
-To make sure that your dump is correct, compare its SHA-1 with the list in
+Compare the SHA-1 of your dump with
 [`port/docs/supportedHashes.json`](port/docs/supportedHashes.json). We tested
 only the European GameCube version.
 
 ### 2. Enable developer mode on the headset
 
-The game does not come from the Meta store. Thus, the headset must be in
-developer mode. Follow the steps from Meta:
+Follow the steps from Meta:
 [Device Setup](https://developers.meta.com/horizon/documentation/native/android/mobile-device-setup/).
 
 ### 3. Install the game with SideQuest
 
 1. Install [SideQuest](https://sidequestvr.com/setup-howto) on your PC.
 2. Connect the headset to the PC with the USB-C cable.
-3. Put on the headset. Select **Always allow from this computer**, then
-   select **Allow**.
+3. In the headset, select **Always allow from this computer**, then **Allow**.
 4. Download `oot-vr-<version>.apk` from
    [Releases](https://github.com/gibranfelix/oot-vr/releases).
-5. Drag the APK file into the SideQuest window. SideQuest installs it.
-6. In SideQuest, open the file manager of the headset.
-7. Copy your dump into the `Download` folder of the headset.
+5. Drag the APK into the SideQuest window.
+6. With the SideQuest file manager, copy your dump into the `Download` folder
+   of the headset.
 
-If you use `adb`, you can do steps 5 to 7 with these commands:
+With `adb`:
 
 ```
 adb install -r oot-vr-<version>.apk
 adb push <your-dump>.z64 /sdcard/Download/
 ```
 
-### 4. Start the game and select your dump
+### 4. Start the game
 
-1. Put on the headset.
-2. Open the **Library**, and select **Unknown Sources**.
-3. Open **OoT VR**. At the first start, a panel opens.
-4. Select **Select ROM**. The file picker of the headset opens.
-5. Go to the `Download` folder, and select your dump.
-6. Wait until the extraction is complete. This takes some minutes. Do not
-   remove the headset.
-7. The game starts in VR.
+1. In the headset, open **Library** > **Unknown Sources** > **OoT VR**.
+2. Select **Select ROM**, then select your dump in the `Download` folder.
+3. Wait some minutes for the extraction. Do not remove the headset.
 
-The game makes the file `oot.o2r` from your dump, and then deletes its copy of
-the dump. You can then delete your dump from the `Download` folder. The next
+The game makes `oot.o2r` from your dump. Then you can delete the dump. The next
 starts go directly to the game.
 
-If the game does not start, read the "If the game does not start" section in
+If the game does not start, read "If the game does not start" in
 [`port/Android/README.md`](port/Android/README.md).
 
 ### Alternative: make `oot.o2r` on a PC
 
-Use this method if the extraction on the headset does not work for you.
+Use this method if the extraction on the headset fails. Use **Ship of Harkinian
+9.2.3 "Ackbar Delta"**.
 
-This port uses **Ship of Harkinian 9.2.3 "Ackbar Delta"**. Use this version.
-
-1. Download Ship of Harkinian 9.2.3 for your PC from its
-   [release page](https://github.com/HarbourMasters/Shipwright/releases/tag/9.2.3):
-   `SoH-Ackbar-Delta-Win64.zip`, `SoH-Ackbar-Delta-Mac.zip`, or
-   `SoH-Ackbar-Delta-Linux.zip`.
-2. Extract the ZIP file and start Ship of Harkinian.
-3. When Ship of Harkinian asks for a ROM, select your dump.
-4. Wait until the extraction is complete. Then close Ship of Harkinian.
-5. Find the file `oot.o2r`:
-   - Windows and Linux: in the same folder as `soh.exe` or `soh.appimage`.
+1. Download Ship of Harkinian 9.2.3 from its
+   [release page](https://github.com/HarbourMasters/Shipwright/releases/tag/9.2.3).
+2. Start it and select your dump. Wait for the extraction, then close it.
+3. Find `oot.o2r`:
+   - Windows and Linux: in the folder of `soh.exe` or `soh.appimage`.
    - macOS: in `~/Library/Application Support/com.shipofharkinian.soh/`.
-6. With the SideQuest file manager, copy `oot.o2r` into
-   `Android/data/org.oot.vr/files/` on the headset. Make the folders if they do
-   not exist.
-
-When `oot.o2r` is on the headset, the game does not open the panel.
+4. Copy `oot.o2r` into `Android/data/org.oot.vr/files/` on the headset.
 
 ## Mods
 
-The game loads mods for Ship of Harkinian (`.o2r` and `.otr` files): texture
-packs, model packs, and text packs.
+The game loads Ship of Harkinian mods (`.o2r` and `.otr`): textures, models,
+and texts.
 
 > [!IMPORTANT]
-> This project does not contain mods and does not give mods. Get each mod from
-> its author.
+> This project does not contain or give mods. Get each mod from its author.
 
 ### Install a mod
 
-Copy the `.o2r` or `.otr` files into `Android/data/org.oot.vr/files/mods/` on
-the headset, for example with the SideQuest file manager. Subfolders are
-permitted. At the next start, the game turns on the new mods.
+Copy the mod files into `Android/data/org.oot.vr/files/mods/` on the headset.
+Subfolders are permitted. The game turns on new mods at the next start.
 
 ### Manage the mods
 
-Open the SoH menu (Y button), and go to **Settings** > **Mod Menu**.
+Open the SoH menu, and go to **Settings** > **Mod Menu**.
 
-- **Enable Mods** turns all the mods on or off.
-- The list sets the order in which the game loads the mods. When two mods
-  change the same texture, the mod that loads last is visible.
+- **Enable Mods** turns all mods on or off.
+- The list sets the load order. When two mods change the same texture, the last
+  mod is visible.
 
 ### Tested mods
 
 Tested on a Quest 3S at 72 Hz.
 
-| Mod                                                                  | Status   | Notes                                                                                                                  |
-| -------------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------- |
-| [OoT Reloaded](https://github.com/GhostlyDark/OoT-Reloaded)          | Works    | About 860 MB of memory.                                                                                                |
-| Djipi's 3DS Experience                                               | Works    | Large files decrease the frame rate. Do not install "01 Main Textures". |
+| Mod                                                         | Status | Notes                                                                    |
+| ----------------------------------------------------------- | ------ | ------------------------------------------------------------------------ |
+| [OoT Reloaded](https://github.com/GhostlyDark/OoT-Reloaded) | Works  | About 860 MB of memory.                                                  |
+| Djipi's 3DS Experience                                      | Works  | Large files decrease the frame rate. Do not install "01 Main Textures". |
 
 ## Build from source
 
-Read [`port/Android/README.md`](port/Android/README.md). One script builds the
-APK: `port/Android/build-apk.sh`. The same document tells how to make
-`oot.o2r` with the tools of this repository, without Ship of Harkinian for PC.
+Read [`port/Android/README.md`](port/Android/README.md). The script
+`port/Android/build-apk.sh` builds the APK. The same document tells how to make
+`oot.o2r` with the tools of this repository.
 
 ## Documentation
 
@@ -252,17 +227,14 @@ APK: `port/Android/build-apk.sh`. The same document tells how to make
 
 ## Credits
 
-This port uses the work of other people:
-
 - **[ShinyWindow](https://github.com/ShinyWindow)**:
   [`Shipwright-VR`](https://github.com/ShinyWindow/Shipwright-VR) and
   [`libultraship-vr`](https://github.com/ShinyWindow/libultraship-vr). The VR
-  layer comes from these projects: the OpenXR session, the stereo render, the
-  first-person camera, the physical combat, and many control fixes.
+  layer comes from these projects: OpenXR, stereo render, first-person camera,
+  physical combat, and many control fixes.
 - **[Harbour Masters](https://github.com/HarbourMasters)**:
-  [Ship of Harkinian](https://github.com/HarbourMasters/Shipwright), the port of
-  Ocarina of Time that all of this uses. This port is based on version 9.2.3
-  "Ackbar Delta".
+  [Ship of Harkinian](https://github.com/HarbourMasters/Shipwright) 9.2.3
+  "Ackbar Delta", the base of this port.
 - **[Kenix3](https://github.com/Kenix3)**:
   [`libultraship`](https://github.com/Kenix3/libultraship).
 - **[linkzenic](https://github.com/linkzenic)**:
@@ -273,10 +245,9 @@ This port uses the work of other people:
 
 ## License
 
-Not all of this repository has a license. The code that this project wrote is
-MIT ([`LICENSE`](LICENSE)). Ship of Harkinian, its VR layer, and the Android
-wrapper do not have a license. [`NOTICE.md`](NOTICE.md) gives the license of
-each directory.
+The code that this project wrote is MIT ([`LICENSE`](LICENSE)). Ship of
+Harkinian, its VR layer, and the Android wrapper do not have a license.
+[`NOTICE.md`](NOTICE.md) gives the license of each directory.
 
 Zelda and Ocarina of Time are trademarks of Nintendo. This project has no
 connection with Nintendo.
