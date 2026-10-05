@@ -207,31 +207,18 @@ When `oot.o2r` is on the headset, the game does not open the panel.
 
 ## Mods
 
-The game loads mods for Ship of Harkinian: texture packs, model packs, and text
-packs. A mod is a file with the extension `.o2r` or `.otr`.
+The game loads mods for Ship of Harkinian (`.o2r` and `.otr` files): texture
+packs, model packs, and text packs.
 
 > [!IMPORTANT]
 > This project does not contain mods and does not give mods. Get each mod from
-> its author. Most mods change the assets of the game, thus each player gets
-> them for the player's own copy.
+> its author.
 
 ### Install a mod
 
-1. Download the mod from its author. If the mod is in a ZIP file, extract it.
-2. Connect the headset to your computer, and open SideQuest.
-3. In the SideQuest file manager, open
-   `Android/data/org.oot.vr/files/mods/` on the headset.
-4. Copy the `.o2r` or `.otr` files into that folder. You can put each mod in its
-   own subfolder.
-5. Start the game. The game turns on new mods automatically.
-
-If you use `adb`, copy the mod to the `Download` folder first, and then move it.
-A direct copy of a large file into the folder of the game can fail:
-
-```
-adb push <mod-folder> /sdcard/Download/
-adb shell mv /sdcard/Download/<mod-folder> /sdcard/Android/data/org.oot.vr/files/mods/
-```
+Copy the `.o2r` or `.otr` files into `Android/data/org.oot.vr/files/mods/` on
+the headset, for example with the SideQuest file manager. Subfolders are
+permitted. At the next start, the game turns on the new mods.
 
 ### Manage the mods
 
@@ -241,41 +228,23 @@ Open the SoH menu (Y button), and go to **Settings** > **Mod Menu**.
 - The list sets the order in which the game loads the mods. When two mods
   change the same texture, the mod that loads last is visible.
 
-### Performance and memory
+### Performance
 
-The Quest has less memory and a slower processor than a PC. Large texture packs
-can make the game slow or close it.
+Measured on a Quest 3S at 72 Hz in Hyrule Field:
 
-- Keep **VR Settings** > **Performance** > **Headset Refresh Rate** at 72 Hz.
-  72 Hz gives each frame more time than 90 Hz.
-- Do not use two complete texture packs together. On a Quest 3S, OoT Reloaded
-  together with the complete Djipi's 3DS Experience pack used more than 4 GB of
-  memory. The frame rate fell to 17 FPS in Hyrule Field.
-- If the game is slow after you add a mod, remove the mod and test again.
-
-We tested these mods on a Quest 3S at 72 Hz:
-
-| Mod | Result |
+| Mods | Result |
 |---|---|
-| [OoT Reloaded](https://github.com/GhostlyDark/OoT-Reloaded) (HD textures) | Works. About 860 MB of memory. |
-| Djipi's 3DS Experience, only the background files 26, 27, 32, and 33 | Works with OoT Reloaded. The pre-rendered rooms become 3D. |
-| Djipi's 3DS Experience, complete | Too slow with OoT Reloaded. |
+| [OoT Reloaded](https://github.com/GhostlyDark/OoT-Reloaded) | Smooth. About 860 MB of memory. |
+| OoT Reloaded and the complete Djipi's 3DS Experience | Drops to 15-20 FPS while textures load. Up to 4.2 GB of memory. |
 
-### If a mod does not load
+Keep **VR Settings** > **Performance** > **Headset Refresh Rate** at 72 Hz with
+texture packs. At 90 Hz each frame has less time.
 
-- Make sure that the file is in `Android/data/org.oot.vr/files/mods/` and has
-  the extension `.o2r` or `.otr`.
-- The game cannot read a folder that `adb` made with wrong permissions. The game
-  then ignores that folder. To give the game access, run:
+### Known problems
 
-  ```
-  adb shell chmod -R a+rwX /sdcard/Android/data/org.oot.vr/files/mods
-  ```
-
-- A text pack can show some texts in English when a texture pack also has HD
-  versions of those texts. For example, OoT Reloaded has English HD versions of
-  the area names and of the pause menu buttons. The HD versions replace the
-  text pack. The dialogs of the text pack still show.
+- OoT Reloaded has English HD versions of the area names and of the pause menu
+  buttons. These replace the same texts of a text pack. The dialogs of the text
+  pack are not affected.
 
 ## Build from source
 
