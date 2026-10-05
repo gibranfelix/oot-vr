@@ -21,7 +21,8 @@ Ship of Harkinian and `libultraship`.
 ## Documentation language
 
 Write all documentation in **ASD-STE100 Simplified Technical English**. This
-rule applies to Markdown files, issues, pull requests, and release notes.
+rule applies to Markdown files, issues, pull requests, comments, and release
+notes.
 
 - Write short sentences: 20 words maximum in procedures, 25 words maximum in
   descriptions.
@@ -31,6 +32,44 @@ rule applies to Markdown files, issues, pull requests, and release notes.
 - Use the terms in `CONTEXT.md`.
 - Write paragraphs of 6 sentences maximum.
 - Do not use contractions or slang.
+
+Issues, pull requests, and comments must be clear and short:
+
+- Write the main point first.
+- Write only facts that you examined.
+- In each pull request, write two lists: what you tested, and what the reviewer
+  must test. Use checkboxes in the second list. Tell where each test runs: on
+  the host, in the build, or on the headset.
+- Write each fact one time. Remove introductions, summaries of the text above,
+  and praise.
+- Use lists and tables for steps and comparisons.
+- Use an image or a video when it shows the problem or the result better than
+  text. Read [Images and videos](#images-and-videos).
+
+### Images and videos
+
+Add captures when a change is visible: the VR menu, the HUD, the camera, or the
+game. Show each view that changed. Record the captures on the headset. The
+Quest keeps them in `/sdcard/Oculus/Screenshots/` and
+`/sdcard/Oculus/VideoShots/`.
+
+Put the files on a branch that contains only captures. Link them by commit:
+
+```sh
+git worktree add --detach /tmp/pr-assets && cd /tmp/pr-assets
+git switch --orphan pr-assets/<issue>
+cp <dir>/*.png <dir>/*.mp4 . && git add .
+git commit -m "Add captures for #<issue>" && git push origin pr-assets/<issue>
+git rev-parse --short HEAD
+cd - && git worktree remove /tmp/pr-assets
+```
+
+- Show an image with
+  `![What it shows](https://raw.githubusercontent.com/gibranfelix/oot-vr/<commit>/<file>.png)`.
+- GitHub does not play a video from a branch. Link the `.mp4` file, or make a
+  short GIF.
+- Keep each file smaller than 100 MB.
+- Do not delete a `pr-assets/` branch. The links stop working without it.
 
 ## Game assets
 
@@ -84,4 +123,6 @@ Examine each pull request for these problems. Each one is a P1 problem.
   `SOH [VR]` or `SOH [Quest]` marker.
 - The pull request adds a VR call without a `vr_is_initialized()` or
   `VR_IsInitialized()` check. The game must also run with VR off.
-- The pull request adds documentation that does not use ASD-STE100.
+- The pull request adds documentation that does not use ASD-STE100, or that
+  does not obey the rules for issues, pull requests, and comments in
+  [Documentation language](#documentation-language).

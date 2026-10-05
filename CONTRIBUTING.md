@@ -26,11 +26,13 @@ your ROM.
 
 1. Make one change in each pull request.
 2. Write the commit messages in English.
-3. Write the documentation in ASD-STE100 Simplified Technical English.
+3. Write the documentation, the pull request, and your comments in ASD-STE100
+   Simplified Technical English. Read the rules in
+   [`AGENTS.md`](AGENTS.md#documentation-language).
 4. Build the APK with `port/Android/build-apk.sh`.
-5. Test the change on a headset. In the pull request, tell what you tested and
-   on which headset.
-6. If you cannot test on a headset, say so in the pull request.
+5. Test the change on a headset.
+6. In the pull request, tell what you tested and on which headset. Then tell
+   what the reviewer must test.
 
 An automatic review can add comments to your pull request. A maintainer does
 the final review. Only a maintainer can merge.
