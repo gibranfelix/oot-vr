@@ -31,6 +31,7 @@
 #include "fast/backends/gfx_rendering_api.h"
 #include "fast/vr_openxr.h"
 #include "fast/HostPointer.h"
+#include "fast/frame_resource_cache.h" // SOH [Quest]
 
 #include "ship/window/gui/Gui.h"
 #include "ship/resource/ResourceManager.h"
@@ -131,6 +132,19 @@ static Interpreter* mInstance = nullptr;
 // Set a cached pointer to the instance so we don't need to go through the window every time
 void GfxSetInstance(std::shared_ptr<Interpreter> gfx) {
     mInstance = gfx.get();
+}
+
+// SOH [Quest] Resource lookups by hash, one time for each frame (see frame_resource_cache.h).
+static FrameResourceCache<Ship::IResource> sFrameResources;
+
+static std::shared_ptr<Ship::IResource> LoadResourceForFrame(uint64_t hash) {
+    return sFrameResources.Get(
+        hash, [](uint64_t h) { return Ship::Context::GetRawInstance()->GetResourceManager()->LoadResource(h); });
+}
+
+static void* GetResourceRawPointerForFrame(uint64_t hash) {
+    const auto resource = LoadResourceForFrame(hash);
+    return resource != nullptr ? resource->GetRawPointer() : nullptr;
 }
 
 // N64 prim_depth is 15-bit (0 near, 0x7FFF far).
@@ -3420,8 +3434,7 @@ bool gfx_mtx_otr_handler_custom_f3dex2(F3DGfx** cmd0) {
     F3DGfx* cmd = *cmd0;
 
     const uint64_t hash = ((uint64_t)cmd->words.w0 << 32) + cmd->words.w1;
-    const int32_t* mtx =
-        (const int32_t*)Ship::Context::GetRawInstance()->GetResourceManager()->GetResourceRawPointer(hash);
+    const int32_t* mtx = (const int32_t*)GetResourceRawPointerForFrame(hash); // SOH [Quest] frame cache
 
     if (mtx != NULL) {
         Interpreter* gfx = mInstance;
@@ -3439,8 +3452,7 @@ bool gfx_mtx_otr_handler_custom_f3d(F3DGfx** cmd0) {
     F3DGfx* cmd = *cmd0;
 
     const uint64_t hash = ((uint64_t)cmd->words.w0 << 32) + cmd->words.w1;
-    const int32_t* mtx =
-        (const int32_t*)Ship::Context::GetRawInstance()->GetResourceManager()->GetResourceRawPointer(hash);
+    const int32_t* mtx = (const int32_t*)GetResourceRawPointerForFrame(hash); // SOH [Quest] frame cache
     if (mtx != nullptr) {
         cmd--;
         gfx->GfxSpMatrix(C0(16, 8), mtx);
@@ -3507,10 +3519,9 @@ bool gfx_movemem_handler_otr(F3DGfx** cmd0) {
 
     if (ucode_handler_index == ucode_f3dex2) {
         gfx->GfxSpMovememF3dex2(index, offset,
-                                Ship::Context::GetRawInstance()->GetResourceManager()->GetResourceRawPointer(hash));
+                                GetResourceRawPointerForFrame(hash)); // SOH [Quest] frame cache
     } else {
-        auto light =
-            (Fast::LightEntry*)Ship::Context::GetRawInstance()->GetResourceManager()->GetResourceRawPointer(hash);
+        auto light = (Fast::LightEntry*)GetResourceRawPointerForFrame(hash); // SOH [Quest] frame cache
         uintptr_t data = (uintptr_t)&light->Ambient;
         gfx->GfxSpMovememF3d(index, offset, (void*)(data + (hasOffset == 1 ? 0x8 : 0)));
     }
@@ -3649,7 +3660,7 @@ bool gfx_vtx_hash_handler_custom(F3DGfx** cmd0) {
         gfx->GfxSpVertex(C0(12, 8), C0(1, 7) - C0(12, 8), (F3DVtx*)offset);
         (*cmd0)++;
     } else {
-        F3DVtx* vtx = (F3DVtx*)Ship::Context::GetRawInstance()->GetResourceManager()->GetResourceRawPointer(hash);
+        F3DVtx* vtx = (F3DVtx*)GetResourceRawPointerForFrame(hash); // SOH [Quest] frame cache
 
         if (vtx != NULL) {
             vtx = (F3DVtx*)((char*)vtx + offset);
@@ -3741,7 +3752,7 @@ bool gfx_dl_otr_hash_handler_custom(F3DGfx** cmd0) {
 
         uint64_t hash = ((uint64_t)(*cmd0)->words.w0 << 32) + (*cmd0)->words.w1;
 
-        F3DGfx* gfx = (F3DGfx*)Ship::Context::GetRawInstance()->GetResourceManager()->GetResourceRawPointer(hash);
+        F3DGfx* gfx = (F3DGfx*)GetResourceRawPointerForFrame(hash); // SOH [Quest] frame cache
 
         if (gfx != 0) {
             g_exec_stack.call(cmd, gfx);
@@ -3799,7 +3810,7 @@ bool gfx_branch_z_otr_handler_f3dex2(F3DGfx** cmd0) {
         (gfx->mRsp->extra_geometry_mode & G_EX_ALWAYS_EXECUTE_BRANCH) != 0) {
         uint64_t hash = ((uint64_t)(*cmd0)->words.w0 << 32) + (*cmd0)->words.w1;
 
-        F3DGfx* gfx = (F3DGfx*)Ship::Context::GetRawInstance()->GetResourceManager()->GetResourceRawPointer(hash);
+        F3DGfx* gfx = (F3DGfx*)GetResourceRawPointerForFrame(hash); // SOH [Quest] frame cache
 
         if (gfx != 0) {
             (*cmd0) = gfx;
@@ -4045,9 +4056,11 @@ bool gfx_set_timg_otr_hash_handler_custom(F3DGfx** cmd0) {
         return false;
     }
 
-    std::shared_ptr<Fast::Texture> texture = std::static_pointer_cast<Fast::Texture>(
-        Ship::Context::GetRawInstance()->GetResourceManager()->LoadResourceProcess(
-            Ship::Context::GetRawInstance()->GetResourceManager()->GetArchiveManager()->HashToCString(hash)));
+    // SOH [Quest] frame cache
+    std::shared_ptr<Fast::Texture> texture =
+        std::static_pointer_cast<Fast::Texture>(sFrameResources.Get(hash, [fileName](uint64_t) {
+            return Ship::Context::GetRawInstance()->GetResourceManager()->LoadResourceProcess(fileName);
+        }));
     if (texture != nullptr) {
         texFlags = texture->Flags;
         rawTexMetadata.width = texture->Width;
@@ -5059,6 +5072,9 @@ bool Interpreter::ViewportMatchesRendererResolution() {
 }
 
 void Interpreter::StartFrame() {
+    // SOH [Quest] A new frame: the game can have unloaded resources since the last frame.
+    sFrameResources.Clear();
+
     mWapi->GetDimensions(&mGfxCurrentWindowDimensions.width, &mGfxCurrentWindowDimensions.height, &mCurWindowPosX,
                          &mCurWindowPosY);
     if (mCurDimensions.height == 0) {

@@ -3,6 +3,7 @@
 
 #include "gfx_rendering_api.h"
 #include "../interpreter.h"
+#include "../vertex_ring.h" // SOH [Quest]
 
 #ifdef _MSC_VER
 #include <SDL2/SDL.h>
@@ -129,6 +130,8 @@ class GfxRenderingAPIOGL final : public GfxRenderingAPI {
     ShaderProgram* mLastLoadedShader = nullptr;
 
     GLuint mOpenglVbo = 0;
+    // SOH [Quest] Streaming vertex buffer: 4 MiB, about 40 of the largest draws (256 triangles).
+    VertexRing mVertexRing{ 4 * 1024 * 1024 };
 #if defined(__APPLE__) || defined(USE_OPENGLES)
     GLuint mOpenglVao;
 #endif
