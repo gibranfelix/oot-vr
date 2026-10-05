@@ -322,10 +322,7 @@ bool Fast3dGui::UpdateVrMenu(bool vr) {
     if (!pointer && mVrPointer) {
         io.AddMousePosEvent(-FLT_MAX, -FLT_MAX); // no hover on the menu when the ray leaves it
     }
-    if (pointer != mVrPointer) {
-        io.MouseDrawCursor = pointer; // the panel has no system cursor: ImGui draws one
-        mVrPointer = pointer;
-    }
+    mVrPointer = pointer; // no cursor on the panel: the beam ends at the pointer
 
     if (open) {
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;

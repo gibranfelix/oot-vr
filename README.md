@@ -94,8 +94,8 @@ close it. While the menu is open, the controls operate the menu, not Link:
 | B button | Go back or cancel. |
 | Left grip / right grip | Go to the previous tab / the next tab. |
 
-The right hand points first. The left hand points when the right hand does not
-point at the panel.
+A beam shows where the controller points. The right hand points first. The left
+hand points when the right hand does not point at the panel.
 
 The game does not stop while the menu is open. The Y button also opens the
 menu when you play the ocarina. In the classic control
