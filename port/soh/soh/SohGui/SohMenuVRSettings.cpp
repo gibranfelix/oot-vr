@@ -1302,12 +1302,14 @@ void SohMenu::AddMenuVRSettings() {
         .CVar("gVrPhysShield")
         .Options(CheckboxOptions()
                      .DefaultValue(true)
-                     .Tooltip("The shield rides your off hand whenever it can - no button, no "
-                              "stance, no movement lock. Hold it up and whatever hits it is "
-                              "blocked; whatever gets around it hits YOU. Blocks never stagger "
-                              "you or shove you back. Child Link still carries the Hylian "
-                              "shield on his back, and aiming items (bow, hookshot) suspends "
-                              "the shield exactly like vanilla."));
+                     .Tooltip("On: the shield is in your off hand while the sword is in your "
+                              "sword hand - no button, no stance. Hold it up and whatever "
+                              "touches the shield is blocked; whatever gets around it hits you. "
+                              "Blocks never stagger you or push you back.\n"
+                              "Off: the shield of the original game comes back - hold R for the "
+                              "shield stance, with its animation and its advanced tricks "
+                              "(megaflip and others). By default L Grip is R. If no input is R, "
+                              "set one in VR Inputs."));
     AddWidget(physPath, "Shield Facing Leniency: %.0f deg", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysShieldFacingDeg")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysShield", 1); })
@@ -1323,19 +1325,11 @@ void SohMenu::AddMenuVRSettings() {
                               "reached your body, it hurts. Lower = you must square up to the "
                               "threat. 90 = anything in front of the shield. 180 = block from "
                               "any angle."));
-    // The size and shift sliders do nothing while the collider takes the shield mesh's size.
+    // The size and shift sliders do nothing while the collider takes the shield mesh's size
+    // (gVrPhysShieldFitMesh, console only: the fallback if the fit is wrong on some shield).
     auto hideWhenShieldFitted = [](WidgetInfo& info) {
         info.isHidden = !CVarGetInteger("gVrPhysShield", 1) || CVarGetInteger("gVrPhysShieldFitMesh", 1);
     };
-    AddWidget(physPath, "Fit Collider to Shield", WIDGET_CVAR_CHECKBOX)
-        .CVar("gVrPhysShieldFitMesh")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysShield", 1); })
-        .Options(CheckboxOptions()
-                     .DefaultValue(true)
-                     .Tooltip("The block collider takes the size and position of the shield in "
-                              "your hand: whatever touches the shield you see is blocked. The "
-                              "tilt sliders still apply. Turn off to set the size and position "
-                              "yourself."));
     AddWidget(physPath, "Shield Width Top: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysShieldWidthTop")
         .PreFunc(hideWhenShieldFitted)
