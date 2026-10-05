@@ -242,6 +242,10 @@ static struct {
     bool frame_began;
     int current_eye;
     uint32_t refresh_rate;  // Cached headset refresh in Hz, derived from predictedDisplayPeriod
+    // SOH [VR] XR_FB_display_refresh_rate: the game asks the headset for gVrRefreshRate. The rate
+    // asked last, so that a change of the CVar asks again.
+    bool refresh_rate_supported;
+    int32_t refresh_rate_requested;
     uint32_t current_image_index[2]; // Acquired swapchain image index per eye
 
     // Cached per-frame matrices (row-major, row-vector convention)
@@ -873,6 +877,47 @@ static void pose_to_view_matrix(const XrPosef& pose, float world_scale, float ou
 // OpenXR session state event handling
 // --------------------------------------------------------------------------
 
+// SOH [VR] Asks the headset for the display refresh rate in gVrRefreshRate (default 72 Hz). The game
+// is CPU bound in large scenes: 72 Hz gives each frame 13.9 ms instead of 11.1 ms at 90 Hz. Takes the
+// supported rate nearest to the CVar. Runs before each frame, but asks only when the CVar changes or
+// a session starts. The interpolation follows by itself: it reads the rate from the display period.
+static void vr_update_refresh_rate() {
+    if (!xr.refresh_rate_supported) {
+        return;
+    }
+    const int32_t wanted = CVarGetInteger("gVrRefreshRate", 72);
+    if (wanted == xr.refresh_rate_requested) {
+        return;
+    }
+    xr.refresh_rate_requested = wanted;
+
+    PFN_xrEnumerateDisplayRefreshRatesFB enumerate_rates = nullptr;
+    PFN_xrRequestDisplayRefreshRateFB request_rate = nullptr;
+    xrGetInstanceProcAddr(xr.instance, "xrEnumerateDisplayRefreshRatesFB",
+                          reinterpret_cast<PFN_xrVoidFunction*>(&enumerate_rates));
+    xrGetInstanceProcAddr(xr.instance, "xrRequestDisplayRefreshRateFB",
+                          reinterpret_cast<PFN_xrVoidFunction*>(&request_rate));
+    if (enumerate_rates == nullptr || request_rate == nullptr) {
+        return;
+    }
+    uint32_t count = 0;
+    if (!xr_check(enumerate_rates(xr.session, 0, &count, nullptr), "xrEnumerateDisplayRefreshRatesFB") ||
+        count == 0) {
+        return;
+    }
+    std::vector<float> rates(count);
+    enumerate_rates(xr.session, count, &count, rates.data());
+    float best = rates[0];
+    for (float rate : rates) {
+        if (std::fabs(rate - (float)wanted) < std::fabs(best - (float)wanted)) {
+            best = rate;
+        }
+    }
+    if (xr_check(request_rate(xr.session, best), "xrRequestDisplayRefreshRateFB")) {
+        spdlog::info("[VR] Display refresh rate: asked {} Hz, set {:.0f} Hz", wanted, best);
+    }
+}
+
 static void handle_session_state_change(XrSessionState new_state) {
     xr.session_state = new_state;
 
@@ -882,6 +927,7 @@ static void handle_session_state_change(XrSessionState new_state) {
             begin_info.primaryViewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
             if (xr_check(xrBeginSession(xr.session, &begin_info), "xrBeginSession")) {
                 xr.session_running = true;
+                xr.refresh_rate_requested = 0; // SOH [VR] ask for gVrRefreshRate again
                 spdlog::info("[VR] Session started");
             }
             break;
@@ -1315,6 +1361,8 @@ bool vr_init() {
     xr.user_presence_supported = false;
     xr.user_present = true; // assume worn until the runtime says otherwise
     xr.color_scale_supported = false;
+    xr.refresh_rate_supported = false;
+    xr.refresh_rate_requested = 0;
     xr.view_fade_target = xr.view_fade_current = 0.0f;
     {
         uint32_t ext_count = 0;
@@ -1328,10 +1376,13 @@ bool vr_init() {
             if (strcmp(p.extensionName, XR_KHR_COMPOSITION_LAYER_COLOR_SCALE_BIAS_EXTENSION_NAME) == 0) {
                 xr.color_scale_supported = true;
             }
+            if (strcmp(p.extensionName, XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME) == 0) {
+                xr.refresh_rate_supported = true;
+            }
         }
     }
 
-    const char* extensions[4] = { vr_gfx_graphics_extension() };
+    const char* extensions[5] = { vr_gfx_graphics_extension() };
     uint32_t extension_count = 1;
 #if VR_GFX_GLES
     // Mandatory on Android: it is what carries the VM and activity into xrCreateInstance.
@@ -1342,6 +1393,9 @@ bool vr_init() {
     }
     if (xr.color_scale_supported) {
         extensions[extension_count++] = XR_KHR_COMPOSITION_LAYER_COLOR_SCALE_BIAS_EXTENSION_NAME;
+    }
+    if (xr.refresh_rate_supported) {
+        extensions[extension_count++] = XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME;
     }
 
     XrInstanceCreateInfo instance_ci = { XR_TYPE_INSTANCE_CREATE_INFO };
@@ -1768,6 +1822,8 @@ bool vr_begin_frame() {
     poll_events();
 
     if (!xr.session_running) return false;
+
+    vr_update_refresh_rate();
 
     // Wait for the runtime to signal it's ready for a new frame. Time spent blocked here is spare
     // headroom — if it trends to zero we are no longer keeping up with the headset.

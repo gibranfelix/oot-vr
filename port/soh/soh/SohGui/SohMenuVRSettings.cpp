@@ -32,6 +32,13 @@ static const std::map<int32_t, const char*> vrTurnStyleOptions = {
     { 1, "Smooth" },
 };
 
+static const std::map<int32_t, const char*> vrRefreshRateOptions = {
+    { 72, "72 Hz" },
+    { 80, "80 Hz" },
+    { 90, "90 Hz" },
+    { 120, "120 Hz" },
+};
+
 static const std::map<int32_t, const char*> vrHudAttachOptions = {
     { 0, "Head (Floating)" },
     { 1, "Left Hand" },
@@ -1687,6 +1694,17 @@ void SohMenu::AddMenuVRSettings() {
                        "at the headset's full rate because skipped frames are reprojected by the "
                        "compositor.",
               WIDGET_TEXT);
+    AddWidget(perfPath, "Headset Refresh Rate", WIDGET_CVAR_COMBOBOX)
+        .CVar("gVrRefreshRate")
+        .Options(ComboboxOptions()
+                     .DefaultIndex(72)
+                     .ComboMap(vrRefreshRateOptions)
+                     .Tooltip("How many images per second the headset shows. The game logic runs "
+                              "at 20 per second; the frames in between are interpolated. 72 Hz "
+                              "(default) gives each frame the most time and keeps large areas "
+                              "such as Hyrule Field smooth. 90 Hz and 120 Hz look smoother when "
+                              "the frame fits, but drop frames in large areas. If the headset "
+                              "does not support a rate, it uses the nearest one."));
     AddWidget(perfPath, "Stereo Render Divisor: %d", WIDGET_CVAR_SLIDER_INT)
         .CVar("gVrStereoDivisor")
         .Options(IntSliderOptions()
