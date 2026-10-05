@@ -880,16 +880,20 @@ static void pose_to_view_matrix(const XrPosef& pose, float world_scale, float ou
 // SOH [VR] Asks the headset for the display refresh rate in gVrRefreshRate (default 72 Hz). The game
 // is CPU bound in large scenes: 72 Hz gives each frame 13.9 ms instead of 11.1 ms at 90 Hz. Takes the
 // supported rate nearest to the CVar. Runs before each frame, but asks only when the CVar changes or
-// a session starts. The interpolation follows by itself: it reads the rate from the display period.
+// a session starts. Right after a session starts, the Quest can list no rates and refuse the request:
+// then it asks again after one second. The interpolation follows by itself: it reads the rate from
+// the display period.
 static void vr_update_refresh_rate() {
+    static int retry_frames = 0;
+    if (!xr.refresh_rate_supported) {
+        return;
+    }
     const int32_t wanted = CVarGetInteger("gVrRefreshRate", 72);
     if (wanted == xr.refresh_rate_requested) {
         return;
     }
-    spdlog::info("[VR] Display refresh rate: want {} Hz (asked before: {} Hz)", wanted, xr.refresh_rate_requested);
-    xr.refresh_rate_requested = wanted;
-    if (!xr.refresh_rate_supported) {
-        spdlog::warn("[VR] Display refresh rate: XR_FB_display_refresh_rate not available, keeping the system rate");
+    if (retry_frames > 0) {
+        retry_frames--;
         return;
     }
 
@@ -901,24 +905,27 @@ static void vr_update_refresh_rate() {
                           reinterpret_cast<PFN_xrVoidFunction*>(&request_rate));
     if (enumerate_rates == nullptr || request_rate == nullptr) {
         spdlog::warn("[VR] Display refresh rate: the runtime has no FB refresh rate functions");
+        xr.refresh_rate_requested = wanted; // do not try again
         return;
     }
+
+    float best = (float)wanted;
     uint32_t count = 0;
-    if (!xr_check(enumerate_rates(xr.session, 0, &count, nullptr), "xrEnumerateDisplayRefreshRatesFB") ||
-        count == 0) {
-        spdlog::warn("[VR] Display refresh rate: the headset lists no rates");
-        return;
-    }
-    std::vector<float> rates(count);
-    enumerate_rates(xr.session, count, &count, rates.data());
-    float best = rates[0];
-    for (float rate : rates) {
-        if (std::fabs(rate - (float)wanted) < std::fabs(best - (float)wanted)) {
-            best = rate;
+    if (XR_SUCCEEDED(enumerate_rates(xr.session, 0, &count, nullptr)) && count > 0) {
+        std::vector<float> rates(count);
+        enumerate_rates(xr.session, count, &count, rates.data());
+        best = rates[0];
+        for (float rate : rates) {
+            if (std::fabs(rate - (float)wanted) < std::fabs(best - (float)wanted)) {
+                best = rate;
+            }
         }
     }
-    if (xr_check(request_rate(xr.session, best), "xrRequestDisplayRefreshRateFB")) {
+    if (XR_SUCCEEDED(request_rate(xr.session, best))) {
+        xr.refresh_rate_requested = wanted;
         spdlog::info("[VR] Display refresh rate: asked {} Hz, set {:.0f} Hz", wanted, best);
+    } else {
+        retry_frames = 90;
     }
 }
 
