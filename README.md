@@ -225,23 +225,15 @@ Open the SoH menu (Y button), and go to **Settings** > **Mod Menu**.
 - The list sets the order in which the game loads the mods. When two mods
   change the same texture, the mod that loads last is visible.
 
-### Performance
+### Tested mods
 
-Measured on a Quest 3S at 72 Hz in Hyrule Field:
+Tested on a Quest 3S at 72 Hz.
 
-| Mods                                                        | Result                                                          |
-| ----------------------------------------------------------- | --------------------------------------------------------------- |
-| [OoT Reloaded](https://github.com/GhostlyDark/OoT-Reloaded) | Smooth. About 860 MB of memory.                                 |
-| OoT Reloaded and the complete Djipi's 3DS Experience        | Drops to 15-20 FPS while textures load. Up to 4.2 GB of memory. |
-
-Keep **VR Settings** > **Performance** > **Headset Refresh Rate** at 72 Hz with
-texture packs. At 90 Hz each frame has less time.
-
-### Known problems
-
-- OoT Reloaded has English HD versions of the area names and of the pause menu
-  buttons. These replace the same texts of a text pack. The dialogs of the text
-  pack are not affected.
+| Mod                                                                  | Status   | Notes                                                                                                                  |
+| -------------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------- |
+| [OoT Reloaded](https://github.com/GhostlyDark/OoT-Reloaded)          | Works    | About 860 MB of memory. Its English HD texts replace the area names and the pause menu buttons of a text pack.         |
+| Djipi's 3DS Experience, only files 26, 27, 32, and 33 (backgrounds)  | Works    | Tested together with OoT Reloaded.                                                                                     |
+| Djipi's 3DS Experience, complete                                     | Problems | With OoT Reloaded: drops to 15-20 FPS while textures load, and up to 4.2 GB of memory. Not tested alone.               |
 
 ## Build from source
 
