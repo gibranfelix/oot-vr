@@ -845,7 +845,7 @@ void Menu::DrawElement() {
     options2.tooltip = "Reset"
 #ifdef __APPLE__
                        " (Command-R)"
-#elif !defined(__SWITCH__) && !defined(__WIIU__)
+#elif !defined(__SWITCH__) && !defined(__WIIU__) && !defined(__ANDROID__) // SOH [Quest] no keyboard
                        " (Ctrl+R)"
 #else
                        ""
@@ -859,7 +859,11 @@ void Menu::DrawElement() {
     ImGui::SameLine();
     UIWidgets::ButtonOptions options = {};
     options.size = UIWidgets::Sizes::Inline;
+#ifdef __ANDROID__
+    options.tooltip = "Close Menu"; // SOH [Quest] no keyboard: the Y button closes the menu
+#else
     options.tooltip = "Close Menu (Esc)";
+#endif
     if (UIWidgets::Button(ICON_FA_TIMES_CIRCLE, options)) {
         ToggleVisibility();
 
