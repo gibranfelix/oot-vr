@@ -36,7 +36,10 @@ notes.
 Issues, pull requests, and comments must be clear and short:
 
 - Write the main point first.
-- Write only facts that you examined. Tell what you did not test.
+- Write only facts that you examined.
+- In each pull request, write two lists: what you tested, and what the reviewer
+  must test. Use checkboxes in the second list. Tell where each test runs: on
+  the host, in the build, or on the headset.
 - Write each fact one time. Remove introductions, summaries of the text above,
   and praise.
 - Use lists and tables for steps and comparisons.
