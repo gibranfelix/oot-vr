@@ -232,7 +232,7 @@ Tested on a Quest 3S at 72 Hz.
 | Mod                                                                  | Status   | Notes                                                                                                                  |
 | -------------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------- |
 | [OoT Reloaded](https://github.com/GhostlyDark/OoT-Reloaded)          | Works    | About 860 MB of memory.                                                                                                |
-| Djipi's 3DS Experience                                               | Works    | The largest files drop the frame rate to 15-20 FPS while they load. Do not load them, for example "01 Main Textures" (about 490 MB). |
+| Djipi's 3DS Experience                                               | Works    | Large files decrease the frame rate. Do not install "01 Main Textures". |
 
 ## Build from source
 
