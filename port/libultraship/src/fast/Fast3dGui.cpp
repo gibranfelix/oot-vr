@@ -13,6 +13,8 @@
 #include "fast/vr_menu_input.h"
 #include "fast/vr_openxr.h"
 #include "vr_interface.h"
+#include <cfloat>
+#include <cmath>
 
 #ifdef __APPLE__
 #include <SDL_hints.h>
@@ -287,6 +289,40 @@ bool Fast3dGui::UpdateVrMenu(bool vr) {
             mVrNavKeysSent[key] = down;
         }
     }
+
+    // SOH [VR] Laser pointer: aim a controller at the panel to move the mouse of the menu. The
+    // trigger of that hand clicks, and its thumbstick scrolls. The GUI frame has the size of the
+    // panel swapchain while the menu is open, so the panel coordinates map straight to it.
+    bool pointer = false;
+    bool pointerDown = false;
+    if (open) {
+        float u = 0.0f;
+        float v = 0.0f;
+        int hand = 0;
+        if (vr_get_panel_pointer(&u, &v, &hand)) {
+            uint32_t width = 0;
+            uint32_t height = 0;
+            vr_get_screen_size(&width, &height);
+            io.AddMousePosEvent(u * static_cast<float>(width), v * static_cast<float>(height));
+            pointer = true;
+            pointerDown = vr_get_trigger(hand) > 0.55f;
+            float stickX = 0.0f;
+            float stickY = 0.0f;
+            vr_get_thumbstick(hand, &stickX, &stickY);
+            // The left stick also moves the menu selection: scroll with the right stick only.
+            if (hand == VR_HAND_RIGHT && std::fabs(stickY) > 0.2f) {
+                io.AddMouseWheelEvent(0.0f, stickY * 0.25f);
+            }
+        }
+    }
+    if (pointerDown != mVrPointerDown) {
+        io.AddMouseButtonEvent(ImGuiMouseButton_Left, pointerDown);
+        mVrPointerDown = pointerDown;
+    }
+    if (!pointer && mVrPointer) {
+        io.AddMousePosEvent(-FLT_MAX, -FLT_MAX); // no hover on the menu when the ray leaves it
+    }
+    mVrPointer = pointer; // no cursor on the panel: the beam ends at the pointer
 
     if (open) {
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;

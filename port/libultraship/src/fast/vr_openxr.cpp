@@ -242,6 +242,10 @@ static struct {
     bool frame_began;
     int current_eye;
     uint32_t refresh_rate;  // Cached headset refresh in Hz, derived from predictedDisplayPeriod
+    // SOH [VR] XR_FB_display_refresh_rate: the game asks the headset for gVrRefreshRate. The rate
+    // asked last, so that a change of the CVar asks again.
+    bool refresh_rate_supported;
+    int32_t refresh_rate_requested;
     uint32_t current_image_index[2]; // Acquired swapchain image index per eye
 
     // Cached per-frame matrices (row-major, row-vector convention)
@@ -307,6 +311,7 @@ static struct {
     bool hand_active[2];
     XrPosef grip_pose[2];
     XrPosef grip_pose_raw[2]; // untouched by snap-turn; for compositor-space quads (hand HUD)
+    XrPosef aim_pose_raw[2];  // SOH [VR] untouched by snap-turn; for the menu pointer on the panel quad
     XrPosef aim_pose[2];
     float trigger_value[2];
     float squeeze_value[2];
@@ -345,6 +350,9 @@ static struct {
     bool menu_panel;
     XrPosef flat_pose; // panel pose in local_space (RAW tracking coords — quads bypass the snap-turn)
     EyeSwapchain screen_swapchain;
+    // SOH [VR] The beam of the menu laser pointer: a quad layer with a one-color static image.
+    EyeSwapchain pointer_swapchain;
+    bool pointer_filled;
     uint32_t screen_image_index;
     bool rendering_screen;   // currently rendering into the screen swapchain (vs the HUD's)
     bool eyes_ever_rendered;   // don't submit the projection layer before its swapchains have content
@@ -873,6 +881,64 @@ static void pose_to_view_matrix(const XrPosef& pose, float world_scale, float ou
 // OpenXR session state event handling
 // --------------------------------------------------------------------------
 
+// Width of the floating panel in meters (gVrScreenSize). The height is 3/4 of it (4:3, as the swapchain).
+static float vr_screen_width_m() {
+    const float sw = CVarGetFloat("gVrScreenSize", 2.4f);
+    return (sw < 0.5f) ? 0.5f : sw;
+}
+
+// SOH [VR] Asks the headset for the display refresh rate in gVrRefreshRate (default 72 Hz). The game
+// is CPU bound in large scenes: 72 Hz gives each frame 13.9 ms instead of 11.1 ms at 90 Hz. Takes the
+// supported rate nearest to the CVar. Runs before each frame, but asks only when the CVar changes or
+// a session starts. Right after a session starts, the Quest can list no rates and refuse the request:
+// then it asks again after one second. The interpolation follows by itself: it reads the rate from
+// the display period.
+static void vr_update_refresh_rate() {
+    static int retry_frames = 0;
+    if (!xr.refresh_rate_supported) {
+        return;
+    }
+    const int32_t wanted = CVarGetInteger("gVrRefreshRate", 72);
+    if (wanted == xr.refresh_rate_requested) {
+        return;
+    }
+    if (retry_frames > 0) {
+        retry_frames--;
+        return;
+    }
+
+    PFN_xrEnumerateDisplayRefreshRatesFB enumerate_rates = nullptr;
+    PFN_xrRequestDisplayRefreshRateFB request_rate = nullptr;
+    xrGetInstanceProcAddr(xr.instance, "xrEnumerateDisplayRefreshRatesFB",
+                          reinterpret_cast<PFN_xrVoidFunction*>(&enumerate_rates));
+    xrGetInstanceProcAddr(xr.instance, "xrRequestDisplayRefreshRateFB",
+                          reinterpret_cast<PFN_xrVoidFunction*>(&request_rate));
+    if (enumerate_rates == nullptr || request_rate == nullptr) {
+        spdlog::warn("[VR] Display refresh rate: the runtime has no FB refresh rate functions");
+        xr.refresh_rate_requested = wanted; // do not try again
+        return;
+    }
+
+    float best = (float)wanted;
+    uint32_t count = 0;
+    if (XR_SUCCEEDED(enumerate_rates(xr.session, 0, &count, nullptr)) && count > 0) {
+        std::vector<float> rates(count);
+        enumerate_rates(xr.session, count, &count, rates.data());
+        best = rates[0];
+        for (float rate : rates) {
+            if (std::fabs(rate - (float)wanted) < std::fabs(best - (float)wanted)) {
+                best = rate;
+            }
+        }
+    }
+    if (XR_SUCCEEDED(request_rate(xr.session, best))) {
+        xr.refresh_rate_requested = wanted;
+        spdlog::info("[VR] Display refresh rate: asked {} Hz, set {:.0f} Hz", wanted, best);
+    } else {
+        retry_frames = 90;
+    }
+}
+
 static void handle_session_state_change(XrSessionState new_state) {
     xr.session_state = new_state;
 
@@ -882,6 +948,7 @@ static void handle_session_state_change(XrSessionState new_state) {
             begin_info.primaryViewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
             if (xr_check(xrBeginSession(xr.session, &begin_info), "xrBeginSession")) {
                 xr.session_running = true;
+                xr.refresh_rate_requested = 0; // SOH [VR] ask for gVrRefreshRate again
                 spdlog::info("[VR] Session started");
             }
             break;
@@ -1315,6 +1382,8 @@ bool vr_init() {
     xr.user_presence_supported = false;
     xr.user_present = true; // assume worn until the runtime says otherwise
     xr.color_scale_supported = false;
+    xr.refresh_rate_supported = false;
+    xr.refresh_rate_requested = 0;
     xr.view_fade_target = xr.view_fade_current = 0.0f;
     {
         uint32_t ext_count = 0;
@@ -1328,10 +1397,13 @@ bool vr_init() {
             if (strcmp(p.extensionName, XR_KHR_COMPOSITION_LAYER_COLOR_SCALE_BIAS_EXTENSION_NAME) == 0) {
                 xr.color_scale_supported = true;
             }
+            if (strcmp(p.extensionName, XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME) == 0) {
+                xr.refresh_rate_supported = true;
+            }
         }
     }
 
-    const char* extensions[4] = { vr_gfx_graphics_extension() };
+    const char* extensions[5] = { vr_gfx_graphics_extension() };
     uint32_t extension_count = 1;
 #if VR_GFX_GLES
     // Mandatory on Android: it is what carries the VM and activity into xrCreateInstance.
@@ -1343,6 +1415,10 @@ bool vr_init() {
     if (xr.color_scale_supported) {
         extensions[extension_count++] = XR_KHR_COMPOSITION_LAYER_COLOR_SCALE_BIAS_EXTENSION_NAME;
     }
+    if (xr.refresh_rate_supported) {
+        extensions[extension_count++] = XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME;
+    }
+    spdlog::info("[VR] XR_FB_display_refresh_rate: {}", xr.refresh_rate_supported ? "available" : "not available");
 
     XrInstanceCreateInfo instance_ci = { XR_TYPE_INSTANCE_CREATE_INFO };
     instance_ci.next = vr_gfx_instance_next();
@@ -1623,6 +1699,32 @@ bool vr_init() {
         }
     }
 
+    // SOH [VR] Swapchain of the menu laser beam: one static image of one color. Optional: without
+    // it, the menu pointer works and only the beam is not visible.
+    {
+        auto& sc = xr.pointer_swapchain;
+        sc.width = 16;
+        sc.height = 16;
+        sc.format = chosen_format;
+        xr.pointer_filled = false;
+
+        XrSwapchainCreateInfo swapchain_ci = { XR_TYPE_SWAPCHAIN_CREATE_INFO };
+        swapchain_ci.createFlags = XR_SWAPCHAIN_CREATE_STATIC_IMAGE_BIT;
+        swapchain_ci.usageFlags = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT | XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
+        swapchain_ci.format = chosen_format;
+        swapchain_ci.sampleCount = 1;
+        swapchain_ci.width = sc.width;
+        swapchain_ci.height = sc.height;
+        swapchain_ci.faceCount = 1;
+        swapchain_ci.arraySize = 1;
+        swapchain_ci.mipCount = 1;
+
+        if (!xr_check(xrCreateSwapchain(xr.session, &swapchain_ci, &sc.handle), "xrCreateSwapchain (pointer)") ||
+            !vr_gfx_create_targets(sc, "Pointer")) {
+            sc.handle = XR_NULL_HANDLE;
+        }
+    }
+
     // Initialize views
     xr.views[0] = { XR_TYPE_VIEW };
     xr.views[1] = { XR_TYPE_VIEW };
@@ -1639,7 +1741,7 @@ void vr_shutdown() {
     vrphys_reset();
 
     EyeSwapchain* all[] = { &xr.eye_swapchains[0], &xr.eye_swapchains[1], &xr.hud_swapchain,
-                            &xr.screen_swapchain };
+                            &xr.screen_swapchain, &xr.pointer_swapchain };
     for (EyeSwapchain* sc : all) {
         vr_gfx_destroy_targets(*sc);
         if (sc->handle != XR_NULL_HANDLE) {
@@ -1648,6 +1750,7 @@ void vr_shutdown() {
         }
     }
     xr.eyes_ever_rendered = false;
+    xr.pointer_filled = false;
     xr.flat_screen = false;
     xr.flat_screen_prev = false;
     xr.menu_panel = false;
@@ -1768,6 +1871,8 @@ bool vr_begin_frame() {
     poll_events();
 
     if (!xr.session_running) return false;
+
+    vr_update_refresh_rate();
 
     // Wait for the runtime to signal it's ready for a new frame. Time spent blocked here is spare
     // headroom — if it trends to zero we are no longer keeping up with the headset.
@@ -2016,6 +2121,7 @@ bool vr_begin_frame() {
             // Keep the RAW tracking-space grip for compositor quads (hand-attached HUD): quad
             // layers are composed against live tracking and must not carry the artificial turn.
             xr.grip_pose_raw[h] = xr.grip_pose[h];
+            xr.aim_pose_raw[h] = xr.aim_pose[h];
             xr.grip_pose[h] = apply_turn(xr.grip_pose[h]);
             xr.aim_pose[h] = apply_turn(xr.aim_pose[h]);
         }
@@ -2076,6 +2182,163 @@ bool vr_begin_frame() {
 
 // A HUD quad that shows the given pixel rectangle of the HUD swapchain (top-left origin, the N64
 // screen's orientation).
+// SOH [VR] Laser pointer of the SoH menu: the aim ray of a controller against the floating panel
+// quad. The right hand has priority; the left hand points when the right hand misses. Uses the RAW
+// aim pose, because the quad is in raw tracking coordinates (no artificial turn).
+struct PanelRay {
+    int hand;
+    glm::vec3 origin;
+    glm::vec3 dir;
+    float distance; // meters from the controller to the hit point
+    float u, v;     // 0..1 from the top-left corner of the panel
+};
+
+static void vr_aim_ray_raw(int hand, glm::vec3& origin, glm::vec3& dir) {
+    const XrPosef& ap = xr.aim_pose_raw[hand];
+    origin = glm::vec3(ap.position.x, ap.position.y, ap.position.z);
+    dir = glm::quat(ap.orientation.w, ap.orientation.x, ap.orientation.y, ap.orientation.z) *
+          glm::vec3(0.0f, 0.0f, -1.0f);
+}
+
+static bool vr_panel_pointer_ray(PanelRay& out) {
+    const glm::vec3 centre(xr.flat_pose.position.x, xr.flat_pose.position.y, xr.flat_pose.position.z);
+    const glm::quat rot(xr.flat_pose.orientation.w, xr.flat_pose.orientation.x, xr.flat_pose.orientation.y,
+                        xr.flat_pose.orientation.z);
+    const glm::vec3 normal = rot * glm::vec3(0.0f, 0.0f, 1.0f); // the front of the quad
+    const float width = vr_screen_width_m();
+    const float height = width * 0.75f;
+    static const int kHands[2] = { 1, 0 }; // right, then left
+    for (int h : kHands) {
+        if (!xr.hand_active[h]) {
+            continue;
+        }
+        glm::vec3 origin;
+        glm::vec3 dir;
+        vr_aim_ray_raw(h, origin, dir);
+        const float denom = glm::dot(dir, normal);
+        if (denom > -1e-4f) {
+            continue; // parallel to the panel, or pointing at its back
+        }
+        const float t = glm::dot(centre - origin, normal) / denom;
+        if (t < 0.0f) {
+            continue;
+        }
+        const glm::vec3 local = glm::conjugate(rot) * (origin + dir * t - centre);
+        const float pu = local.x / width + 0.5f;
+        const float pv = 0.5f - local.y / height;
+        if (pu < 0.0f || pu > 1.0f || pv < 0.0f || pv > 1.0f) {
+            continue;
+        }
+        out = { h, origin, dir, t, pu, pv };
+        return true;
+    }
+    return false;
+}
+
+// Fills the static image of the beam swapchain with the beam color, one time. Restores the GL state
+// that it changes: the engine keeps shadow copies of the scissor and the masks (see
+// vr_gfx_bind_target).
+static void vr_fill_pointer_swapchain() {
+#if VR_GFX_GLES
+    auto& sc = xr.pointer_swapchain;
+    XrSwapchainImageAcquireInfo acquire_info = { XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO };
+    uint32_t index = 0;
+    if (!xr_check(xrAcquireSwapchainImage(sc.handle, &acquire_info, &index), "xrAcquireSwapchainImage (pointer)")) {
+        return;
+    }
+    XrSwapchainImageWaitInfo wait_info = { XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO };
+    wait_info.timeout = XR_INFINITE_DURATION;
+    xr_check(xrWaitSwapchainImage(sc.handle, &wait_info), "xrWaitSwapchainImage (pointer)");
+
+    GLint prev_fbo = 0;
+    GLint prev_viewport[4] = {};
+    GLfloat prev_clear[4] = {};
+    GLboolean prev_color_mask[4] = { GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE };
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo);
+    glGetIntegerv(GL_VIEWPORT, prev_viewport);
+    glGetFloatv(GL_COLOR_CLEAR_VALUE, prev_clear);
+    glGetBooleanv(GL_COLOR_WRITEMASK, prev_color_mask);
+    const GLboolean scissor_was_enabled = glIsEnabled(GL_SCISSOR_TEST);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, sc.fbos[index]);
+    glDisable(GL_SCISSOR_TEST);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glViewport(0, 0, static_cast<GLsizei>(sc.width), static_cast<GLsizei>(sc.height));
+    // Light blue, 80% opaque. Premultiplied alpha: the quad layer has no UNPREMULTIPLIED flag.
+    const float alpha = 0.8f;
+    glClearColor(0.55f * alpha, 0.8f * alpha, 1.0f * alpha, alpha);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glClearColor(prev_clear[0], prev_clear[1], prev_clear[2], prev_clear[3]);
+    glColorMask(prev_color_mask[0], prev_color_mask[1], prev_color_mask[2], prev_color_mask[3]);
+    if (scissor_was_enabled) {
+        glEnable(GL_SCISSOR_TEST);
+    }
+    glViewport(prev_viewport[0], prev_viewport[1], prev_viewport[2], prev_viewport[3]);
+    glBindFramebuffer(GL_FRAMEBUFFER, static_cast<GLuint>(prev_fbo));
+
+    XrSwapchainImageReleaseInfo release_info = { XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO };
+    xr_check(xrReleaseSwapchainImage(sc.handle, &release_info), "xrReleaseSwapchainImage (pointer)");
+    xr.pointer_filled = true;
+#endif
+}
+
+// The beam of the menu laser pointer: a thin quad from the controller to the hit point on the panel,
+// turned about its own axis to face the head. When no ray hits the panel, the beam of the right hand
+// (or of the left hand) is 2 m long. Only while the SoH menu is open.
+static bool vr_build_pointer_layer(XrCompositionLayerQuad& q) {
+    if (!xr.menu_panel || xr.pointer_swapchain.handle == XR_NULL_HANDLE || !xr.input_initialized) {
+        return false;
+    }
+    PanelRay ray;
+    if (!vr_panel_pointer_ray(ray)) {
+        ray.hand = xr.hand_active[1] ? 1 : (xr.hand_active[0] ? 0 : -1);
+        if (ray.hand < 0) {
+            return false;
+        }
+        vr_aim_ray_raw(ray.hand, ray.origin, ray.dir);
+        ray.distance = 2.0f;
+    }
+    if (!xr.pointer_filled) {
+        vr_fill_pointer_swapchain();
+        if (!xr.pointer_filled) {
+            return false;
+        }
+    }
+    const float start = 0.03f; // begin in front of the controller model
+    if (ray.distance <= start) {
+        return false;
+    }
+    const glm::vec3 a = ray.origin + ray.dir * start;
+    const glm::vec3 b = ray.origin + ray.dir * ray.distance;
+    const glm::vec3 mid = 0.5f * (a + b);
+
+    const glm::vec3 x = glm::normalize(ray.dir);
+    const XrPosef& hp = xr.head_pose_raw;
+    const glm::vec3 to_head = glm::vec3(hp.position.x, hp.position.y, hp.position.z) - mid;
+    glm::vec3 z = to_head - x * glm::dot(to_head, x);
+    if (glm::length(z) < 1e-4f) {
+        z = glm::abs(x.y) < 0.9f ? glm::cross(x, glm::vec3(0.0f, 1.0f, 0.0f)) : glm::vec3(1.0f, 0.0f, 0.0f);
+    }
+    z = glm::normalize(z);
+    const glm::vec3 y = glm::cross(z, x);
+    const glm::quat rot = glm::quat_cast(glm::mat3(x, y, z));
+
+    q = { XR_TYPE_COMPOSITION_LAYER_QUAD };
+    q.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+    q.space = xr.local_space;
+    q.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
+    q.subImage.swapchain = xr.pointer_swapchain.handle;
+    q.subImage.imageRect.offset = { 0, 0 };
+    q.subImage.imageRect.extent = { static_cast<int32_t>(xr.pointer_swapchain.width),
+                                    static_cast<int32_t>(xr.pointer_swapchain.height) };
+    q.subImage.imageArrayIndex = 0;
+    q.pose.position = { mid.x, mid.y, mid.z };
+    q.pose.orientation = { rot.x, rot.y, rot.z, rot.w };
+    q.size = { glm::length(b - a), 0.004f };
+    return true;
+}
+
 static XrCompositionLayerQuad vr_hud_quad(int32_t x, int32_t y_top, int32_t w, int32_t h) {
     XrCompositionLayerQuad q = { XR_TYPE_COMPOSITION_LAYER_QUAD };
     q.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
@@ -2358,14 +2621,15 @@ void vr_end_frame() {
     screen_layer.subImage.imageArrayIndex = 0;
     screen_layer.pose = xr.flat_pose;
     {
-        float sw = CVarGetFloat("gVrScreenSize", 2.4f);
-        if (sw < 0.5f) sw = 0.5f;
+        const float sw = vr_screen_width_m();
         screen_layer.size = { sw, sw * 0.75f }; // 4:3, matching the swapchain
     }
 
     // Assemble layers back-to-front. The projection (world) layer is only submitted once its
     // swapchains have ever been rendered (at boot we go straight into flat-screen file select).
-    const XrCompositionLayerBaseHeader* layers[2 + kMaxHudLayers];
+    XrCompositionLayerQuad pointer_layer = { XR_TYPE_COMPOSITION_LAYER_QUAD };
+    const bool pointer_visible = vr_build_pointer_layer(pointer_layer);
+    const XrCompositionLayerBaseHeader* layers[3 + kMaxHudLayers];
     uint32_t layer_count = 0;
     if (xr.eyes_ever_rendered) {
         layers[layer_count++] = reinterpret_cast<const XrCompositionLayerBaseHeader*>(&projection_layer);
@@ -2382,6 +2646,10 @@ void vr_end_frame() {
         for (uint32_t i = 0; i < hud_layer_count; i++) {
             layers[layer_count++] = reinterpret_cast<const XrCompositionLayerBaseHeader*>(&hud_layers[i]);
         }
+    }
+    // SOH [VR] The menu laser beam goes on top of the panel.
+    if (pointer_visible) {
+        layers[layer_count++] = reinterpret_cast<const XrCompositionLayerBaseHeader*>(&pointer_layer);
     }
 
     XrFrameEndInfo end_info = { XR_TYPE_FRAME_END_INFO };
@@ -3214,6 +3482,21 @@ void vr_get_screen_size(uint32_t* w, uint32_t* h) {
     *h = xr.screen_swapchain.height;
 }
 
+// SOH [VR] Laser pointer for the SoH menu. See vr_panel_pointer_ray.
+bool vr_get_panel_pointer(float* u, float* v, int* hand) {
+    if (!xr.initialized || !xr.enabled || !xr.input_initialized || !vr_panel_shown()) {
+        return false;
+    }
+    PanelRay ray;
+    if (!vr_panel_pointer_ray(ray)) {
+        return false;
+    }
+    *u = ray.u;
+    *v = ray.v;
+    *hand = ray.hand;
+    return true;
+}
+
 // Render the game's full frame into the screen swapchain. Reuses the HUD's "2D rendering" flag so
 // gfx_pc uses the normal flat projection instead of the per-eye VR overrides.
 void vr_begin_screen() {
@@ -3420,6 +3703,7 @@ void vr_set_flat_screen(bool) {}
 bool vr_get_flat_screen() { return false; }
 void vr_set_menu_panel(bool) {}
 bool vr_get_panel_visible() { return false; }
+bool vr_get_panel_pointer(float*, float*, int*) { return false; }
 void vr_get_screen_size(uint32_t* w, uint32_t* h) { *w = 1280; *h = 960; }
 void vr_begin_screen() {}
 void vr_end_screen() {}
