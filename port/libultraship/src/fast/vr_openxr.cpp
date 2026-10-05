@@ -886,6 +886,7 @@ static void vr_update_refresh_rate() {
     if (wanted == xr.refresh_rate_requested) {
         return;
     }
+    spdlog::info("[VR] Display refresh rate: want {} Hz (asked before: {} Hz)", wanted, xr.refresh_rate_requested);
     xr.refresh_rate_requested = wanted;
     if (!xr.refresh_rate_supported) {
         spdlog::warn("[VR] Display refresh rate: XR_FB_display_refresh_rate not available, keeping the system rate");
@@ -905,6 +906,7 @@ static void vr_update_refresh_rate() {
     uint32_t count = 0;
     if (!xr_check(enumerate_rates(xr.session, 0, &count, nullptr), "xrEnumerateDisplayRefreshRatesFB") ||
         count == 0) {
+        spdlog::warn("[VR] Display refresh rate: the headset lists no rates");
         return;
     }
     std::vector<float> rates(count);
