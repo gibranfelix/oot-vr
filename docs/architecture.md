@@ -189,6 +189,8 @@ The headset has no console and no debugger. Use these tools:
 | Tool | Command or location |
 |---|---|
 | Game log | `adb logcat -s soh:V`. VR messages start with `[VR]`. |
+| Frame rate and frame times | `adb logcat -s soh:V \| grep Perf`. The game writes one `[VR] Perf:` line each 5 seconds. |
+| Headset CPU and GPU levels | `adb logcat -s VrApi`. |
 | Log files | `/sdcard/Android/data/org.oot.vr/files/logs/` |
 | Screenshot of the left eye | `adb exec-out screencap -p > s.png`. Not tested on the device. |
 | Headset recordings | `/sdcard/Oculus/VideoShots/`. Get them with `adb pull`. |
