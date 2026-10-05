@@ -134,17 +134,27 @@ void GfxSetInstance(std::shared_ptr<Interpreter> gfx) {
     mInstance = gfx.get();
 }
 
-// SOH [Quest] Resource lookups by hash, one time for each frame (see frame_resource_cache.h).
+// SOH [Quest] Resource lookups by hash or by path, one time for each frame (see
+// frame_resource_cache.h). Key: a uint64_t hash or a const char* path.
 static FrameResourceCache<Ship::IResource> sFrameResources;
 
-static std::shared_ptr<Ship::IResource> LoadResourceForFrame(uint64_t hash) {
-    return sFrameResources.Get(
-        hash, [](uint64_t h) { return Ship::Context::GetRawInstance()->GetResourceManager()->LoadResource(h); });
+template <typename Key> static void* GetResourceRawPointerForFrame(Key key) {
+    const auto resource = sFrameResources.Get(
+        key, [](Key k) { return Ship::Context::GetRawInstance()->GetResourceManager()->LoadResource(k); });
+    return resource != nullptr ? resource->GetRawPointer() : nullptr;
 }
 
-static void* GetResourceRawPointerForFrame(uint64_t hash) {
-    const auto resource = LoadResourceForFrame(hash);
-    return resource != nullptr ? resource->GetRawPointer() : nullptr;
+static std::shared_ptr<Fast::Texture> LoadTextureForFrame(const char* path) {
+    return std::static_pointer_cast<Fast::Texture>(sFrameResources.Get(path, [](const char* p) {
+        return Ship::Context::GetRawInstance()->GetResourceManager()->LoadResourceProcess(p);
+    }));
+}
+
+// SOH [Quest] For the [VR] Perf log line: resource lookups that the frame cache answered, and
+// lookups that went to the ResourceManager. Totals since the start.
+void gfx_get_frame_resource_counts(size_t* hits, size_t* loads) {
+    *hits = sFrameResources.Hits();
+    *loads = sFrameResources.Loads();
 }
 
 // N64 prim_depth is 15-bit (0 near, 0x7FFF far).
@@ -3397,8 +3407,7 @@ bool gfx_mtx_otr_filepath_handler_custom_f3dex2(F3DGfx** cmd0) {
     Interpreter* gfx = mInstance;
     F3DGfx* cmd = *cmd0;
     const char* fileName = (const char*)cmd->words.w1;
-    const int32_t* mtx = (const int32_t*)Ship::Context::GetRawInstance()->GetResourceManager()->GetResourceRawPointer(
-        (const char*)fileName);
+    const int32_t* mtx = (const int32_t*)GetResourceRawPointerForFrame(fileName); // SOH [Quest] frame cache
 
     if (mtx != NULL) {
         gfx->GfxSpMatrix(C0(0, 8) ^ F3DEX2_G_MTX_PUSH, mtx);
@@ -3411,8 +3420,7 @@ bool gfx_mtx_otr_filepath_handler_custom_f3d(F3DGfx** cmd0) {
     Interpreter* gfx = mInstance;
     F3DGfx* cmd = *cmd0;
     const char* fileName = (const char*)cmd->words.w1;
-    const int32_t* mtx = (const int32_t*)Ship::Context::GetRawInstance()->GetResourceManager()->GetResourceRawPointer(
-        (const char*)fileName);
+    const int32_t* mtx = (const int32_t*)GetResourceRawPointerForFrame(fileName); // SOH [Quest] frame cache
 
     if (mtx != NULL) {
         gfx->GfxSpMatrix(C0(16, 8), mtx);
@@ -3687,8 +3695,7 @@ bool gfx_vtx_otr_filepath_handler_custom(F3DGfx** cmd0) {
     size_t vtxCnt = cmd->words.w0;
     size_t vtxIdxOff = cmd->words.w1 >> 16;
     size_t vtxDataOff = cmd->words.w1 & 0xFFFF;
-    F3DVtx* vtx =
-        (F3DVtx*)Ship::Context::GetRawInstance()->GetResourceManager()->GetResourceRawPointer((const char*)fileName);
+    F3DVtx* vtx = (F3DVtx*)GetResourceRawPointerForFrame((const char*)fileName); // SOH [Quest] frame cache
     vtx += vtxDataOff;
 
     gfx->GfxSpVertex(vtxCnt, vtxIdxOff, vtx);
@@ -3698,8 +3705,7 @@ bool gfx_vtx_otr_filepath_handler_custom(F3DGfx** cmd0) {
 bool gfx_dl_otr_filepath_handler_custom(F3DGfx** cmd0) {
     F3DGfx* cmd = *cmd0;
     char* fileName = (char*)cmd->words.w1;
-    F3DGfx* nDL =
-        (F3DGfx*)Ship::Context::GetRawInstance()->GetResourceManager()->GetResourceRawPointer((const char*)fileName);
+    F3DGfx* nDL = (F3DGfx*)GetResourceRawPointerForFrame((const char*)fileName); // SOH [Quest] frame cache
 
     if (C0(16, 1) == 0 && nDL != nullptr) {
         g_exec_stack.call(*cmd0, nDL);
@@ -3999,8 +4005,7 @@ bool gfx_set_timg_handler_rdp(F3DGfx** cmd0) {
 
     if ((i & 1) != 1) {
         if (gfx_check_image_signature(imgData) == 1) {
-            std::shared_ptr<Fast::Texture> tex = std::static_pointer_cast<Fast::Texture>(
-                Ship::Context::GetRawInstance()->GetResourceManager()->LoadResourceProcess(imgData));
+            std::shared_ptr<Fast::Texture> tex = LoadTextureForFrame(imgData); // SOH [Quest] frame cache
 
             if (tex == nullptr) {
                 (*cmd0)++;
@@ -4114,8 +4119,7 @@ bool gfx_set_timg_otr_filepath_handler_custom(F3DGfx** cmd0) {
     uint32_t texFlags = 0;
     RawTexMetadata rawTexMetadata = {};
 
-    std::shared_ptr<Fast::Texture> texture = std::static_pointer_cast<Fast::Texture>(
-        Ship::Context::GetRawInstance()->GetResourceManager()->LoadResourceProcess(fileName));
+    std::shared_ptr<Fast::Texture> texture = LoadTextureForFrame(fileName); // SOH [Quest] frame cache
     if (texture != nullptr) {
         Interpreter* gfx = mInstance;
         texFlags = texture->Flags;
