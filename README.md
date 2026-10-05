@@ -1,6 +1,6 @@
 # oot-vr
 
-*The Legend of Zelda: Ocarina of Time* in first person on the Meta Quest 3S.
+_The Legend of Zelda: Ocarina of Time_ in first person on the Meta Quest 3S.
 The game runs natively on the headset. You do not need a PC to play.
 
 **Status: alpha.** You can play the main story from Kokiri Forest to Ganon's
@@ -10,17 +10,17 @@ Tower. Some problems are known. Read [`STATUS.md`](STATUS.md) before you play.
 
 All clips are recordings from a Meta Quest 3S.
 
-| | |
-|---|---|
-| ![Link fights a Tektite with the sword and the shield](docs/media/tektite.webp) | ![Link shoots the bow from the back of Epona](docs/media/epona-bow.webp) |
-| Sword and shield against a Tektite. | Bow on Epona. |
-| ![Link holds the ocarina in Kokiri Forest](docs/media/ocarina.webp) | ![The pause screen on a panel that floats in front of the player](docs/media/floating-menu.webp) |
-| Ocarina. | Pause screen. |
-| ![Link fights Ganon with the sword](docs/media/ganon.webp) | ![The Great Fairy appears in front of Link](docs/media/great-fairy.webp) |
-| Ganon. | Great Fairy. |
+|                                                                                 |                                                                                                  |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| ![Link fights a Tektite with the sword and the shield](docs/media/tektite.webp) | ![Link shoots the bow from the back of Epona](docs/media/epona-bow.webp)                         |
+| Sword and shield against a Tektite.                                             | Bow on Epona.                                                                                    |
+| ![Link holds the ocarina in Kokiri Forest](docs/media/ocarina.webp)             | ![The pause screen on a panel that floats in front of the player](docs/media/floating-menu.webp) |
+| Ocarina.                                                                        | Pause screen.                                                                                    |
+| ![Link fights Ganon with the sword](docs/media/ganon.webp)                      | ![The Great Fairy appears in front of Link](docs/media/great-fairy.webp)                         |
+| Ganon.                                                                          | Great Fairy.                                                                                     |
 
 > [!IMPORTANT]
-> You must own a legal copy of *The Legend of Zelda: Ocarina of Time*. To play,
+> You must own a legal copy of _The Legend of Zelda: Ocarina of Time_. To play,
 > you make a dump of your own cartridge or disc.
 >
 > This repository and its releases do not contain game assets. We do not supply
@@ -44,20 +44,20 @@ We tested the port only on the Meta Quest 3S.
 These are the default controls. The right hand holds the sword. The left hand
 holds the shield and uses the items.
 
-| Control | Action |
-|---|---|
-| Left thumbstick | Move Link. |
-| Right thumbstick ← → ↓ | Put the item of C-Left, C-Right, or C-Down in your hand. |
-| Right thumbstick ↑ | Talk to Navi, when Navi has a message. |
-| Right thumbstick click (hold) | Open the item selector. Move your hand to an item, then release the click. |
-| Left trigger | Use the item in your hand. For the bow, hold to pull the string and release to shoot. |
-| Right trigger | Z-target. |
-| Both grips (hold) | Hold the sword and the shield. Release the grips to put them away. |
-| A button | The N64 A button: action, talk, roll. |
-| B button | The N64 B button. |
-| Y button | Open or close the SoH menu. |
-| Left Menu button | Start: open the pause screen. |
-| Left grip | In the pause screen, go to the next page. |
+| Control                       | Action                                                                                |
+| ----------------------------- | ------------------------------------------------------------------------------------- |
+| Left thumbstick               | Move Link.                                                                            |
+| Right thumbstick ← → ↓        | Put the item of C-Left, C-Right, or C-Down in your hand.                              |
+| Right thumbstick ↑            | Talk to Navi, when Navi has a message.                                                |
+| Right thumbstick click (hold) | Open the item selector. Move your hand to an item, then release the click.            |
+| Left trigger                  | Use the item in your hand. For the bow, hold to pull the string and release to shoot. |
+| Right trigger                 | Z-target.                                                                             |
+| Both grips (hold)             | Hold the sword and the shield. Release the grips to put them away.                    |
+| A button                      | The N64 A button: action, talk, roll.                                                 |
+| B button                      | The N64 B button.                                                                     |
+| Y button                      | Open or close the SoH menu.                                                           |
+| Left Menu button              | Start: open the pause screen.                                                         |
+| Left grip                     | In the pause screen, go to the next page.                                             |
 
 To attack, swing the sword with your right hand. To block, hold the shield in
 front of you with your left hand.
@@ -67,10 +67,10 @@ front of you with your left hand.
 At the first start, the game asks how you want to turn. You can change the
 answer in VR Settings > VR Inputs > **Control Scheme**:
 
-| Scheme | How you turn | Right thumbstick |
-|---|---|---|
-| Default | Turn your body. | Put the item of C-Left, C-Right, or C-Down in your hand. |
-| Shipwright-VR | Push the right thumbstick. The view turns smoothly. | Turns the view. Use the item selector to take items. |
+| Scheme        | How you turn                                        | Right thumbstick                                         |
+| ------------- | --------------------------------------------------- | -------------------------------------------------------- |
+| Default       | Turn your body.                                     | Put the item of C-Left, C-Right, or C-Down in your hand. |
+| Shipwright-VR | Push the right thumbstick. The view turns smoothly. | Turns the view. Use the item selector to take items.     |
 
 The two schemes use the same buttons. The Shipwright-VR scheme comes from the
 PCVR mod [Shipwright-VR](https://github.com/ShinyWindow/Shipwright-VR).
@@ -84,18 +84,15 @@ The SoH menu contains VR Settings and the settings of Ship of Harkinian. Push
 the Y button to open the menu on the floating panel. Push the Y button again to
 close it. While the menu is open, the controls operate the menu, not Link:
 
-| Control | Menu action |
-|---|---|
-| Point a controller at the panel | Move the pointer. |
-| Trigger of the hand that points | Click. |
-| Right thumbstick ↑ ↓ | Scroll, when the right hand points. |
-| Left thumbstick | Move the selection. |
-| A button | Accept or activate. |
-| B button | Go back or cancel. |
-| Left grip / right grip | Go to the previous tab / the next tab. |
-
-A beam shows where the controller points. The right hand points first. The left
-hand points when the right hand does not point at the panel.
+| Control                         | Menu action                            |
+| ------------------------------- | -------------------------------------- |
+| Point a controller at the panel | Move the pointer.                      |
+| Trigger of the hand that points | Click.                                 |
+| Right thumbstick ↑ ↓            | Scroll, when the right hand points.    |
+| Left thumbstick                 | Move the selection.                    |
+| A button                        | Accept or activate.                    |
+| B button                        | Go back or cancel.                     |
+| Left grip / right grip          | Go to the previous tab / the next tab. |
 
 The game does not stop while the menu is open. The Y button also opens the
 menu when you play the ocarina. In the classic control
@@ -106,12 +103,12 @@ scheme, C-Right is on the left Menu button because the Y button opens the menu.
 When you play the ocarina, the controls change. They are the same as on the N64
 controller:
 
-| Note | Control |
-|---|---|
-| A (D4) | A button |
+| Note                          | Control                  |
+| ----------------------------- | ------------------------ |
+| A (D4)                        | A button                 |
 | C-Up, C-Down, C-Left, C-Right | Right thumbstick ↑ ↓ ← → |
-| Half step up / down | Right grip / left grip |
-| Put the ocarina away | B button |
+| Half step up / down           | Right grip / left grip   |
+| Put the ocarina away          | B button                 |
 
 ## Install
 
@@ -127,14 +124,14 @@ You do these steps one time only.
 
 Make a dump of your own cartridge or disc. Use one of these versions:
 
-| Platform | Region | Versions |
-|---|---|---|
-| Nintendo 64 | Europe (PAL) | 1.0, 1.1 |
-| Nintendo 64 | North America (NTSC-U) | 1.0, 1.1, 1.2 |
-| Nintendo 64 | Japan (NTSC-J) | 1.0, 1.1, 1.2 |
-| GameCube | Europe (PAL) | Ocarina of Time, Master Quest |
-| GameCube | North America (NTSC-U) | Ocarina of Time, Master Quest |
-| GameCube | Japan (NTSC-J) | Ocarina of Time, Master Quest, Collector's Edition |
+| Platform    | Region                 | Versions                                           |
+| ----------- | ---------------------- | -------------------------------------------------- |
+| Nintendo 64 | Europe (PAL)           | 1.0, 1.1                                           |
+| Nintendo 64 | North America (NTSC-U) | 1.0, 1.1, 1.2                                      |
+| Nintendo 64 | Japan (NTSC-J)         | 1.0, 1.1, 1.2                                      |
+| GameCube    | Europe (PAL)           | Ocarina of Time, Master Quest                      |
+| GameCube    | North America (NTSC-U) | Ocarina of Time, Master Quest                      |
+| GameCube    | Japan (NTSC-J)         | Ocarina of Time, Master Quest, Collector's Edition |
 
 To make sure that your dump is correct, compare its SHA-1 with the list in
 [`port/docs/supportedHashes.json`](port/docs/supportedHashes.json). We tested
@@ -232,10 +229,10 @@ Open the SoH menu (Y button), and go to **Settings** > **Mod Menu**.
 
 Measured on a Quest 3S at 72 Hz in Hyrule Field:
 
-| Mods | Result |
-|---|---|
-| [OoT Reloaded](https://github.com/GhostlyDark/OoT-Reloaded) | Smooth. About 860 MB of memory. |
-| OoT Reloaded and the complete Djipi's 3DS Experience | Drops to 15-20 FPS while textures load. Up to 4.2 GB of memory. |
+| Mods                                                        | Result                                                          |
+| ----------------------------------------------------------- | --------------------------------------------------------------- |
+| [OoT Reloaded](https://github.com/GhostlyDark/OoT-Reloaded) | Smooth. About 860 MB of memory.                                 |
+| OoT Reloaded and the complete Djipi's 3DS Experience        | Drops to 15-20 FPS while textures load. Up to 4.2 GB of memory. |
 
 Keep **VR Settings** > **Performance** > **Headset Refresh Rate** at 72 Hz with
 texture packs. At 90 Hz each frame has less time.
@@ -254,13 +251,13 @@ APK: `port/Android/build-apk.sh`. The same document tells how to make
 
 ## Documentation
 
-| File | Contents |
-|---|---|
-| [`STATUS.md`](STATUS.md) | What works, what does not work, where to help |
+| File                                           | Contents                                             |
+| ---------------------------------------------- | ---------------------------------------------------- |
+| [`STATUS.md`](STATUS.md)                       | What works, what does not work, where to help        |
 | [`docs/architecture.md`](docs/architecture.md) | How the VR layer connects to the game and the engine |
-| [`CONTEXT.md`](CONTEXT.md) | The terms that this project uses |
-| [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to send changes |
-| [`AGENTS.md`](AGENTS.md) | Rules for contributors and for AI agents |
+| [`CONTEXT.md`](CONTEXT.md)                     | The terms that this project uses                     |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md)           | How to send changes                                  |
+| [`AGENTS.md`](AGENTS.md)                       | Rules for contributors and for AI agents             |
 
 ## Credits
 
