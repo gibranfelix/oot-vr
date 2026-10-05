@@ -882,14 +882,15 @@ static void pose_to_view_matrix(const XrPosef& pose, float world_scale, float ou
 // supported rate nearest to the CVar. Runs before each frame, but asks only when the CVar changes or
 // a session starts. The interpolation follows by itself: it reads the rate from the display period.
 static void vr_update_refresh_rate() {
-    if (!xr.refresh_rate_supported) {
-        return;
-    }
     const int32_t wanted = CVarGetInteger("gVrRefreshRate", 72);
     if (wanted == xr.refresh_rate_requested) {
         return;
     }
     xr.refresh_rate_requested = wanted;
+    if (!xr.refresh_rate_supported) {
+        spdlog::warn("[VR] Display refresh rate: XR_FB_display_refresh_rate not available, keeping the system rate");
+        return;
+    }
 
     PFN_xrEnumerateDisplayRefreshRatesFB enumerate_rates = nullptr;
     PFN_xrRequestDisplayRefreshRateFB request_rate = nullptr;
