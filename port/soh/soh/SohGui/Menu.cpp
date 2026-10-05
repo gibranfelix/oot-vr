@@ -295,11 +295,13 @@ std::unordered_map<uint32_t, disabledInfo>& Menu::GetDisabledMap() {
 
 #ifdef __ANDROID__
 // SOH [Quest] Settings for a PC window and its system APIs. On the Quest they do nothing, or a wrong
-// API stops the game from starting.
+// API stops the game from starting. The frame rate follows the headset: VR Settings > Performance >
+// Headset Refresh Rate is the only place to change it.
 static bool QuestHidesWidget(const WidgetInfo& widget) {
     static const char* const sPcOnlyWidgets[] = {
         "Renderer API (Needs reload)", "Audio API (Needs reload)", "Toggle Fullscreen",
         "Windowed Fullscreen",         "Allow multi-windows",      "Enable Vsync",
+        "Current FPS",                 "Match Refresh Rate",
     };
     for (const char* name : sPcOnlyWidgets) {
         if (widget.name == name) {
