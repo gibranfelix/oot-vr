@@ -21,7 +21,8 @@ Ship of Harkinian and `libultraship`.
 ## Documentation language
 
 Write all documentation in **ASD-STE100 Simplified Technical English**. This
-rule applies to Markdown files, issues, pull requests, and release notes.
+rule applies to Markdown files, issues, pull requests, comments, and release
+notes.
 
 - Write short sentences: 20 words maximum in procedures, 25 words maximum in
   descriptions.
@@ -31,6 +32,16 @@ rule applies to Markdown files, issues, pull requests, and release notes.
 - Use the terms in `CONTEXT.md`.
 - Write paragraphs of 6 sentences maximum.
 - Do not use contractions or slang.
+
+Issues, pull requests, and comments must be clear and short:
+
+- Write the main point first.
+- Write only facts that you examined. Tell what you did not test.
+- Write each fact one time. Remove introductions, summaries of the text above,
+  and praise.
+- Use lists and tables for steps and comparisons.
+- Use an image or a video when it shows the problem or the result better than
+  text.
 
 ## Game assets
 
@@ -84,4 +95,6 @@ Examine each pull request for these problems. Each one is a P1 problem.
   `SOH [VR]` or `SOH [Quest]` marker.
 - The pull request adds a VR call without a `vr_is_initialized()` or
   `VR_IsInitialized()` check. The game must also run with VR off.
-- The pull request adds documentation that does not use ASD-STE100.
+- The pull request adds documentation that does not use ASD-STE100, or that
+  does not obey the rules for issues, pull requests, and comments in
+  [Documentation language](#documentation-language).

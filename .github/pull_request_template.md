@@ -1,6 +1,7 @@
 ## Change
 
-<!-- What does this pull request change, and why? -->
+<!-- What does this pull request change, and why? Write the main point first.
+Use ASD-STE100 and short sentences. Add an image or a video if it shows the change better. -->
 
 ## Test
 
