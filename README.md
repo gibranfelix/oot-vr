@@ -232,8 +232,7 @@ Tested on a Quest 3S at 72 Hz.
 | Mod                                                                  | Status   | Notes                                                                                                                  |
 | -------------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------- |
 | [OoT Reloaded](https://github.com/GhostlyDark/OoT-Reloaded)          | Works    | About 860 MB of memory.                                                                                                |
-| Djipi's 3DS Experience, only files 26, 27, 32, and 33 (backgrounds)  | Works    | Tested together with OoT Reloaded.                                                                                     |
-| Djipi's 3DS Experience, complete                                     | Problems | With OoT Reloaded: drops to 15-20 FPS while textures load, and up to 4.2 GB of memory. Not tested alone.               |
+| Djipi's 3DS Experience                                               | Works    | The largest files drop the frame rate to 15-20 FPS while they load. Do not load them, for example "01 Main Textures" (about 490 MB). |
 
 ## Build from source
 
