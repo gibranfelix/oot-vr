@@ -1314,17 +1314,31 @@ void SohMenu::AddMenuVRSettings() {
         .Options(FloatSliderOptions()
                      .Min(30.0f)
                      .Max(180.0f)
-                     .DefaultValue(65.0f)
+                     .DefaultValue(90.0f)
                      .Step(1.0f)
                      .Format("%.0f")
                      .Tooltip("How far the shield's face may be turned away from an attack "
                               "and still block it. Outside this cone the hit doesn't count - "
                               "no back-of-shield or corner deflections; if the attack also "
                               "reached your body, it hurts. Lower = you must square up to the "
-                              "threat. 180 = block from any angle."));
+                              "threat. 90 = anything in front of the shield. 180 = block from "
+                              "any angle."));
+    // The size and shift sliders do nothing while the collider takes the shield mesh's size.
+    auto hideWhenShieldFitted = [](WidgetInfo& info) {
+        info.isHidden = !CVarGetInteger("gVrPhysShield", 1) || CVarGetInteger("gVrPhysShieldFitMesh", 1);
+    };
+    AddWidget(physPath, "Fit Collider to Shield", WIDGET_CVAR_CHECKBOX)
+        .CVar("gVrPhysShieldFitMesh")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysShield", 1); })
+        .Options(CheckboxOptions()
+                     .DefaultValue(true)
+                     .Tooltip("The block collider takes the size and position of the shield in "
+                              "your hand: whatever touches the shield you see is blocked. The "
+                              "tilt sliders still apply. Turn off to set the size and position "
+                              "yourself."));
     AddWidget(physPath, "Shield Width Top: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysShieldWidthTop")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysShield", 1); })
+        .PreFunc(hideWhenShieldFitted)
         .Options(FloatSliderOptions()
                      .Min(5.0f)
                      .Max(90.0f)
@@ -1336,7 +1350,7 @@ void SohMenu::AddMenuVRSettings() {
                               "blocks. Anything outside it doesn't count: smaller = stricter."));
     AddWidget(physPath, "Shield Width Bottom: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysShieldWidthBottom")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysShield", 1); })
+        .PreFunc(hideWhenShieldFitted)
         .Options(FloatSliderOptions()
                      .Min(5.0f)
                      .Max(90.0f)
@@ -1347,7 +1361,7 @@ void SohMenu::AddMenuVRSettings() {
                               "the top for a Hylian-style tapered shape."));
     AddWidget(physPath, "Shield Height: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysShieldHeight")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysShield", 1); })
+        .PreFunc(hideWhenShieldFitted)
         .Options(FloatSliderOptions()
                      .Min(5.0f)
                      .Max(90.0f)
@@ -1357,7 +1371,7 @@ void SohMenu::AddMenuVRSettings() {
                      .Tooltip("Height of the block collider (game units)."));
     AddWidget(physPath, "Shield Shift Across: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysShieldShiftX")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysShield", 1); })
+        .PreFunc(hideWhenShieldFitted)
         .Options(FloatSliderOptions()
                      .Min(-40.0f)
                      .Max(40.0f)
@@ -1369,7 +1383,7 @@ void SohMenu::AddMenuVRSettings() {
                               "say. Center the cyan quad on the visible steel."));
     AddWidget(physPath, "Shield Shift Up/Down: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysShieldShiftY")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysShield", 1); })
+        .PreFunc(hideWhenShieldFitted)
         .Options(FloatSliderOptions()
                      .Min(-40.0f)
                      .Max(40.0f)
@@ -1379,7 +1393,7 @@ void SohMenu::AddMenuVRSettings() {
                      .Tooltip("Slides the collider along the shield face's vertical axis."));
     AddWidget(physPath, "Shield Shift Out: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysShieldShiftZ")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysShield", 1); })
+        .PreFunc(hideWhenShieldFitted)
         .Options(FloatSliderOptions()
                      .Min(-40.0f)
                      .Max(40.0f)
@@ -1478,7 +1492,8 @@ void SohMenu::AddMenuVRSettings() {
                      "gVrPhysShieldPitch=%.0f\n"
                      "gVrPhysShieldYaw=%.0f\n"
                      "gVrPhysShieldRoll=%.0f\n"
-                     "gVrPhysShieldFacingDeg=%.0f\n",
+                     "gVrPhysShieldFacingDeg=%.0f\n"
+                     "gVrPhysShieldFitMesh=%d\n",
                      CVarGetFloat("gVrPhysArmSpeed", 2.0f), CVarGetFloat("gVrPhysHitSpeed", 5.0f),
                      CVarGetFloat("gVrPhysHeavySpeed", 8.0f), CVarGetFloat("gVrPhysReArmSpeed", 0.8f),
                      CVarGetFloat("gVrPhysMinHandSpeed", 1.2f),
@@ -1510,7 +1525,8 @@ void SohMenu::AddMenuVRSettings() {
                      CVarGetFloat("gVrPhysShieldShiftX", -1.1f), CVarGetFloat("gVrPhysShieldShiftY", -0.8f),
                      CVarGetFloat("gVrPhysShieldShiftZ", -2.5f), CVarGetFloat("gVrPhysShieldPitch", -4.0f),
                      CVarGetFloat("gVrPhysShieldYaw", 0.0f), CVarGetFloat("gVrPhysShieldRoll", -90.0f),
-                     CVarGetFloat("gVrPhysShieldFacingDeg", 65.0f));
+                     CVarGetFloat("gVrPhysShieldFacingDeg", 90.0f),
+                     CVarGetInteger("gVrPhysShieldFitMesh", 1));
             ImGui::SetClipboardText(buf);
         });
 

@@ -7,11 +7,16 @@ extern SaveContext gSaveContext;
 }
 
 #include "VrCombat.h"
+#include "VrShieldGeometry.h"
 
 #include "soh/cvar_prefixes.h"
+#include "soh/ResourceManagerHelpers.h"
 #include <libultraship/bridge/consolevariablebridge.h>
+#include <ship/Context.h>
+#include <ship/resource/ResourceManager.h>
 #include <vr_interface.h>
 #include <cmath>
+#include <vector>
 
 // M4 physical shield: the shield lives in the off hand while a melee weapon is VISIBLY in the
 // sword hand (leftHandType — the sword's visibility itself, so the shield leaves the arm the
@@ -41,6 +46,156 @@ inline int ShieldHand() {
     // Opposite of the sword hand (see VrSwing's SwordHand): Link's R_HAND limb, driven by the
     // player's LEFT controller in right-handed mode.
     return CVarGetInteger("gVrLeftHanded", 0) ? VR_HAND_RIGHT : VR_HAND_LEFT;
+}
+
+using VrShieldGeometry::Vec3;
+
+// --- Shield mesh harvest -------------------------------------------------------------------
+// The block collider is fitted to the visible shield: the vertices of the hand-with-shield
+// display list, in R_HAND limb model space (the same space as the collider). Link's skinned
+// DLs load a neighbor limb's matrix (gsSPMatrix 0x0D...) for the wrist vertices and restore
+// the hand matrix with gsSPPopMatrix; vertices loaded between the two are in another limb's
+// space, so they are skipped.
+
+// By CRC64, as the interpreter resolves the OTR hash commands.
+inline void* ResourceByCrc(uint64_t crc) {
+    return Ship::Context::GetRawInstance()->GetResourceManager()->GetResourceRawPointer(crc);
+}
+
+inline bool IsRealPointer(uintptr_t p) {
+    return p > 0x0FFFFFFF; // segmented addresses (0x0D000000...) are not resolvable here
+}
+
+void AddVerts(const Vtx* vtx, int count, bool foreign, std::vector<Vec3>& out) {
+    if (vtx == nullptr || foreign) {
+        return;
+    }
+    for (int i = 0; i < count; i++) {
+        out.push_back({ (float)vtx[i].v.ob[0], (float)vtx[i].v.ob[1], (float)vtx[i].v.ob[2] });
+    }
+}
+
+void HarvestDListVerts(const Gfx* dl, int depth, bool& foreign, std::vector<Vec3>& out) {
+    if (dl == nullptr || depth > 8) {
+        return;
+    }
+    for (int guard = 0; guard < 8192; guard++, dl++) {
+        const uint32_t op = (uint32_t)(dl->words.w0 >> 24) & 0xFF;
+        const bool branch = ((dl->words.w0 >> 16) & 1) != 0;
+        switch (op) {
+            case G_ENDDL:
+                return;
+            case G_VTX:
+                if (IsRealPointer(dl->words.w1)) {
+                    AddVerts((const Vtx*)dl->words.w1, (int)((dl->words.w0 >> 12) & 0xFF), foreign, out);
+                }
+                break;
+            case G_VTX_OTR_HASH: {
+                // Two words. The interpreter caches the resolved pointer in w1 after the first
+                // draw (any value above 0xFFFFF); before that, w1 is a byte offset.
+                const uintptr_t offset = dl->words.w1;
+                const int count = (int)((dl->words.w0 >> 12) & 0xFF);
+                dl++;
+                const uint64_t hash = ((uint64_t)dl->words.w0 << 32) + (uint64_t)dl->words.w1;
+                const Vtx* vtx = nullptr;
+                if (offset > 0xFFFFF) {
+                    vtx = (const Vtx*)offset;
+                } else {
+                    const Vtx* base = (const Vtx*)ResourceByCrc(hash);
+                    vtx = base != nullptr ? (const Vtx*)((const char*)base + offset) : nullptr;
+                }
+                AddVerts(vtx, count, foreign, out);
+                break;
+            }
+            case G_VTX_OTR_FILEPATH: {
+                char* name = (char*)dl->words.w1;
+                dl++;
+                const Vtx* base = ResourceMgr_LoadVtxByName(name);
+                if (base != nullptr) {
+                    AddVerts(base + (dl->words.w1 & 0xFFFF), (int)dl->words.w0, foreign, out);
+                }
+                break;
+            }
+            case G_DL:
+                if (IsRealPointer(dl->words.w1)) {
+                    HarvestDListVerts((const Gfx*)dl->words.w1, depth + 1, foreign, out);
+                }
+                if (branch) {
+                    return;
+                }
+                break;
+            case G_DL_OTR_HASH:
+                if (branch) {
+                    return; // the interpreter does not support this form either
+                }
+                dl++;
+                HarvestDListVerts((const Gfx*)ResourceByCrc(((uint64_t)dl->words.w0 << 32) + (uint64_t)dl->words.w1),
+                                  depth + 1, foreign, out);
+                break;
+            case G_DL_OTR_FILEPATH:
+                HarvestDListVerts(ResourceMgr_LoadGfxByName((const char*)dl->words.w1), depth + 1, foreign, out);
+                if (branch) {
+                    return;
+                }
+                break;
+            case G_MTX:
+            case G_MTX_OTR_FILEPATH:
+                foreign = true;
+                break;
+            case G_MTX_OTR:
+                foreign = true;
+                dl++;
+                break;
+            case G_POPMTX:
+                foreign = false;
+                break;
+            case G_SETTIMG_OTR_HASH:
+            case G_BRANCH_Z_OTR:
+            case G_MARKER:
+                dl++; // two-word commands
+                break;
+            default:
+                break;
+        }
+    }
+}
+
+// Vertices of the shield the hand holds now, cached per display list. The draw picks the DL
+// the same way (Player_OverrideLimbDrawGameplayDefault): rightHandDLists points at the
+// PLAYER_SHIELD_NONE row of sPlayerRightHandShieldDLs, each shield is 4 entries further, and
+// entry 0 of a row is the near LOD. Each entry is the resource name of the DL.
+const std::vector<Vec3>& ShieldMeshVerts(Player* player) {
+    static const void* sCachedDl = nullptr;
+    static std::vector<Vec3> sVerts;
+    const void* dl = (player->rightHandDLists != nullptr)
+                         ? (const void*)player->rightHandDLists[player->currentShield * 4]
+                         : nullptr;
+    if (dl != sCachedDl) {
+        sCachedDl = dl;
+        sVerts.clear();
+        if (dl != nullptr) {
+            bool foreign = false;
+            HarvestDListVerts(ResourceMgr_LoadGfxByName((const char*)dl), 0, foreign, sVerts);
+        }
+    }
+    return sVerts;
+}
+
+// Center and outward normal of the block collider, from the quad the last draw registered.
+bool ShieldFrame(Player* player, Vec3* outCenter, Vec3* outNormal) {
+    const Vec3f* q = player->shieldQuad.dim.quad;
+    const Vec3 quad[4] = { { q[0].x, q[0].y, q[0].z },
+                           { q[1].x, q[1].y, q[1].z },
+                           { q[2].x, q[2].y, q[2].z },
+                           { q[3].x, q[3].y, q[3].z } };
+    const Vec3 chest = { player->actor.world.pos.x, player->actor.world.pos.y + 40.0f, player->actor.world.pos.z };
+    return VrShieldGeometry::QuadFrame(quad, chest, outCenter, outNormal);
+}
+
+// gVrPhysShieldFacingDeg = the generosity cone: max angle between the shield's outward normal
+// and the direction to the attack. 180 disables the gate.
+inline float FacingDeg() {
+    return CVarGetFloat("gVrPhysShieldFacingDeg", 90.0f);
 }
 
 } // namespace
@@ -106,19 +261,18 @@ extern "C" bool VrCombat_ShieldHeld(Player* player) {
     return true;
 }
 
-extern "C" void VrCombat_ShieldQuadModelVerts(float* outXyz4) {
-    // The block collider, built from scratch in R_HAND limb MODEL space (game units x100 —
-    // the same convention as the blade sliders), replacing the vanilla stance quad wholesale:
-    // that one is a 60x60 square hanging at (-15, 0, -6) game units, authored as stance-era
-    // forgiveness, and lands nowhere near the visible shield under a controller-driven hand.
-    // Shape is a symmetric trapezoid (top width, bottom width, height) so a Hylian-style
-    // taper is expressible; strictness = set it smaller than the steel you see.
-    const float halfWTop = CVarGetFloat("gVrPhysShieldWidthTop", 21.2f) * 50.0f;
-    const float halfWBot = CVarGetFloat("gVrPhysShieldWidthBottom", 11.9f) * 50.0f;
-    const float halfH = CVarGetFloat("gVrPhysShieldHeight", 18.0f) * 50.0f;
-    const float cx = CVarGetFloat("gVrPhysShieldShiftX", -1.1f) * 100.0f;
-    const float cy = CVarGetFloat("gVrPhysShieldShiftY", -0.8f) * 100.0f;
-    const float cz = CVarGetFloat("gVrPhysShieldShiftZ", -2.5f) * 100.0f;
+extern "C" void VrCombat_ShieldQuadModelVerts(Player* player, float* outXyz4) {
+    // The block collider, built in R_HAND limb MODEL space (game units x100 — the same
+    // convention as the blade sliders), replacing the vanilla stance quad wholesale: that one
+    // is a 60x60 square hanging at (-15, 0, -6) game units, authored as stance-era forgiveness,
+    // and lands nowhere near the visible shield under a controller-driven hand. The shape is a
+    // symmetric trapezoid (top width, bottom width, height) so a Hylian-style taper fits. By
+    // default (gVrPhysShieldFitMesh) its size and position come from the mesh of the shield in
+    // the hand, so an attack that touches the visible shield touches the collider, for every
+    // shield and for HD model packs. The size and shift sliders apply when the fit is off.
+    float halfWTop = CVarGetFloat("gVrPhysShieldWidthTop", 21.2f) * 50.0f;
+    float halfWBot = CVarGetFloat("gVrPhysShieldWidthBottom", 11.9f) * 50.0f;
+    float halfH = CVarGetFloat("gVrPhysShieldHeight", 18.0f) * 50.0f;
     const float d2r = 3.14159265f / 180.0f;
     const float pitch = CVarGetFloat("gVrPhysShieldPitch", -4.0f) * d2r;
     const float yaw = CVarGetFloat("gVrPhysShieldYaw", 0.0f) * d2r;
@@ -137,6 +291,28 @@ extern "C" void VrCombat_ShieldQuadModelVerts(float* outXyz4) {
     // along its height axis, Out along its normal — so they keep meaning what their labels
     // say at any tilt (shifting in raw hand axes made "up/down" slide sideways, and no
     // rotation could fix it because the offsets didn't rotate with the quad).
+    float cx = CVarGetFloat("gVrPhysShieldShiftX", -1.1f) * 100.0f;
+    float cy = CVarGetFloat("gVrPhysShieldShiftY", -0.8f) * 100.0f;
+    float cz = CVarGetFloat("gVrPhysShieldShiftZ", -2.5f) * 100.0f;
+
+    if (CVarGetInteger("gVrPhysShieldFitMesh", 1)) {
+        const std::vector<Vec3>& verts = ShieldMeshVerts(player);
+        const VrShieldGeometry::TrapezoidFit fit = VrShieldGeometry::FitTrapezoid(
+            verts.data(), (int)verts.size(), { axW[0], axW[1], axW[2] }, { axH[0], axH[1], axH[2] },
+            { axN[0], axN[1], axN[2] });
+        // Sanity: 1 to 60 game units (the vanilla stance quad is 60). Outside that, the
+        // harvest read something that is not a shield — keep the sliders.
+        const float maxHalfW = fmaxf(fit.halfWTop, fit.halfWBottom);
+        if (fit.valid && fit.halfH >= 50.0f && fit.halfH <= 3000.0f && maxHalfW >= 50.0f && maxHalfW <= 3000.0f) {
+            halfWTop = fit.halfWTop;
+            halfWBot = fit.halfWBottom;
+            halfH = fit.halfH;
+            cx = fit.centerW;
+            cy = fit.centerH;
+            cz = fit.centerN;
+        }
+    }
+
     const float c3[3] = { axW[0] * cx + axH[0] * cy + axN[0] * cz,
                           axW[1] * cx + axH[1] * cy + axN[1] * cz,
                           axW[2] * cx + axH[2] * cy + axN[2] * cz };
@@ -164,9 +340,7 @@ extern "C" bool VrCombat_ShieldFacingVeto(void* acCollider, void* atCollider) {
     if (!VrCombat_ShieldHeld(player)) {
         return false; // vanilla stance blocking is not judged
     }
-    // gVrPhysShieldFacingDeg = the generosity cone: max angle between the shield's outward
-    // normal and the direction to the attacker. 180 disables the gate.
-    const float maxDeg = CVarGetFloat("gVrPhysShieldFacingDeg", 65.0f);
+    const float maxDeg = FacingDeg();
     if (maxDeg >= 179.0f) {
         return false;
     }
@@ -174,40 +348,33 @@ extern "C" bool VrCombat_ShieldFacingVeto(void* acCollider, void* atCollider) {
     if (attacker == NULL) {
         return false;
     }
-    const Vec3f* q = player->shieldQuad.dim.quad;
-    const Vec3f center = { (q[0].x + q[1].x + q[2].x + q[3].x) * 0.25f,
-                           (q[0].y + q[1].y + q[2].y + q[3].y) * 0.25f,
-                           (q[0].z + q[1].z + q[2].z + q[3].z) * 0.25f };
-    // Quad normal from the two edges; sign oriented AWAY from the player's chest, so "front"
-    // is always the outward face regardless of winding or hand pose.
-    const Vec3f e1 = { q[1].x - q[0].x, q[1].y - q[0].y, q[1].z - q[0].z };
-    const Vec3f e2 = { q[2].x - q[0].x, q[2].y - q[0].y, q[2].z - q[0].z };
-    Vec3f n = { e1.y * e2.z - e1.z * e2.y, e1.z * e2.x - e1.x * e2.z, e1.x * e2.y - e1.y * e2.x };
-    const float nLen = sqrtf(n.x * n.x + n.y * n.y + n.z * n.z);
-    if (nLen < 1e-3f) {
+    Vec3 center, normal;
+    if (!ShieldFrame(player, &center, &normal)) {
         return false;
-    }
-    n.x /= nLen;
-    n.y /= nLen;
-    n.z /= nLen;
-    const Vec3f chest = { player->actor.world.pos.x, player->actor.world.pos.y + 40.0f,
-                          player->actor.world.pos.z };
-    const Vec3f out = { center.x - chest.x, center.y - chest.y, center.z - chest.z };
-    if (n.x * out.x + n.y * out.y + n.z * out.z < 0.0f) {
-        n.x = -n.x;
-        n.y = -n.y;
-        n.z = -n.z;
     }
     // Attack direction: toward the attacker's focus point (chest/head for tall enemies, the
     // projectile itself for rocks and arrows).
-    const Vec3f toAtk = { attacker->focus.pos.x - center.x, attacker->focus.pos.y - center.y,
-                          attacker->focus.pos.z - center.z };
-    const float dLen = sqrtf(toAtk.x * toAtk.x + toAtk.y * toAtk.y + toAtk.z * toAtk.z);
-    if (dLen < 1e-3f) {
+    const Vec3 atk = { attacker->focus.pos.x, attacker->focus.pos.y, attacker->focus.pos.z };
+    return !VrShieldGeometry::FacesPoint(center, normal, atk, maxDeg);
+}
+
+extern "C" bool VrCombat_ShieldFacesPoint(Player* player, const float* pointXyz, float* outCenterXyz) {
+    if (player == NULL || !VrCombat_ShieldHeld(player)) {
         return false;
     }
-    const float cosang = (n.x * toAtk.x + n.y * toAtk.y + n.z * toAtk.z) / dLen;
-    return cosang < cosf(maxDeg * (3.14159265f / 180.0f));
+    Vec3 center, normal;
+    if (!ShieldFrame(player, &center, &normal)) {
+        return false;
+    }
+    if (!VrShieldGeometry::FacesPoint(center, normal, { pointXyz[0], pointXyz[1], pointXyz[2] }, FacingDeg())) {
+        return false;
+    }
+    if (outCenterXyz != NULL) {
+        outCenterXyz[0] = center.x;
+        outCenterXyz[1] = center.y;
+        outCenterXyz[2] = center.z;
+    }
+    return true;
 }
 
 extern "C" int32_t VrCombat_ShieldBlockJudge(Player* player) {

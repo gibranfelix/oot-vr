@@ -33,7 +33,9 @@ headset makes `oot.o2r`, and the game starts in VR. We tested it with the
 European GameCube version.
 
 Some fixes are not tested on the headset yet: the shield with two-hand weapons,
-the gauntlet plates, the bow on Epona, and the hookshot tip. The SoH menu with
+the gauntlet plates, the bow on Epona, and the hookshot tip. We also did not
+test the new shield collider and the Twinrova beams on the headset
+([#54](https://github.com/gibranfelix/oot-vr/issues/54)). The SoH menu with
 the Touch controllers ([#34](https://github.com/gibranfelix/oot-vr/issues/34))
 is also not tested on the headset yet.
 

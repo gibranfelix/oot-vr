@@ -98,6 +98,26 @@ It stops the menu navigation with `VR_HoldMenuNavigation`.
 The host unit tests for `VrMenuInput` are in
 `port/libultraship/tests/vr_menu_input_tests.cpp`.
 
+## Physical shield
+
+The shield is in the off hand while the sword is in the sword hand. No button
+is necessary. `VrShield.cpp` sets the block collider, and the collision check
+does the block.
+
+- **Block collider.** The collider has the size of the shield mesh in the hand.
+  `VrShield.cpp` reads the vertices of the display list of the hand. The tilt
+  sliders in VR Settings set the plane of the collider.
+- **Facing cone.** The shield blocks an attack only when the attack comes from
+  the front of the shield. The default cone is 90 degrees.
+- **Actors that read the shield stance.** Twinrova and Dark Link read
+  `PLAYER_STATE1_SHIELDING`. The physical shield does not set this flag.
+  These actors also call `VrCombat_ShieldFacesPoint`. Thus, a shield that
+  points at the beam reflects it.
+
+The pure geometry is in `VrShieldGeometry.h`. The host unit tests are in
+`port/soh/tests/vr/VrShieldGeometryTests.cpp`. The first lines of the file
+show how to run them.
+
 ## Camera and movement
 
 - **First-person camera.** Vanilla Ocarina of Time has a first-person camera:
