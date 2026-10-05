@@ -311,6 +311,7 @@ static struct {
     bool hand_active[2];
     XrPosef grip_pose[2];
     XrPosef grip_pose_raw[2]; // untouched by snap-turn; for compositor-space quads (hand HUD)
+    XrPosef aim_pose_raw[2];  // SOH [VR] untouched by snap-turn; for the menu pointer on the panel quad
     XrPosef aim_pose[2];
     float trigger_value[2];
     float squeeze_value[2];
@@ -876,6 +877,12 @@ static void pose_to_view_matrix(const XrPosef& pose, float world_scale, float ou
 // --------------------------------------------------------------------------
 // OpenXR session state event handling
 // --------------------------------------------------------------------------
+
+// Width of the floating panel in meters (gVrScreenSize). The height is 3/4 of it (4:3, as the swapchain).
+static float vr_screen_width_m() {
+    const float sw = CVarGetFloat("gVrScreenSize", 2.4f);
+    return (sw < 0.5f) ? 0.5f : sw;
+}
 
 // SOH [VR] Asks the headset for the display refresh rate in gVrRefreshRate (default 72 Hz). The game
 // is CPU bound in large scenes: 72 Hz gives each frame 13.9 ms instead of 11.1 ms at 90 Hz. Takes the
@@ -2084,6 +2091,7 @@ bool vr_begin_frame() {
             // Keep the RAW tracking-space grip for compositor quads (hand-attached HUD): quad
             // layers are composed against live tracking and must not carry the artificial turn.
             xr.grip_pose_raw[h] = xr.grip_pose[h];
+            xr.aim_pose_raw[h] = xr.aim_pose[h];
             xr.grip_pose[h] = apply_turn(xr.grip_pose[h]);
             xr.aim_pose[h] = apply_turn(xr.aim_pose[h]);
         }
@@ -2426,8 +2434,7 @@ void vr_end_frame() {
     screen_layer.subImage.imageArrayIndex = 0;
     screen_layer.pose = xr.flat_pose;
     {
-        float sw = CVarGetFloat("gVrScreenSize", 2.4f);
-        if (sw < 0.5f) sw = 0.5f;
+        const float sw = vr_screen_width_m();
         screen_layer.size = { sw, sw * 0.75f }; // 4:3, matching the swapchain
     }
 
@@ -3282,6 +3289,50 @@ void vr_get_screen_size(uint32_t* w, uint32_t* h) {
     *h = xr.screen_swapchain.height;
 }
 
+// SOH [VR] Laser pointer for the SoH menu: casts the aim ray of a controller against the floating
+// panel quad. The right hand has priority; the left hand points when the right hand misses. Uses the
+// RAW aim pose, because the quad is in raw tracking coordinates (no artificial turn).
+bool vr_get_panel_pointer(float* u, float* v, int* hand) {
+    if (!xr.initialized || !xr.enabled || !xr.input_initialized || !vr_panel_shown()) {
+        return false;
+    }
+    const glm::vec3 centre(xr.flat_pose.position.x, xr.flat_pose.position.y, xr.flat_pose.position.z);
+    const glm::quat rot(xr.flat_pose.orientation.w, xr.flat_pose.orientation.x, xr.flat_pose.orientation.y,
+                        xr.flat_pose.orientation.z);
+    const glm::vec3 normal = rot * glm::vec3(0.0f, 0.0f, 1.0f); // the front of the quad
+    const float width = vr_screen_width_m();
+    const float height = width * 0.75f;
+    static const int kHands[2] = { 1, 0 }; // right, then left
+    for (int h : kHands) {
+        if (!xr.hand_active[h]) {
+            continue;
+        }
+        const XrPosef& ap = xr.aim_pose_raw[h];
+        const glm::vec3 origin(ap.position.x, ap.position.y, ap.position.z);
+        const glm::vec3 dir = glm::quat(ap.orientation.w, ap.orientation.x, ap.orientation.y, ap.orientation.z) *
+                              glm::vec3(0.0f, 0.0f, -1.0f);
+        const float denom = glm::dot(dir, normal);
+        if (denom > -1e-4f) {
+            continue; // parallel to the panel, or pointing at its back
+        }
+        const float t = glm::dot(centre - origin, normal) / denom;
+        if (t < 0.0f) {
+            continue;
+        }
+        const glm::vec3 local = glm::conjugate(rot) * (origin + dir * t - centre);
+        const float pu = local.x / width + 0.5f;
+        const float pv = 0.5f - local.y / height;
+        if (pu < 0.0f || pu > 1.0f || pv < 0.0f || pv > 1.0f) {
+            continue;
+        }
+        *u = pu;
+        *v = pv;
+        *hand = h;
+        return true;
+    }
+    return false;
+}
+
 // Render the game's full frame into the screen swapchain. Reuses the HUD's "2D rendering" flag so
 // gfx_pc uses the normal flat projection instead of the per-eye VR overrides.
 void vr_begin_screen() {
@@ -3488,6 +3539,7 @@ void vr_set_flat_screen(bool) {}
 bool vr_get_flat_screen() { return false; }
 void vr_set_menu_panel(bool) {}
 bool vr_get_panel_visible() { return false; }
+bool vr_get_panel_pointer(float*, float*, int*) { return false; }
 void vr_get_screen_size(uint32_t* w, uint32_t* h) { *w = 1280; *h = 960; }
 void vr_begin_screen() {}
 void vr_end_screen() {}

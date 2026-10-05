@@ -185,5 +185,7 @@ class Fast3dGui : public Ship::Gui {
     // SOH [VR] SoH menu with the Touch controllers (UpdateVrMenu).
     bool mVrMenuOpen = false;        ///< The menu is open in VR: the GUI renders at the panel size.
     bool mVrNavKeysSent[8] = {};     ///< Gamepad key state sent to ImGui, per VrMenuInput::NavKey.
+    bool mVrPointer = false;         ///< SOH [VR] The laser pointer hits the panel: it moves the mouse.
+    bool mVrPointerDown = false;     ///< SOH [VR] Mouse button state sent to ImGui for the pointer trigger.
 };
 } // namespace Fast

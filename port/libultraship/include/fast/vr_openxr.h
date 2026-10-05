@@ -170,6 +170,10 @@ bool vr_get_flat_screen();
 void vr_set_menu_panel(bool enabled);
 // The panel is up: a 2D context (vr_get_flat_screen) or the SoH menu.
 bool vr_get_panel_visible();
+// SOH [VR] Laser pointer of the SoH menu: where the aim ray of a controller hits the floating panel.
+// u and v go from 0 to 1 from the top-left corner of the panel. hand: the hand that points (the
+// right hand first). False when no ray hits the panel or the panel is not visible.
+bool vr_get_panel_pointer(float* u, float* v, int* hand);
 // Pixel size of the panel swapchain (4:3).
 void vr_get_screen_size(uint32_t* w, uint32_t* h);
 void vr_begin_screen();

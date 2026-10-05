@@ -215,8 +215,15 @@ void UpdateModFiles(bool init = false, bool reset = false) {
     if (modsPath.length() > 0 && std::filesystem::exists(modsPath)) {
         std::vector<std::filesystem::path> enabledFiles;
         if (std::filesystem::is_directory(modsPath)) {
-            for (const std::filesystem::directory_entry& p : std::filesystem::recursive_directory_iterator(
-                     modsPath, std::filesystem::directory_options::follow_directory_symlink)) {
+            // SOH [Quest] A folder that the game cannot read (copied with adb or SideQuest, or moved
+            // out and back) made the iterator throw and closed the game. Skip such folders. Any other
+            // error stops the walk with a warning instead of a crash.
+            std::error_code walkError;
+            const auto walkOptions = std::filesystem::directory_options::follow_directory_symlink |
+                                     std::filesystem::directory_options::skip_permission_denied;
+            for (auto it = std::filesystem::recursive_directory_iterator(modsPath, walkOptions, walkError);
+                 !walkError && it != std::filesystem::recursive_directory_iterator(); it.increment(walkError)) {
+                const std::filesystem::directory_entry& p = *it;
                 if (p.is_directory()) {
                     continue;
                 }
@@ -231,6 +238,9 @@ void UpdateModFiles(bool init = false, bool reset = false) {
                     tempMods.emplace(p.path().lexically_normal().generic_string(), filename);
                 }
                 filePaths.emplace(filename, p.path());
+            }
+            if (walkError) {
+                SPDLOG_WARN("Mods: cannot read {}: {}", modsPath, walkError.message());
             }
             if (tempMods.size() > 0) {
                 changed = true;
