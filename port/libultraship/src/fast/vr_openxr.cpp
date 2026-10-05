@@ -898,6 +898,7 @@ static void vr_update_refresh_rate() {
     xrGetInstanceProcAddr(xr.instance, "xrRequestDisplayRefreshRateFB",
                           reinterpret_cast<PFN_xrVoidFunction*>(&request_rate));
     if (enumerate_rates == nullptr || request_rate == nullptr) {
+        spdlog::warn("[VR] Display refresh rate: the runtime has no FB refresh rate functions");
         return;
     }
     uint32_t count = 0;
@@ -1397,6 +1398,7 @@ bool vr_init() {
     if (xr.refresh_rate_supported) {
         extensions[extension_count++] = XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME;
     }
+    spdlog::info("[VR] XR_FB_display_refresh_rate: {}", xr.refresh_rate_supported ? "available" : "not available");
 
     XrInstanceCreateInfo instance_ci = { XR_TYPE_INSTANCE_CREATE_INFO };
     instance_ci.next = vr_gfx_instance_next();
