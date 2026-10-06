@@ -22,6 +22,11 @@ extern "C" {
 // back to vanilla when false, so scripted sequences behave stock frame-by-frame.
 bool VrCombat_Active(void);
 
+// The player plays the game: a save slot, the debug save, or Boss Rush. Gate every VR control
+// with this, not GameInteractor::IsSaveLoaded, which is false in Boss Rush (rule and tests in
+// VrGameplayGate.h).
+bool VrCombat_InPlay(void);
+
 // --- Physical melee (VrSwing.cpp) ---
 
 // The held melee weapon is handled by physical combat: 1H swords (Master/Kokiri) and the broken

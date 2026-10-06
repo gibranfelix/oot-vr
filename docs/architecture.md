@@ -98,6 +98,18 @@ It stops the menu navigation with `VR_HoldMenuNavigation`.
 The host unit tests for `VrMenuInput` are in
 `port/libultraship/tests/vr_menu_input_tests.cpp`.
 
+## Game modes
+
+Each VR control must work in Normal, Master Quest, Randomizer, and Boss Rush.
+Boss Rush does not use a save slot. It uses a temporary save with `fileNum`
+`0xFE`. `GameInteractor::IsSaveLoaded()` accepts only the slots and the debug
+save. Thus, it is false in Boss Rush.
+
+`VrCombat_InPlay()` in `VrCombat.h` also accepts Boss Rush. Use it to check
+that the player plays the game. `VrCombat_Active()` and the item selector use
+it. The rule is in `VrGameplayGate.h`. The host unit tests are in
+`port/soh/tests/vr/VrGameplayGateTests.cpp`.
+
 ## Physical shield
 
 The shield is in the off hand while the sword is in the sword hand. No button

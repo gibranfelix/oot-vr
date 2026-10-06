@@ -168,7 +168,7 @@ bool SelectorAvailable() {
     if (!VR_IsInitialized() || !VR_GetFirstPerson() || VR_IsFlatScreen()) {
         return false;
     }
-    if (!GameInteractor::IsSaveLoaded(true) || gPlayState == NULL) {
+    if (!VrCombat_InPlay()) {
         return false;
     }
     Player* player = GET_PLAYER(gPlayState);
