@@ -132,7 +132,6 @@ public class SetupActivity extends Activity {
         root.setPadding(pad, pad, pad, pad);
 
         message = new TextView(this);
-        message.setTextSize(TypedValue.COMPLEX_UNIT_SP, 28);
         message.setGravity(Gravity.CENTER);
         root.addView(message, new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -168,6 +167,8 @@ public class SetupActivity extends Activity {
         bar.setVisibility(stage.busy() ? View.VISIBLE : View.GONE);
         bar.setIndeterminate(stage != Stage.EXTRACTING);
         button.setVisibility(stage.acceptsPick() ? View.VISIBLE : View.GONE);
+        // A rejection can show the list of supported versions. The smaller text fits the list on the panel.
+        message.setTextSize(TypedValue.COMPLEX_UNIT_SP, stage == Stage.REJECTED ? 22 : 28);
         if (stage.busy()) {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         } else {

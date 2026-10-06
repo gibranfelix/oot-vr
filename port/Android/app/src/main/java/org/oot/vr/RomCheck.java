@@ -1,5 +1,8 @@
 package org.oot.vr;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -16,14 +19,28 @@ import java.util.regex.Pattern;
  */
 final class RomCheck {
 
+    /**
+     * The versions the panel names when it rejects a ROM. A host test keeps this list equal to the
+     * table in the README. A ROM with a patch, for example a fan translation, has a different hash
+     * and the extractor does not accept it.
+     */
+    static final List<String> SUPPORTED_VERSIONS = Collections.unmodifiableList(Arrays.asList(
+        "Nintendo 64, Europe (PAL): 1.0, 1.1",
+        "Nintendo 64, North America (NTSC-U): 1.0, 1.1, 1.2",
+        "Nintendo 64, Japan (NTSC-J): 1.0, 1.1, 1.2",
+        "GameCube, Europe (PAL): Ocarina of Time, Master Quest",
+        "GameCube, North America (NTSC-U): Ocarina of Time, Master Quest",
+        "GameCube, Japan (NTSC-J): Ocarina of Time, Master Quest, Collector's Edition"));
+
     /** Why a file cannot be used. Each one has the text the panel shows for it. */
     enum Error {
         READ("The file could not be read. Select the file again."),
         COMPRESSED("This ROM is compressed. Select a dump that is not compressed."),
         SIZE("The size of this file is not the size of an Ocarina of Time ROM. "
             + "Select another file."),
-        UNSUPPORTED("This version of Ocarina of Time is not supported. "
-            + "Select the dump of a supported version."),
+        UNSUPPORTED("This ROM has a patch, or this version of Ocarina of Time is not supported. "
+            + "Select a dump of one of these versions. The dump must not have a patch.\n"
+            + String.join("\n", SUPPORTED_VERSIONS)),
         UNKNOWN("The ROM could not be checked. Select another file.");
 
         private final String message;

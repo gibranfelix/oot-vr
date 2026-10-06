@@ -7,6 +7,13 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.junit.Test;
 
 public class RomCheckTest {
@@ -88,5 +95,55 @@ public class RomCheckTest {
         for (String s : bad) {
             assertEquals("for: " + s, RomCheck.Error.UNKNOWN, RomCheck.parse(s).error());
         }
+    }
+
+    @Test
+    public void unsupportedMessageAsksForADumpWithoutAPatch() {
+        String text = RomCheck.Error.UNSUPPORTED.message();
+        assertTrue(text, text.contains("This ROM has a patch"));
+        assertTrue(text, text.contains("The dump must not have a patch."));
+    }
+
+    @Test
+    public void unsupportedMessageListsEachSupportedVersion() {
+        String text = RomCheck.Error.UNSUPPORTED.message();
+        for (String line : RomCheck.SUPPORTED_VERSIONS) {
+            assertTrue("missing: " + line, text.contains(line));
+        }
+    }
+
+    @Test
+    public void supportedVersionsAreTheVersionsInTheReadme() throws IOException {
+        List<String> readme = new ArrayList<>();
+        boolean inSection = false;
+        for (String line : Files.readAllLines(readme().toPath(), StandardCharsets.UTF_8)) {
+            if (line.startsWith("### ")) {
+                inSection = line.equals("### 1. Make a dump of your game");
+                continue;
+            }
+            if (!inSection || !line.startsWith("|") || line.contains("---")) {
+                continue;
+            }
+            String[] cells = line.split("\\|");
+            String platform = cells[1].trim();
+            if (platform.equals("Platform")) {
+                continue;
+            }
+            readme.add(platform + ", " + cells[2].trim() + ": " + cells[3].trim());
+        }
+        assertFalse("no version table in the README", readme.isEmpty());
+        assertEquals(readme, RomCheck.SUPPORTED_VERSIONS);
+    }
+
+    /** Finds the README of the repository. The tests run from port/Android/app. */
+    private static File readme() {
+        for (File dir = new File(System.getProperty("user.dir")).getAbsoluteFile(); dir != null;
+                dir = dir.getParentFile()) {
+            File file = new File(dir, "README.md");
+            if (file.isFile() && new File(dir, ".github/soh-version").isFile()) {
+                return file;
+            }
+        }
+        throw new AssertionError("README.md of the repository not found");
     }
 }
