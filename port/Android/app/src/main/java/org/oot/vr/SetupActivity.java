@@ -167,7 +167,7 @@ public class SetupActivity extends Activity {
         bar.setVisibility(stage.busy() ? View.VISIBLE : View.GONE);
         bar.setIndeterminate(stage != Stage.EXTRACTING);
         button.setVisibility(stage.acceptsPick() ? View.VISIBLE : View.GONE);
-        // A rejection can carry the list of supported versions; the smaller text fits it on the panel.
+        // A rejection can show the list of supported versions. The smaller text fits the list on the panel.
         message.setTextSize(TypedValue.COMPLEX_UNIT_SP, stage == Stage.REJECTED ? 22 : 28);
         if (stage.busy()) {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);

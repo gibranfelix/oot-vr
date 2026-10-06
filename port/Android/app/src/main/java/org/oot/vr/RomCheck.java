@@ -38,8 +38,8 @@ final class RomCheck {
         COMPRESSED("This ROM is compressed. Select a dump that is not compressed."),
         SIZE("The size of this file is not the size of an Ocarina of Time ROM. "
             + "Select another file."),
-        UNSUPPORTED("This ROM is modified, or this version of Ocarina of Time is not supported. "
-            + "Select a dump without patches of one of these versions:\n"
+        UNSUPPORTED("This ROM has a patch, or this version of Ocarina of Time is not supported. "
+            + "Select a dump of one of these versions. The dump must not have a patch.\n"
             + String.join("\n", SUPPORTED_VERSIONS)),
         UNKNOWN("The ROM could not be checked. Select another file.");
 

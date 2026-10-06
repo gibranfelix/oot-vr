@@ -98,10 +98,10 @@ public class RomCheckTest {
     }
 
     @Test
-    public void unsupportedMessageAsksForADumpWithoutPatches() {
+    public void unsupportedMessageAsksForADumpWithoutAPatch() {
         String text = RomCheck.Error.UNSUPPORTED.message();
-        assertTrue(text, text.contains("modified"));
-        assertTrue(text, text.contains("without patches"));
+        assertTrue(text, text.contains("This ROM has a patch"));
+        assertTrue(text, text.contains("The dump must not have a patch."));
     }
 
     @Test
@@ -135,7 +135,7 @@ public class RomCheckTest {
         assertEquals(readme, RomCheck.SUPPORTED_VERSIONS);
     }
 
-    /** The README of the repository; the tests run from port/Android/app. */
+    /** Finds the README of the repository. The tests run from port/Android/app. */
     private static File readme() {
         for (File dir = new File(System.getProperty("user.dir")).getAbsoluteFile(); dir != null;
                 dir = dir.getParentFile()) {
