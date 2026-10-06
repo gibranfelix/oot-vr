@@ -100,14 +100,9 @@ The host unit tests for `VrMenuInput` are in
 
 ## Game modes
 
-Each VR control must work in Normal, Master Quest, Randomizer, and Boss Rush.
-Boss Rush does not use a save slot. It uses a temporary save with `fileNum`
-`0xFE`. `GameInteractor::IsSaveLoaded()` accepts only the slots and the debug
-save. It is false in Boss Rush.
-
-`VrCombat_InPlay()` in `VrCombat.h` also accepts Boss Rush. Use it to check
-that the player plays the game. `VrCombat_Active()` and the item selector use
-it. The rule is in `VrGameplayGate.h`. The host unit tests are in
+Boss Rush does not use a save slot. Its `fileNum` is `0xFE`.
+`GameInteractor::IsSaveLoaded()` is false for it. `VrCombat_InPlay()` accepts
+the slots, the debug save, and Boss Rush. Tests:
 `port/soh/tests/vr/VrGameplayGateTests.cpp`.
 
 ## Physical shield
