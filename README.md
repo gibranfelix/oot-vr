@@ -64,12 +64,13 @@ to block.
 At the first start, the game asks how you want to turn. To change it, go to VR
 Settings > VR Inputs > **Control Scheme**.
 
-| Scheme        | Turn                                 | Right thumbstick                                      |
-| ------------- | ------------------------------------ | ----------------------------------------------------- |
-| Default       | Turn your body.                      | Put the C-Left, C-Right, or C-Down item in your hand. |
-| Shipwright-VR | Push the right thumbstick (smooth).  | Turns the view. Use the item selector for items.      |
+| Scheme        | Turn                                | Right thumbstick                                                     |
+| ------------- | ----------------------------------- | -------------------------------------------------------------------- |
+| Default       | Turn your body.                     | ← → ↓ put the C-Left, C-Right, or C-Down item in your hand.          |
+| Shipwright-VR | Push the right thumbstick (smooth). | ← → turn the view. ↓ has no action. Use the item selector for items. |
 
-The two schemes use the same buttons. The Shipwright-VR scheme comes from
+In the two schemes, right thumbstick ↑ talks to Navi and does not turn the
+view. The two schemes use the same buttons. The Shipwright-VR scheme comes from
 [Shipwright-VR](https://github.com/ShinyWindow/Shipwright-VR) for PC.
 
 A change to a binding or to turning shows **Custom**. Select **Reset to
