@@ -11,7 +11,7 @@ constexpr int kBossRushFileNum = 0xFE;
 
 // The player plays the game: a save slot, the debug save, or Boss Rush. GameInteractor's
 // IsSaveLoaded(true) is the same rule without Boss Rush. Boss Rush also needs its quest id,
-// because Warping.cpp sets 0xFE for a moment outside Boss Rush.
+// because Warping.cpp also uses 0xFE for a temporary file.
 inline bool InPlay(bool normalGameMode, int fileNum, bool bossRush) {
     if (!normalGameMode) {
         return false;

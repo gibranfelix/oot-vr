@@ -109,8 +109,8 @@ submodules.
 - **Do not change the line endings** in `port/libultraship`, `port/ZAPDTR`, or
   `port/OTRExporter`. `port/.gitattributes` marks them `-text`. Some files are
   patches that the build applies with `git apply`.
-- **VR controls work in all game modes.** Normal, Master Quest, Randomizer,
-  and Boss Rush must get each VR control. Use `VrCombat_InPlay()` to check
+- **VR controls work in all game modes.** Each VR control must work in
+  Normal, Master Quest, Randomizer, and Boss Rush. Use `VrCombat_InPlay()` to check
   that the player plays the game. Do not use
   `GameInteractor::IsSaveLoaded()`. It is false in Boss Rush.
 

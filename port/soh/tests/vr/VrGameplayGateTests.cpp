@@ -34,7 +34,7 @@ static void BossRushIsPlay() {
     EXPECT(InPlay(true, kBossRushFileNum, true));
 }
 
-// Warping.cpp also sets 0xFE for a moment, outside Boss Rush.
+// Warping.cpp also uses 0xFE for a temporary file, outside Boss Rush.
 static void TemporaryFileOutsideBossRushIsNotPlay() {
     EXPECT(!InPlay(true, kBossRushFileNum, false));
 }
