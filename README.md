@@ -4,7 +4,8 @@ _The Legend of Zelda: Ocarina of Time_ in first person on the Meta Quest 3S.
 The game runs on the headset. You do not need a PC to play.
 
 **Status: alpha.** You can play the main story from Kokiri Forest to Ganon's
-Tower. Some problems are known. Read [`STATUS.md`](STATUS.md) before you play.
+Tower. Some problems are known: read [`STATUS.md`](STATUS.md) and the
+[open issues](https://github.com/gibranfelix/oot-vr/issues) before you play.
 
 [![Watch the trailer on YouTube](docs/media/trailer.jpg)](https://youtu.be/gzuzNRE-Qyo)
 
@@ -219,7 +220,7 @@ Read [`port/Android/README.md`](port/Android/README.md). The script
 
 | File                                           | Contents                                             |
 | ---------------------------------------------- | ---------------------------------------------------- |
-| [`STATUS.md`](STATUS.md)                       | What works, what does not work, where to help        |
+| [`STATUS.md`](STATUS.md)                       | What works, and where to find the open work          |
 | [`docs/architecture.md`](docs/architecture.md) | How the VR layer connects to the game and the engine |
 | [`CONTEXT.md`](CONTEXT.md)                     | The terms that this project uses                     |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md)           | How to send changes                                  |

@@ -8,8 +8,7 @@ Ship of Harkinian and `libultraship`.
 
 ## Start here
 
-1. [`STATUS.md`](STATUS.md): what works, what does not work, and the open
-   decisions.
+1. [`STATUS.md`](STATUS.md): what works, and where to find the open work.
 2. [`docs/architecture.md`](docs/architecture.md): where the VR layer connects
    to the game and to the engine.
 3. [`CONTEXT.md`](CONTEXT.md): the terms of this project. Use these terms in
