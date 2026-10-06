@@ -1682,13 +1682,13 @@ void Player_UpdateShieldCollider(PlayState* play, Player* this, ColliderQuad* co
 
         this->shieldQuad.base.colType = shieldColTypes[this->currentShield];
 
-        // SOH [VR] Physical shield: the collider is fully parametric (Shield sliders —
-        // dimensions, trapezoid shape, placement, tilt) instead of the vanilla stance quad,
-        // whose 60x60 offset square never matched a controller-held shield. Hits outside the
-        // configured quad don't count — they land on whatever was behind it.
+        // SOH [VR] Physical shield: the collider is fitted to the shield mesh in the hand (the
+        // Shield sliders set its tilt) instead of the vanilla stance quad, whose 60x60 offset
+        // square never matched a controller-held shield. Hits outside the quad don't count —
+        // they land on whatever was behind it.
         if (VrCombat_ShieldHeld(this)) {
             Vec3f vrSrc[4];
-            VrCombat_ShieldQuadModelVerts((f32*)vrSrc);
+            VrCombat_ShieldQuadModelVerts(this, (f32*)vrSrc);
             Matrix_MultVec3f(&vrSrc[0], &quadDest[0]);
             Matrix_MultVec3f(&vrSrc[1], &quadDest[1]);
             Matrix_MultVec3f(&vrSrc[2], &quadDest[2]);

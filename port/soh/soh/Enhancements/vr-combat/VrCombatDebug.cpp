@@ -290,9 +290,9 @@ extern "C" void VrCombat_DrawDebugOverlay(void) {
         }
     }
 
-    // The shield's BLOCK collider (cyan): the exact quad enemy attacks are judged against —
-    // deliberately INSET from the visible shield by the Shield Collider Scale slider, so the
-    // gap between the steel you see and the cyan you see is exactly the rim that doesn't count.
+    // The shield's BLOCK collider (cyan): the exact quad enemy attacks are judged against. With
+    // Fit Collider to Shield on, it covers the steel you see; any steel outside the cyan does
+    // not block.
     {
         Player* player = GET_PLAYER(gPlayState);
         if (player != NULL && VrCombat_ShieldHeld(player)) {

@@ -7,6 +7,7 @@
 #include "soh/Enhancements/game-interactor/GameInteractor.h"
 #include "soh/Enhancements/game-interactor/GameInteractor_Hooks.h"
 #include "soh/Enhancements/savestate_serialize.h"
+#include "soh/Enhancements/vr-combat/VrCombat.h"
 
 #include <string.h>
 
@@ -816,25 +817,35 @@ s32 BossTw_CheckBeamReflection(BossTw* this, PlayState* play) {
     Vec3f offset;
     Vec3f vec;
     Player* player = GET_PLAYER(play);
+    // SOH [VR] Physical shield: there is no shield stance. The beam reflects when the shield in
+    // the hand points at the beam origin, and the check point is the center of that shield.
+    Vec3f vrShieldCenter;
+    s32 vrShield = VrCombat_ShieldFacesPoint(player, &this->beamOrigin.x, &vrShieldCenter.x);
 
-    if (player->stateFlags1 & PLAYER_STATE1_SHIELDING &&
-        (s16)(player->actor.shape.rot.y - this->actor.shape.rot.y + 0x8000) < 0x2000 &&
-        (s16)(player->actor.shape.rot.y - this->actor.shape.rot.y + 0x8000) > -0x2000) {
-        // player is shielding and facing angles are less than 45 degrees in either direction
-        offset.x = 0.0f;
-        offset.y = 0.0f;
-        offset.z = 10.0f;
+    if (vrShield || (player->stateFlags1 & PLAYER_STATE1_SHIELDING &&
+                     (s16)(player->actor.shape.rot.y - this->actor.shape.rot.y + 0x8000) < 0x2000 &&
+                     (s16)(player->actor.shape.rot.y - this->actor.shape.rot.y + 0x8000) > -0x2000)) {
+        if (vrShield) {
+            offset.x = vrShieldCenter.x - this->beamOrigin.x;
+            offset.y = vrShieldCenter.y - this->beamOrigin.y;
+            offset.z = vrShieldCenter.z - this->beamOrigin.z;
+        } else {
+            // player is shielding and facing angles are less than 45 degrees in either direction
+            offset.x = 0.0f;
+            offset.y = 0.0f;
+            offset.z = 10.0f;
 
-        // set beam check point to 10 units in front of link.
-        Matrix_RotateY(player->actor.shape.rot.y / 32768.0f * M_PI, MTXMODE_NEW);
-        Matrix_MultVec3f(&offset, &vec);
+            // set beam check point to 10 units in front of link.
+            Matrix_RotateY(player->actor.shape.rot.y / 32768.0f * M_PI, MTXMODE_NEW);
+            Matrix_MultVec3f(&offset, &vec);
 
-        // calculates a vector where the origin is at the beams origin,
-        // and the positive z axis is pointing in the direction the beam
-        // is shooting
-        offset.x = player->actor.world.pos.x + vec.x - this->beamOrigin.x;
-        offset.y = player->actor.world.pos.y + vec.y - this->beamOrigin.y;
-        offset.z = player->actor.world.pos.z + vec.z - this->beamOrigin.z;
+            // calculates a vector where the origin is at the beams origin,
+            // and the positive z axis is pointing in the direction the beam
+            // is shooting
+            offset.x = player->actor.world.pos.x + vec.x - this->beamOrigin.x;
+            offset.y = player->actor.world.pos.y + vec.y - this->beamOrigin.y;
+            offset.z = player->actor.world.pos.z + vec.z - this->beamOrigin.z;
+        }
 
         Matrix_RotateX(-this->beamPitch, MTXMODE_NEW);
         Matrix_RotateY(-this->beamYaw, MTXMODE_APPLY);
@@ -951,6 +962,10 @@ void BossTw_ShootBeam(BossTw* this, PlayState* play) {
     Player* player = GET_PLAYER(play);
     BossTw* otherTw = (BossTw*)this->actor.parent;
     Input* input = &play->state.input[0];
+    // SOH [VR] Physical shield: a shield that points at the beam origin is the target, as in
+    // the shield stance below, and it holds the reflection instead of the R button.
+    Vec3f vrShieldCenter;
+    s32 vrShieldHolds;
 
     Math_ApproachF(&this->actor.world.pos.y, 400.0f, 0.05f, this->actor.speedXZ);
     Math_ApproachF(&this->actor.speedXZ, 5.0f, 1.0f, 0.25f);
@@ -959,7 +974,11 @@ void BossTw_ShootBeam(BossTw* this, PlayState* play) {
 
     if (this->timers[1] != 0) {
         Math_ApproachS(&this->actor.shape.rot.y, this->actor.yawTowardsPlayer, 5, this->rotateSpeed);
-        if ((player->stateFlags1 & PLAYER_STATE1_SHIELDING) &&
+        if (VrCombat_ShieldFacesPoint(player, &this->beamOrigin.x, &vrShieldCenter.x)) {
+            Math_ApproachF(&this->targetPos.x, vrShieldCenter.x, 1.0f, 400.0f);
+            Math_ApproachF(&this->targetPos.y, vrShieldCenter.y, 1.0f, 400.0f);
+            Math_ApproachF(&this->targetPos.z, vrShieldCenter.z, 1.0f, 400.0f);
+        } else if ((player->stateFlags1 & PLAYER_STATE1_SHIELDING) &&
             ((s16)((player->actor.shape.rot.y - this->actor.shape.rot.y) + 0x8000) < 0x2000) &&
             ((s16)((player->actor.shape.rot.y - this->actor.shape.rot.y) + 0x8000) > -0x2000)) {
             Math_ApproachF(&this->targetPos.x, player->bodyPartsPos[15].x, 1.0f, 400.0f);
@@ -1124,17 +1143,20 @@ void BossTw_ShootBeam(BossTw* this, PlayState* play) {
                 break;
 
             case 1:
-                if (CHECK_BTN_ALL(input->cur.button, BTN_R)) {
+                // SOH [VR] Physical shield: the reflection continues while the shield in the hand
+                // points at the beam origin. The beam and the rings stay on the shield center.
+                vrShieldHolds = VrCombat_ShieldFacesPoint(player, &this->beamOrigin.x, &vrShieldCenter.x);
+                if (vrShieldHolds || CHECK_BTN_ALL(input->cur.button, BTN_R)) {
                     Player* player = GET_PLAYER(play);
+                    Vec3f* shieldPos = vrShieldHolds ? &vrShieldCenter : &player->bodyPartsPos[15];
 
                     this->beamDist = sqrtf(SQ(xDiff) + SQ(yDiff) + SQ(zDiff));
                     Math_ApproachF(&this->beamReflectionDist, 2000.0f, 1.0f, 40.0f);
-                    Math_ApproachF(&this->targetPos.x, player->bodyPartsPos[15].x, 1.0f, 400.0f);
-                    Math_ApproachF(&this->targetPos.y, player->bodyPartsPos[15].y, 1.0f, 400.0f);
-                    Math_ApproachF(&this->targetPos.z, player->bodyPartsPos[15].z, 1.0f, 400.0f);
+                    Math_ApproachF(&this->targetPos.x, shieldPos->x, 1.0f, 400.0f);
+                    Math_ApproachF(&this->targetPos.y, shieldPos->y, 1.0f, 400.0f);
+                    Math_ApproachF(&this->targetPos.z, shieldPos->z, 1.0f, 400.0f);
                     if ((this->work[CS_TIMER_1] % 4) == 0) {
-                        BossTw_AddRingEffect(play, &player->bodyPartsPos[15], 0.5f, 3.0f, 0xFF, this->actor.params, 1,
-                                             150);
+                        BossTw_AddRingEffect(play, shieldPos, 0.5f, 3.0f, 0xFF, this->actor.params, 1, 150);
                     }
                 } else {
                     this->beamShootState = 0;

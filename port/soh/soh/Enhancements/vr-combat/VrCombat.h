@@ -76,9 +76,14 @@ void VrCombat_FlinchWarpEnd(void);
 // shield as if it weren't there. ShieldBlockJudge: called from func_808382DC when the quad
 // DID bounce an attack — 0 = not physical (vanilla handling), 1 = physical block (haptic
 // fired; caller keeps damage negation + Deku burn, skips the stance reaction anim and shove).
+// ShieldFacesPoint: the physical shield is held and its face points at pointXyz (inside the
+// same facing cone) — the VR replacement for "PLAYER_STATE1_SHIELDING and Link faces it" in
+// actors that read the stance (Twinrova's beams, Dark Link). outCenterXyz (optional) gets the
+// center of the block collider.
 bool VrCombat_ShieldHeld(struct Player* player);
 bool VrCombat_ShieldFacingVeto(void* acCollider, void* atCollider);
 int32_t VrCombat_ShieldBlockJudge(struct Player* player);
+bool VrCombat_ShieldFacesPoint(struct Player* player, const float* pointXyz, float* outCenterXyz);
 
 // Alyx-style item selector (VrItemSelect.cpp — VR first person, independent of physical
 // combat): hold the configured VR input, flick the hand toward an item, release to take it.
@@ -121,11 +126,12 @@ bool VrOcarina_InPlay(void);
 // aim hand's trigger — padmgr skips its normal binding so a shot can't also toggle Z-target.
 bool VrCombat_ProjectileFirePressed(struct Player* player);
 bool VrCombat_AimTriggerConsumed(int32_t vrHand, uint16_t vrBtnMask);
-// The physical shield's block collider, built parametrically from the Shield sliders in
-// R_HAND limb model space (outXyz4 = 4 vertices x xyz, vanilla zigzag order) — replaces the
-// vanilla stance quad, whose size/offset never matched a controller-held shield. Strictness =
-// dimensions smaller than the visible shield: rim grazes miss the collider entirely.
-void VrCombat_ShieldQuadModelVerts(float* outXyz4);
+// The physical shield's block collider in R_HAND limb model space (outXyz4 = 4 vertices x xyz,
+// vanilla zigzag order) — replaces the vanilla stance quad, whose size/offset never matched a
+// controller-held shield. Its size and position come from the mesh of the shield in the hand
+// (gVrPhysShieldFitMesh), so it covers the visible shield; the Shield sliders set the tilt,
+// and also the size and position when the fit is off.
+void VrCombat_ShieldQuadModelVerts(struct Player* player, float* outXyz4);
 
 #ifdef __cplusplus
 }

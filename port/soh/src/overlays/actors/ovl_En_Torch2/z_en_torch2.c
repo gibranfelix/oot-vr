@@ -7,6 +7,7 @@
 #include "z_en_torch2.h"
 #include "objects/object_torch2/object_torch2.h"
 #include "soh/Enhancements/game-interactor/GameInteractor_Hooks.h"
+#include "soh/Enhancements/vr-combat/VrCombat.h"
 
 #define FLAGS                                                                                 \
     (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_HOSTILE | ACTOR_FLAG_UPDATE_CULLING_DISABLED | \
@@ -455,9 +456,13 @@ void EnTorch2_Update(Actor* thisx, PlayState* play2) {
 
                         sStickAngle = thisx->yawTowardsPlayer;
                         sp50 = 0.0f;
+                        // SOH [VR] Physical shield: a shield that points at Dark Link counts as
+                        // the shield stance. He waits for an opening, as in the original game.
                         if ((90.0f >= this->actor.xzDistToPlayer) && (this->actor.xzDistToPlayer > 70.0f) &&
                             (ABS(sp5A) >= 0x7800) &&
-                            (this->actor.isTargeted || !(player->stateFlags1 & PLAYER_STATE1_SHIELDING))) {
+                            (this->actor.isTargeted ||
+                             !((player->stateFlags1 & PLAYER_STATE1_SHIELDING) ||
+                               VrCombat_ShieldFacesPoint(player, &this->actor.focus.pos.x, NULL)))) {
                             EnTorch2_SwingSword(play, input, this);
                         } else if (((this->actor.xzDistToPlayer <= 70.0f) ||
                                     ((this->actor.xzDistToPlayer <= 80.0f + sp50) &&
