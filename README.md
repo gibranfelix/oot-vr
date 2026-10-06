@@ -205,10 +205,12 @@ Open the SoH menu, and go to **Settings** > **Mod Menu**.
 
 Tested on a Quest 3S at 72 Hz.
 
-| Mod                                                         | Status | Notes                                                                    |
-| ----------------------------------------------------------- | ------ | ------------------------------------------------------------------------ |
-| [OoT Reloaded](https://github.com/GhostlyDark/OoT-Reloaded) | Works  | The HD version works well.                                               |
-| Djipi's 3DS Experience                                      | Works  | Large files decrease the frame rate. Do not install "01 Main Textures". |
+| Mod                                                                             | Status | Notes                                                                    |
+| ------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------ |
+| [OoT Reloaded](https://github.com/GhostlyDark/OoT-Reloaded)                     | Works  | The HD version works well.                                               |
+| Djipi's 3DS Experience                                                          | Works  | Large files decrease the frame rate. Do not install "01 Main Textures". |
+| [Castilian Spanish Translation](https://gamebanana.com/mods/685796)             | Works  | Version 1.2b. Changes the game texts to Spanish.                         |
+| [Castilian Spanish Translation font](https://gamebanana.com/mods/685796)        | Works  | The file `font_2_.zip` on the same page. Install it with the translation. |
 
 ## Build from source
 
