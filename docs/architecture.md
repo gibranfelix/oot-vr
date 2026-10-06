@@ -98,6 +98,13 @@ It stops the menu navigation with `VR_HoldMenuNavigation`.
 The host unit tests for `VrMenuInput` are in
 `port/libultraship/tests/vr_menu_input_tests.cpp`.
 
+## Game modes
+
+Boss Rush does not use a save slot. Its `fileNum` is `0xFE`.
+`GameInteractor::IsSaveLoaded()` is false for it. `VrCombat_InPlay()` accepts
+the slots, the debug save, and Boss Rush. Tests:
+`port/soh/tests/vr/VrGameplayGateTests.cpp`.
+
 ## Physical shield
 
 The shield is in the off hand while the sword is in the sword hand. No button

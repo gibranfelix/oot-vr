@@ -1,4 +1,5 @@
 #include "VrCombat.h"
+#include "VrGameplayGate.h"
 
 #include "soh/Enhancements/game-interactor/GameInteractor_Hooks.h"
 #include "soh/ShipInit.hpp"
@@ -10,6 +11,7 @@ extern "C" {
 #include "z64.h"
 #include "macros.h"
 #include "functions.h"
+#include "variables.h"
 extern PlayState* gPlayState;
 }
 
@@ -108,6 +110,13 @@ extern "C" bool VrCombat_AimTriggerConsumed(int32_t vrHand, uint16_t vrBtnMask) 
     return player != NULL && (player->stateFlags1 & PLAYER_STATE1_READY_TO_FIRE);
 }
 
+extern "C" bool VrCombat_InPlay(void) {
+    if (gPlayState == NULL || GET_PLAYER(gPlayState) == NULL) {
+        return false;
+    }
+    return VrGameplayGate::InPlay(gSaveContext.gameMode == GAMEMODE_NORMAL, gSaveContext.fileNum, IS_BOSS_RUSH);
+}
+
 extern "C" bool VrCombat_Active(void) {
     if (!CVarGetInteger("gVrPhysCombat", 1) || !InterfaceOk()) {
         return false;
@@ -115,7 +124,7 @@ extern "C" bool VrCombat_Active(void) {
     if (!VR_IsInitialized() || !VR_GetFirstPerson()) {
         return false;
     }
-    if (!GameInteractor::IsSaveLoaded(true) || gPlayState == NULL) {
+    if (!VrCombat_InPlay()) {
         return false;
     }
     // Any frame the game owns Link is a vanilla frame. This list grows as milestones need finer
