@@ -1820,6 +1820,28 @@ int g_eye_pass_count = 0;
 int g_frame_count = 0;
 std::chrono::steady_clock::time_point g_rate_epoch = std::chrono::steady_clock::now();
 
+// SOH [VR] The "[VR] Perf:" log line, one time in each kPerfLogSeconds, for the performance tests
+// on the headset (issue #47). Read it with: adb logcat -s soh:V | grep Perf
+constexpr int kPerfLogSeconds = 5;
+int g_perf_seconds = 0;
+int g_perf_frames = 0;
+size_t g_perf_hits = 0;
+size_t g_perf_loads = 0;
+
+void log_perf() {
+    size_t hits = 0;
+    size_t loads = 0;
+    Fast::gfx_get_frame_resource_counts(&hits, &loads);
+    const float frames = g_perf_frames > 0 ? (float)g_perf_frames : 1.0f;
+    spdlog::info("[VR] Perf: {:.0f} of {} Hz, eyes {:.1f} ms, hud {:.1f} ms, frame {:.1f} ms, wait {:.1f} ms, "
+                 "tick {:.1f} ms, resources per frame: {:.0f} cached, {:.0f} loaded",
+                 g_stats.frame_hz, vr_get_refresh_rate(), g_stats.eyes_ms, g_stats.hud_ms, g_stats.frame_ms,
+                 g_stats.wait_ms, g_stats.tick_ms, (hits - g_perf_hits) / frames, (loads - g_perf_loads) / frames);
+    g_perf_hits = hits;
+    g_perf_loads = loads;
+    g_perf_frames = 0;
+}
+
 // Exponential smoothing. Frame times at 120 Hz are noisy enough that an unsmoothed readout is
 // unreadable; ~0.05 settles in well under a second while still showing spikes.
 inline void smooth(float& acc, float sample) {
@@ -1849,6 +1871,11 @@ void vr_report_frame_times(float eyes_ms, float hud_ms, float desktop_ms, float 
     if (elapsed >= 1.0f) {
         g_stats.eye_hz = g_eye_pass_count / elapsed;
         g_stats.frame_hz = g_frame_count / elapsed;
+        g_perf_frames += g_frame_count; // SOH [VR] Perf log
+        if (++g_perf_seconds >= kPerfLogSeconds) {
+            g_perf_seconds = 0;
+            log_perf();
+        }
         g_eye_pass_count = 0;
         g_frame_count = 0;
         g_rate_epoch = now;

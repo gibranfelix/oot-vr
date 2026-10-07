@@ -561,6 +561,8 @@ class Interpreter {
 
 void gfx_set_target_ucode(UcodeHandlers ucode);
 void gfx_push_current_dir(char* path);
+// SOH [Quest] Totals of the frame resource cache: lookups it answered, and lookups it loaded.
+void gfx_get_frame_resource_counts(size_t* hits, size_t* loads);
 int32_t gfx_check_image_signature(const char* imgData);
 const char* gfx_get_shader(int16_t id);
 const char* GfxGetOpcodeName(int8_t opcode);

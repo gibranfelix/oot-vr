@@ -27,6 +27,8 @@ add_executable(lus_tests
     host_pointer_tests.cpp
     # SOH [VR] Touch controller menu input (pure logic, no OpenXR)
     vr_menu_input_tests.cpp
+    # SOH [Quest] Renderer CPU helpers (pure logic, no OpenGL)
+    renderer_cpu_tests.cpp
 )
 
 if(ENABLE_SCRIPTING)
