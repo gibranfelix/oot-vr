@@ -102,6 +102,11 @@ std::shared_ptr<SohMenu> GetSohMenu() {
 void SetupMenu() {
     auto gui = Ship::Context::GetRawInstance()->GetWindow()->GetGui();
     mSohMenu = std::make_shared<SohMenu>(CVAR_WINDOW("Menu"), "Port Menu");
+#ifdef __ANDROID__
+    // SOH [Quest] The player often leaves the app with the menu open, and the menu CVar keeps that
+    // state. Start with the menu closed.
+    mSohMenu->Hide();
+#endif
     gui->SetMenu(mSohMenu);
 
     mModalWindow = std::make_shared<SohModalWindow>(CVAR_WINDOW("ModalWindow"), "Modal Window");
