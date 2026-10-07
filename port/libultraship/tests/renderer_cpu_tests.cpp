@@ -1,62 +1,8 @@
 #include <gtest/gtest.h>
 #include <memory>
 #include "fast/frame_resource_cache.h"
-#include "fast/vertex_ring.h"
 
 // SOH [Quest] Pure helpers that decrease the CPU work of the renderer (issue #47).
-
-TEST(VertexRingTest, FirstDrawStartsAtZero) {
-    VertexRing ring(1024);
-    const auto slot = ring.Reserve(96, 32);
-    EXPECT_TRUE(slot.fits);
-    EXPECT_FALSE(slot.wrapped);
-    EXPECT_EQ(slot.offset, 0u);
-}
-
-TEST(VertexRingTest, NextDrawStartsAfterThePreviousDraw) {
-    VertexRing ring(1024);
-    ring.Reserve(96, 32);
-    const auto slot = ring.Reserve(64, 32);
-    EXPECT_FALSE(slot.wrapped);
-    EXPECT_EQ(slot.offset, 96u);
-}
-
-TEST(VertexRingTest, OffsetIsAMultipleOfTheStride) {
-    // The draw starts at vertex offset / stride, so the offset must be a full vertex.
-    VertexRing ring(1024);
-    ring.Reserve(100, 20);
-    const auto slot = ring.Reserve(72, 24);
-    EXPECT_EQ(slot.offset % 24, 0u);
-    EXPECT_GE(slot.offset, 100u);
-    EXPECT_EQ(slot.offset, 120u);
-}
-
-TEST(VertexRingTest, WrapsToZeroWhenTheDrawDoesNotFitAtTheEnd) {
-    VertexRing ring(256);
-    ring.Reserve(192, 32);
-    const auto slot = ring.Reserve(96, 32);
-    EXPECT_TRUE(slot.fits);
-    EXPECT_TRUE(slot.wrapped);
-    EXPECT_EQ(slot.offset, 0u);
-
-    const auto next = ring.Reserve(32, 32);
-    EXPECT_FALSE(next.wrapped);
-    EXPECT_EQ(next.offset, 96u);
-}
-
-TEST(VertexRingTest, DrawThatFillsTheRingExactlyDoesNotWrap) {
-    VertexRing ring(256);
-    ring.Reserve(128, 32);
-    const auto slot = ring.Reserve(128, 32);
-    EXPECT_FALSE(slot.wrapped);
-    EXPECT_EQ(slot.offset, 128u);
-}
-
-TEST(VertexRingTest, DrawLargerThanTheRingDoesNotFit) {
-    VertexRing ring(256);
-    const auto slot = ring.Reserve(512, 32);
-    EXPECT_FALSE(slot.fits);
-}
 
 namespace {
 struct FakeResource {

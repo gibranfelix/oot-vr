@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <string.h> // SOH [Quest] memcpy for the vertex ring
 
 #include <map>
 #include <unordered_map>
@@ -704,38 +703,8 @@ void GfxRenderingAPIOGL::DrawTriangles(float buf_vbo[], size_t buf_vbo_len, size
     SetPerDrawUniforms();
 
     // printf("flushing %d tris\n", buf_vbo_num_tris);
-#ifdef USE_OPENGLES
-    // SOH [Quest] Append the draw to the vertex ring (see vertex_ring.h). A glBufferData for each draw
-    // makes the driver allocate a new buffer each time, which is CPU work on the Quest.
-    const size_t bytes = sizeof(float) * buf_vbo_len;
-    const size_t stride = sizeof(float) * mCurrentShaderProgram->numFloats;
-    const VertexRing::Slot slot = mVertexRing.Reserve(bytes, stride);
-    if (slot.fits) {
-        if (slot.wrapped) {
-            // Orphan: new storage for the ring. The GPU still reads the old storage for the earlier
-            // draws, thus the unsynchronized map below cannot overwrite their vertices.
-            glBufferData(GL_ARRAY_BUFFER, mVertexRing.Capacity(), nullptr, GL_DYNAMIC_DRAW);
-        }
-        const GLbitfield access = GL_MAP_WRITE_BIT | GL_MAP_UNSYNCHRONIZED_BIT | GL_MAP_INVALIDATE_RANGE_BIT;
-        void* dst = glMapBufferRange(GL_ARRAY_BUFFER, slot.offset, bytes, access);
-        if (dst != nullptr) {
-            memcpy(dst, buf_vbo, bytes);
-            if (glUnmapBuffer(GL_ARRAY_BUFFER)) {
-                glDrawArrays(GL_TRIANGLES, slot.offset / stride, 3 * buf_vbo_num_tris);
-                return;
-            }
-        }
-    }
-    // The map failed, or the draw is larger than the ring: upload the draw as before, then make new
-    // storage for the ring.
-    glBufferData(GL_ARRAY_BUFFER, bytes, buf_vbo, GL_STREAM_DRAW);
-    glDrawArrays(GL_TRIANGLES, 0, 3 * buf_vbo_num_tris);
-    mVertexRing = VertexRing(mVertexRing.Capacity());
-    glBufferData(GL_ARRAY_BUFFER, mVertexRing.Capacity(), nullptr, GL_DYNAMIC_DRAW);
-#else
     glBufferData(GL_ARRAY_BUFFER, sizeof(float) * buf_vbo_len, buf_vbo, GL_STREAM_DRAW);
     glDrawArrays(GL_TRIANGLES, 0, 3 * buf_vbo_num_tris);
-#endif
 }
 
 void GfxRenderingAPIOGL::Init() {
@@ -745,10 +714,6 @@ void GfxRenderingAPIOGL::Init() {
 
     glGenBuffers(1, &mOpenglVbo);
     glBindBuffer(GL_ARRAY_BUFFER, mOpenglVbo);
-#ifdef USE_OPENGLES
-    // SOH [Quest] The storage of the vertex ring. DrawTriangles orphans it when the ring wraps.
-    glBufferData(GL_ARRAY_BUFFER, mVertexRing.Capacity(), nullptr, GL_DYNAMIC_DRAW);
-#endif
 
 #if defined(__APPLE__) || defined(USE_OPENGLES)
     glGenVertexArrays(1, &mOpenglVao);
