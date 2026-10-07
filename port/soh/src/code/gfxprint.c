@@ -19,6 +19,11 @@ bool sHasArchiveTexture = false;
 
 // Checks if we have a gfx font as a resource in an archive, which needs to be rendered differently
 bool GfxPrint_HasArchiveTexture() {
+#ifdef __ANDROID__
+    // SOH [Quest] Use the font in the code. On the Quest, the renderer does not draw an HD font from a
+    // mod (OoT Reloaded has one): the debug warp screen shows no text.
+    return false;
+#endif
     return ResourceMgr_FileExists(rGfxPrintFontData) ||
            (ResourceMgr_IsAltAssetsEnabled() && ResourceMgr_FileExists(rGfxPrintFontDataAlt));
 }
