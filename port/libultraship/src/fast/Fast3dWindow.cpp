@@ -309,6 +309,11 @@ bool Fast3dWindow::DrawAndRunGraphicsCommands(Gfx* commands, const std::unordere
                     vr_begin_screen();
                     mInterpreter->Run(commands, mtxReplacements);
                     vr_end_screen();
+                } else if (vr_is_multiview()) {
+                    // SOH [VR] Multiview: one interpreter run for the two eyes (issue #80).
+                    vr_begin_eyes();
+                    mInterpreter->Run(commands, mtxReplacements);
+                    vr_end_eyes();
                 } else {
                     for (int eye = 0; eye < 2; eye++) {
                         vr_begin_eye(eye);

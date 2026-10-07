@@ -197,6 +197,7 @@ struct EyeSwapchain {
     XrSwapchain handle;
     int64_t format;
     uint32_t width, height;
+    uint32_t layers = 1; // SOH [VR] 2: one array image for the two eyes (multiview)
 #if VR_GFX_D3D11
     std::vector<XrSwapchainImageD3D11KHR> images;
     std::vector<ComPtr<ID3D11RenderTargetView>> rtvs;
@@ -206,6 +207,10 @@ struct EyeSwapchain {
     std::vector<XrSwapchainImageOpenGLESKHR> images;
     std::vector<GLuint> fbos;
     std::vector<GLuint> depth_rbs;
+    // SOH [VR] Multiview (layers == 2): a depth texture array for each image, and an FBO that reads
+    // layer 0 (the left eye) for the desktop mirror.
+    std::vector<GLuint> depth_texs;
+    std::vector<GLuint> read_fbos;
 #endif
 };
 
@@ -247,6 +252,13 @@ static struct {
     bool refresh_rate_supported;
     int32_t refresh_rate_requested;
     uint32_t current_image_index[2]; // Acquired swapchain image index per eye
+    // SOH [VR] Multiview (issue #80): eye_swapchains[0] is one array swapchain with a layer for
+    // each eye, and one Run draws the two eyes. multiview_supported: GL_OVR_multiview2 is there.
+    // rendering_stereo: between vr_begin_eyes and vr_end_eyes.
+    bool multiview_supported;
+    bool multiview;
+    bool rendering_stereo;
+    void* gl_framebuffer_texture_multiview; // PFNGLFRAMEBUFFERTEXTUREMULTIVIEWOVRPROC
 
     // Cached per-frame matrices (row-major, row-vector convention)
     float projection[2][4][4];
@@ -668,6 +680,13 @@ static bool vr_gfx_acquire_device() {
     const char* exts = reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));
     xr.srgb_write_control = exts != nullptr && strstr(exts, "GL_EXT_sRGB_write_control") != nullptr;
 
+    // SOH [VR] Multiview needs GL_OVR_multiview2 (gl_ViewID_OVR in the vertex shader).
+    xr.gl_framebuffer_texture_multiview =
+        reinterpret_cast<void*>(eglGetProcAddress("glFramebufferTextureMultiviewOVR"));
+    xr.multiview_supported = exts != nullptr && strstr(exts, "GL_OVR_multiview2") != nullptr &&
+                             xr.gl_framebuffer_texture_multiview != nullptr;
+    spdlog::info("[VR] GL_OVR_multiview2: {}", xr.multiview_supported ? "yes" : "no");
+
     spdlog::info("[VR] EGL context acquired (config id {}, sRGB write control {})", want_id,
                  xr.srgb_write_control ? "yes" : "no");
     return true;
@@ -745,6 +764,44 @@ static bool vr_gfx_create_targets(EyeSwapchain& sc, const char* label) {
         return false;
     }
 
+    // SOH [VR] Multiview: the image is a texture array with a layer for each eye. Attach both layers
+    // to one FBO, with a depth texture array of the same size.
+    if (sc.layers == 2) {
+        auto attach = reinterpret_cast<PFNGLFRAMEBUFFERTEXTUREMULTIVIEWOVRPROC>(xr.gl_framebuffer_texture_multiview);
+        sc.fbos.assign(image_count, 0);
+        sc.read_fbos.assign(image_count, 0);
+        sc.depth_texs.assign(image_count, 0);
+        glGenFramebuffers(static_cast<GLsizei>(image_count), sc.fbos.data());
+        glGenFramebuffers(static_cast<GLsizei>(image_count), sc.read_fbos.data());
+        glGenTextures(static_cast<GLsizei>(image_count), sc.depth_texs.data());
+        for (uint32_t i = 0; i < image_count; i++) {
+            glBindTexture(GL_TEXTURE_2D_ARRAY, sc.depth_texs[i]);
+            glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_DEPTH_COMPONENT24, static_cast<GLsizei>(sc.width),
+                           static_cast<GLsizei>(sc.height), 2);
+
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, sc.fbos[i]);
+            attach(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, sc.images[i].image, 0, 0, 2);
+            attach(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, sc.depth_texs[i], 0, 0, 2);
+            GLenum status = glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER);
+            if (status == GL_FRAMEBUFFER_COMPLETE) {
+                glBindFramebuffer(GL_READ_FRAMEBUFFER, sc.read_fbos[i]);
+                glFramebufferTextureLayer(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, sc.images[i].image, 0, 0);
+                status = glCheckFramebufferStatus(GL_READ_FRAMEBUFFER);
+            }
+            if (status != GL_FRAMEBUFFER_COMPLETE) {
+                spdlog::error("[VR] Incomplete multiview FBO for {} image {}: 0x{:X}", label, i, status);
+                glBindFramebuffer(GL_FRAMEBUFFER, 0);
+                glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+                return false;
+            }
+        }
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+        spdlog::info("[VR] {} swapchain: {}x{} x 2 layers (multiview), {} images", label, sc.width, sc.height,
+                     image_count);
+        return true;
+    }
+
     // OpenXR hands out colour images only, so each one needs a depth renderbuffer of its own and an
     // FBO to hold the pair.
     sc.fbos.assign(image_count, 0);
@@ -784,6 +841,14 @@ static void vr_gfx_destroy_targets(EyeSwapchain& sc) {
     if (!sc.depth_rbs.empty()) {
         glDeleteRenderbuffers(static_cast<GLsizei>(sc.depth_rbs.size()), sc.depth_rbs.data());
         sc.depth_rbs.clear();
+    }
+    if (!sc.read_fbos.empty()) { // SOH [VR] multiview
+        glDeleteFramebuffers(static_cast<GLsizei>(sc.read_fbos.size()), sc.read_fbos.data());
+        sc.read_fbos.clear();
+    }
+    if (!sc.depth_texs.empty()) {
+        glDeleteTextures(static_cast<GLsizei>(sc.depth_texs.size()), sc.depth_texs.data());
+        sc.depth_texs.clear();
     }
     sc.images.clear();
 }
@@ -1527,8 +1592,12 @@ bool vr_init() {
     const int64_t chosen_format = vr_gfx_pick_format(formats);
 
     // --- Create Swapchains (one per eye) ---
-    for (uint32_t eye = 0; eye < 2; eye++) {
+    // SOH [VR] Multiview (gVrMultiview, default on, issue #80): one swapchain with a layer for each
+    // eye, and one Run draws the two eyes. The two eyes must have the same size. If the multiview targets fail,
+    // the game uses one swapchain for each eye.
+    auto create_eye_swapchain = [&](uint32_t eye, uint32_t layers) -> bool {
         auto& sc = xr.eye_swapchains[eye];
+        sc.layers = layers;
 
         // Apply the resolution multiplier, then clamp to what the runtime allows.
         uint32_t scaled_w = (uint32_t)lroundf(xr.config_views[eye].recommendedImageRectWidth * xr.resolution_scale);
@@ -1553,20 +1622,42 @@ bool vr_init() {
         swapchain_ci.width = sc.width;
         swapchain_ci.height = sc.height;
         swapchain_ci.faceCount = 1;
-        swapchain_ci.arraySize = 1;
+        swapchain_ci.arraySize = layers;
         swapchain_ci.mipCount = 1;
 
         if (!xr_check(xrCreateSwapchain(xr.session, &swapchain_ci, &sc.handle), "xrCreateSwapchain")) {
-            vr_shutdown();
             return false;
         }
 
         const std::string eye_label = "Eye " + std::to_string(eye);
-        if (!vr_gfx_create_targets(sc, eye_label.c_str())) {
-            vr_shutdown();
-            return false;
+        return vr_gfx_create_targets(sc, eye_label.c_str());
+    };
+    auto destroy_eye_swapchain = [](EyeSwapchain& sc) {
+        vr_gfx_destroy_targets(sc);
+        if (sc.handle != XR_NULL_HANDLE) {
+            xrDestroySwapchain(sc.handle);
+            sc.handle = XR_NULL_HANDLE;
         }
+        sc.layers = 1;
+    };
+    // multiview_supported stays false without GL_OVR_multiview2, and on D3D11.
+    xr.multiview = xr.multiview_supported && CVarGetInteger("gVrMultiview", 1) != 0 &&
+                   xr.config_views[0].recommendedImageRectWidth == xr.config_views[1].recommendedImageRectWidth &&
+                   xr.config_views[0].recommendedImageRectHeight == xr.config_views[1].recommendedImageRectHeight;
+    if (xr.multiview && !create_eye_swapchain(0, 2)) {
+        spdlog::warn("[VR] Multiview targets failed; using one swapchain for each eye");
+        destroy_eye_swapchain(xr.eye_swapchains[0]);
+        xr.multiview = false;
     }
+    if (xr.multiview) {
+        // Only for size queries: the right eye renders into layer 1 of eye_swapchains[0].
+        xr.eye_swapchains[1].width = xr.eye_swapchains[0].width;
+        xr.eye_swapchains[1].height = xr.eye_swapchains[0].height;
+    } else if (!create_eye_swapchain(0, 1) || !create_eye_swapchain(1, 1)) {
+        vr_shutdown();
+        return false;
+    }
+    spdlog::info("[VR] Eye rendering: {}", xr.multiview ? "multiview (one pass)" : "one pass for each eye");
 
 #if VR_GFX_GLES
     // --- Create the mirror texture (a copy of the left eye for the flat surface) ---
@@ -1750,6 +1841,8 @@ void vr_shutdown() {
         }
     }
     xr.eyes_ever_rendered = false;
+    xr.multiview = false; // SOH [VR]
+    xr.rendering_stereo = false;
     xr.pointer_filled = false;
     xr.flat_screen = false;
     xr.flat_screen_prev = false;
@@ -2598,13 +2691,13 @@ void vr_end_frame() {
         // against where the player's head actually is, or the compositor would fight the snap turn.
         projection_views[eye].pose = xr.submit_pose[eye];
         projection_views[eye].fov = xr.submit_fov[eye];
-        projection_views[eye].subImage.swapchain = xr.eye_swapchains[eye].handle;
+        // SOH [VR] Multiview: the two views are the two layers of eye_swapchains[0].
+        const auto& sc = xr.eye_swapchains[xr.multiview ? 0 : eye];
+        projection_views[eye].subImage.swapchain = sc.handle;
         projection_views[eye].subImage.imageRect.offset = { 0, 0 };
-        projection_views[eye].subImage.imageRect.extent = {
-            static_cast<int32_t>(xr.eye_swapchains[eye].width),
-            static_cast<int32_t>(xr.eye_swapchains[eye].height)
-        };
-        projection_views[eye].subImage.imageArrayIndex = 0;
+        projection_views[eye].subImage.imageRect.extent = { static_cast<int32_t>(sc.width),
+                                                            static_cast<int32_t>(sc.height) };
+        projection_views[eye].subImage.imageArrayIndex = xr.multiview ? static_cast<uint32_t>(eye) : 0;
     }
 
     XrCompositionLayerProjection projection_layer = { XR_TYPE_COMPOSITION_LAYER_PROJECTION };
@@ -2741,6 +2834,29 @@ void vr_end_eye(int eye) {
     auto& sc = xr.eye_swapchains[eye];
     XrSwapchainImageReleaseInfo release_info = { XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO };
     xr_check(xrReleaseSwapchainImage(sc.handle, &release_info), "xrReleaseSwapchainImage");
+}
+
+// SOH [VR] Multiview (issue #80): the two eyes in one pass. Same steps as vr_begin_eye(0) and
+// vr_end_eye(0), on the array swapchain. The interpreter sees vr_is_rendering_stereo() and draws
+// each triangle into the two layers.
+bool vr_is_multiview() {
+    return xr.initialized && xr.multiview;
+}
+
+bool vr_is_rendering_stereo() {
+    return xr.initialized && xr.rendering_stereo;
+}
+
+void vr_begin_eyes() {
+    if (!xr.initialized || !xr.multiview) return;
+    vr_begin_eye(0);
+    xr.rendering_stereo = true;
+}
+
+void vr_end_eyes() {
+    if (!xr.initialized || !xr.multiview) return;
+    xr.rendering_stereo = false;
+    vr_end_eye(0);
 }
 
 // --------------------------------------------------------------------------
@@ -3594,7 +3710,8 @@ void vr_capture_mirror() {
     // restoring the draw target afterwards. Scissor goes back on as found, for the same shadow-state
     // reason as in vr_gfx_bind_target.
     const GLboolean scissor_was_enabled = glIsEnabled(GL_SCISSOR_TEST);
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, sc.fbos[idx]);
+    // SOH [VR] A multiview FBO cannot be read: read layer 0 (the left eye) through read_fbos.
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, sc.layers == 2 ? sc.read_fbos[idx] : sc.fbos[idx]);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, xr.mirror_fbo);
     glDisable(GL_SCISSOR_TEST);
     glBlitFramebuffer(0, 0, (GLint)sc.width, (GLint)sc.height, 0, 0, (GLint)xr.mirror_w, (GLint)xr.mirror_h,
@@ -3655,6 +3772,11 @@ void vr_get_frame_stats(struct VrFrameStats* out) {
 }
 void vr_begin_eye(int) {}
 void vr_end_eye(int) {}
+// SOH [VR] Multiview (issue #80)
+bool vr_is_multiview() { return false; }
+bool vr_is_rendering_stereo() { return false; }
+void vr_begin_eyes() {}
+void vr_end_eyes() {}
 void vr_get_projection_matrix(int, float out[4][4]) { memset(out, 0, sizeof(float) * 16); }
 void vr_get_view_matrix(int, float out[4][4]) { memset(out, 0, sizeof(float) * 16); }
 bool vr_is_initialized() { return false; }

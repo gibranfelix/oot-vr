@@ -124,7 +124,9 @@ class GfxRenderingAPIOGL final : public GfxRenderingAPI {
     int8_t mLastBlendEnabled = -1;
     int8_t mLastScissorEnabled = -1;
 
-    std::map<std::pair<uint64_t, uint32_t>, ShaderProgram> mShaderProgramPool;
+    // SOH [VR] uint64_t for both IDs: a uint32_t second ID lost SHADER_OPT_MULTIVIEW (bit 33), and the
+    // one-eye and the multiview program of a combiner shared one entry (issue #80).
+    std::map<std::pair<uint64_t, uint64_t>, ShaderProgram> mShaderProgramPool;
     ShaderProgram* mCurrentShaderProgram;
     ShaderProgram* mLastLoadedShader = nullptr;
 
