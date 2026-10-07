@@ -3,6 +3,7 @@ package org.oot.vr;
 import android.app.PendingIntent;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.util.Log;
 
@@ -50,7 +51,7 @@ public class MainActivity extends SDLActivity {
         if (root == null) {
             Log.e(TAG, "External files dir unavailable");
         } else {
-            copyAssetIfMissing("soh.o2r", new File(root, "soh.o2r"));
+            copyPortArchive(new File(root, "soh.o2r"));
             // RunExtract() checks for an assets/ directory on EVERY launch, before it looks at
             // whether an archive is already present - and if it is missing it registers a modal
             // and spins in its own draw loop waiting for an OK that a VR build can never deliver.
@@ -119,26 +120,66 @@ public class MainActivity extends SDLActivity {
         }
     }
 
-    /**
-     * soh.o2r holds the PORT's assets and rides inside the APK; oot.o2r holds the GAME's and never
-     * does: SetupActivity makes it on the headset, or the player pushes one made on a PC. Copying
-     * only when absent keeps a hand-pushed replacement from being overwritten on every launch.
-     */
+    private static void copyStream(InputStream in, OutputStream out) throws IOException {
+        byte[] buf = new byte[1 << 16];
+        int n;
+        while ((n = in.read(buf)) > 0) {
+            out.write(buf, 0, n);
+        }
+    }
+
+    /** Copy one bundled file only when it is absent. */
     private void copyAssetIfMissing(String assetName, File target) {
         if (target.exists()) {
             return;
         }
         try (InputStream in = getAssets().open(assetName);
              OutputStream out = new FileOutputStream(target)) {
-            byte[] buf = new byte[1 << 16];
-            int n;
-            while ((n = in.read(buf)) > 0) {
-                out.write(buf, 0, n);
-            }
+            copyStream(in, out);
             Log.i(TAG, "Copied " + assetName + " to " + target);
         } catch (IOException e) {
             // Not fatal: the build may simply not bundle it yet, and the game reports the miss.
             Log.w(TAG, "No bundled " + assetName + " (" + e.getMessage() + ")");
         }
+    }
+
+    /**
+     * soh.o2r holds the PORT's assets and rides inside the APK; oot.o2r holds the GAME's and never
+     * does: SetupActivity makes it on the headset, or the player pushes one made on a PC. Copy
+     * soh.o2r again after each APK install or update (see PortArchive), so that a new APK also
+     * brings its new port assets. A hand-pushed soh.o2r stays until the next APK install.
+     */
+    private void copyPortArchive(File target) {
+        long apkUpdateTime;
+        try {
+            apkUpdateTime = getPackageManager().getPackageInfo(getPackageName(), 0).lastUpdateTime;
+        } catch (PackageManager.NameNotFoundException e) {
+            apkUpdateTime = 0;
+        }
+        if (!PortArchive.needsCopy(target, apkUpdateTime)) {
+            return;
+        }
+        // Copy to a temporary file and rename it, so that a stop in the middle leaves no half file.
+        File partial = new File(target.getPath() + ".partial");
+        try (InputStream in = getAssets().open(target.getName());
+             OutputStream out = new FileOutputStream(partial)) {
+            copyStream(in, out);
+        } catch (IOException e) {
+            // Not fatal: the build may simply not bundle it yet, and the game reports the miss.
+            Log.w(TAG, "No bundled " + target.getName() + " (" + e.getMessage() + ")");
+            partial.delete();
+            return;
+        }
+        if (!partial.renameTo(target)) {
+            Log.w(TAG, "Could not replace " + target);
+            partial.delete();
+            return;
+        }
+        try {
+            PortArchive.writeStamp(target, apkUpdateTime);
+        } catch (IOException e) {
+            Log.w(TAG, "Could not write the stamp of " + target + " (" + e.getMessage() + ")");
+        }
+        Log.i(TAG, "Copied " + target.getName() + " to " + target);
     }
 }
