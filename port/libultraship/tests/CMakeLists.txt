@@ -31,6 +31,8 @@ add_executable(lus_tests
     renderer_cpu_tests.cpp
     # SOH [VR] Multiview triangle rejection and culling (pure logic, no OpenGL)
     stereo_raster_tests.cpp
+    # SOH [VR] Automatic refresh rate (pure logic, no OpenXR)
+    refresh_rate_governor_tests.cpp
 )
 
 if(ENABLE_SCRIPTING)

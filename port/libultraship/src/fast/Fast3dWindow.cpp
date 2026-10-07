@@ -235,7 +235,9 @@ bool Fast3dWindow::DrawAndRunGraphicsCommands(Gfx* commands, const std::unordere
     bool renderHud = true;
     bool presentDesktop = true;
     if (vr) {
-        const uint64_t stereoDivisor = (uint64_t)std::clamp(CVarGetInteger("gVrStereoDivisor", 1), 1, 4);
+        // SOH [VR] Default 2: draw the eyes on every second frame (issue #83). With the automatic
+        // refresh rate, the world updates at 45 FPS at 90 Hz and at 36 FPS at 72 Hz.
+        const uint64_t stereoDivisor = (uint64_t)std::clamp(CVarGetInteger("gVrStereoDivisor", 2), 1, 4);
         const uint64_t desktopDivisor = (uint64_t)std::clamp(CVarGetInteger("gVrDesktopViewDivisor", 4), 1, 32);
 
         // Redraw the stereo pair every Nth XR frame; the frames in between resubmit the previous
