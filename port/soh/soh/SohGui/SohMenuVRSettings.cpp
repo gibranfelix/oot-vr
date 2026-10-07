@@ -33,6 +33,7 @@ static const std::map<int32_t, const char*> vrTurnStyleOptions = {
 };
 
 static const std::map<int32_t, const char*> vrRefreshRateOptions = {
+    { 0, "Automatic" }, // SOH [VR] 90 Hz, or 72 Hz when frames are late (issue #83)
     { 72, "72 Hz" },
     { 80, "80 Hz" },
     { 90, "90 Hz" },
@@ -1704,23 +1705,21 @@ void SohMenu::AddMenuVRSettings() {
                        "at the headset's full rate because skipped frames are reprojected by the "
                        "compositor.",
               WIDGET_TEXT);
+    // SOH [VR] "Automatic" is the default (issue #83).
     AddWidget(perfPath, "Headset Refresh Rate", WIDGET_CVAR_COMBOBOX)
         .CVar("gVrRefreshRate")
         .Options(ComboboxOptions()
-                     .DefaultIndex(72)
+                     .DefaultIndex(0)
                      .ComboMap(vrRefreshRateOptions)
-                     .Tooltip("How many images per second the headset shows. The game logic runs "
-                              "at 20 per second; the frames in between are interpolated. 72 Hz "
-                              "(default) gives each frame the most time and keeps large areas "
-                              "such as Hyrule Field smooth. 90 Hz and 120 Hz look smoother when "
-                              "the frame fits, but drop frames in large areas. If the headset "
-                              "does not support a rate, it uses the nearest one."));
+                     .Tooltip("How many images per second the headset shows. Automatic (default) "
+                              "uses 90 Hz, and 72 Hz when frames are late, for example in Hyrule "
+                              "Field. A fixed rate does not change."));
     AddWidget(perfPath, "Stereo Render Divisor: %d", WIDGET_CVAR_SLIDER_INT)
         .CVar("gVrStereoDivisor")
         .Options(IntSliderOptions()
                      .Min(1)
                      .Max(4)
-                     .DefaultValue(1)
+                     .DefaultValue(2) // SOH [VR] issue #83
                      .Format("%d")
                      .Tooltip("Redraw the stereo pair every Nth frame; in between, the previous "
                               "images are resubmitted with the pose they were drawn from and the "

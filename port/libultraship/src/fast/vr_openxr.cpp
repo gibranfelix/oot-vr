@@ -55,6 +55,7 @@ using Microsoft::WRL::ComPtr;
 #include "fast/backends/gfx_opengl.h"
 #endif
 #include "fast/vr_physics.h"
+#include "fast/refresh_rate_governor.h" // SOH [VR]
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -259,6 +260,8 @@ static struct {
     bool multiview;
     bool rendering_stereo;
     void* gl_framebuffer_texture_multiview; // PFNGLFRAMEBUFFERTEXTUREMULTIVIEWOVRPROC
+    // SOH [VR] Time blocked in the last xrWaitFrame, for the automatic refresh rate (issue #83).
+    float last_wait_ms;
 
     // Cached per-frame matrices (row-major, row-vector convention)
     float projection[2][4][4];
@@ -414,6 +417,14 @@ static struct {
     float view_fade_target;
     float view_fade_current;
 } xr = {};
+
+// SOH [VR] Automatic refresh rate (gVrRefreshRate 0, issue #83). vr_report_frame_times feeds it one
+// time each second; vr_update_refresh_rate requests its target.
+static RefreshRateGovernor g_refresh_governor;
+
+static bool vr_refresh_rate_is_automatic() {
+    return CVarGetInteger("gVrRefreshRate", 0) == 0;
+}
 
 static void vr_restore_eye_dimensions() {
     const auto& sc = xr.eye_swapchains[0];
@@ -952,8 +963,9 @@ static float vr_screen_width_m() {
     return (sw < 0.5f) ? 0.5f : sw;
 }
 
-// SOH [VR] Asks the headset for the display refresh rate in gVrRefreshRate (default 72 Hz). The game
-// is CPU bound in large scenes: 72 Hz gives each frame 13.9 ms instead of 11.1 ms at 90 Hz. Takes the
+// SOH [VR] Asks the headset for the display refresh rate in gVrRefreshRate. 0 (the default) is
+// "Automatic": the rate of g_refresh_governor, 90 Hz or 72 Hz (issue #83). The game is CPU bound in
+// large scenes: 72 Hz gives each frame 13.9 ms instead of 11.1 ms at 90 Hz. Takes the
 // supported rate nearest to the CVar. Runs before each frame, but asks only when the CVar changes or
 // a session starts. Right after a session starts, the Quest can list no rates and refuse the request:
 // then it asks again after one second. The interpolation follows by itself: it reads the rate from
@@ -963,7 +975,14 @@ static void vr_update_refresh_rate() {
     if (!xr.refresh_rate_supported) {
         return;
     }
-    const int32_t wanted = CVarGetInteger("gVrRefreshRate", 72);
+    // SOH [VR] 0 is "Automatic": start at 90 Hz again each time the player selects it.
+    static bool was_automatic = false;
+    const bool automatic = vr_refresh_rate_is_automatic();
+    if (automatic && !was_automatic) {
+        g_refresh_governor.Reset();
+    }
+    was_automatic = automatic;
+    const int32_t wanted = automatic ? g_refresh_governor.Target() : CVarGetInteger("gVrRefreshRate", 0);
     if (wanted == xr.refresh_rate_requested) {
         return;
     }
@@ -998,7 +1017,8 @@ static void vr_update_refresh_rate() {
     }
     if (XR_SUCCEEDED(request_rate(xr.session, best))) {
         xr.refresh_rate_requested = wanted;
-        spdlog::info("[VR] Display refresh rate: asked {} Hz, set {:.0f} Hz", wanted, best);
+        spdlog::info("[VR] Display refresh rate: asked {} Hz, set {:.0f} Hz{}", wanted, best,
+                     automatic ? " (automatic)" : "");
     } else {
         retry_frames = 90;
     }
@@ -1959,11 +1979,26 @@ void vr_report_frame_times(float eyes_ms, float hud_ms, float desktop_ms, float 
     smooth(g_stats.frame_ms, frame_ms);
     g_frame_count++;
 
+    // SOH [VR] Automatic refresh rate: the work of this frame, without the wait in xrWaitFrame.
+    static float work_ms_sum = 0.0f;
+    work_ms_sum += std::max(frame_ms - xr.last_wait_ms, 0.0f);
+
     const auto now = std::chrono::steady_clock::now();
     const float elapsed = std::chrono::duration<float>(now - g_rate_epoch).count();
     if (elapsed >= 1.0f) {
         g_stats.eye_hz = g_eye_pass_count / elapsed;
         g_stats.frame_hz = g_frame_count / elapsed;
+        if (vr_refresh_rate_is_automatic()) { // SOH [VR] issue #83
+            const int before = g_refresh_governor.Target();
+            const float work_ms = g_frame_count > 0 ? work_ms_sum / g_frame_count : 0.0f;
+            const int after = g_refresh_governor.Update({ g_stats.frame_hz, work_ms });
+            if (after != before) {
+                spdlog::info("[VR] Automatic refresh rate: {} Hz to {} Hz ({:.0f} frames in the last second, "
+                             "{:.1f} ms of work in each frame)",
+                             before, after, g_stats.frame_hz, work_ms);
+            }
+        }
+        work_ms_sum = 0.0f;
         g_perf_frames += g_frame_count; // SOH [VR] Perf log
         if (++g_perf_seconds >= kPerfLogSeconds) {
             g_perf_seconds = 0;
@@ -2000,7 +2035,8 @@ bool vr_begin_frame() {
     XrFrameWaitInfo wait_info = { XR_TYPE_FRAME_WAIT_INFO };
     const auto wait_start = std::chrono::steady_clock::now();
     const XrResult wait_result = xrWaitFrame(xr.session, &wait_info, &xr.frame_state);
-    smooth(g_stats.wait_ms, std::chrono::duration<float, std::milli>(std::chrono::steady_clock::now() - wait_start).count());
+    xr.last_wait_ms = std::chrono::duration<float, std::milli>(std::chrono::steady_clock::now() - wait_start).count();
+    smooth(g_stats.wait_ms, xr.last_wait_ms);
     if (!xr_check(wait_result, "xrWaitFrame")) {
         return false;
     }
