@@ -104,8 +104,14 @@ void SetupMenu() {
     mSohMenu = std::make_shared<SohMenu>(CVAR_WINDOW("Menu"), "Port Menu");
 #ifdef __ANDROID__
     // SOH [Quest] The player often leaves the app with the menu open, and the menu CVar keeps that
-    // state. Start with the menu closed.
-    mSohMenu->Hide();
+    // state. Open the menu at the first start only, so that the player finds it. Then start with
+    // the menu closed.
+    if (CVarGetInteger(CVAR_GENERAL("QuestMenuShown"), 0)) {
+        mSohMenu->Hide();
+    } else {
+        CVarSetInteger(CVAR_GENERAL("QuestMenuShown"), 1);
+        mSohMenu->Show(); // also saves the CVars
+    }
 #endif
     gui->SetMenu(mSohMenu);
 
