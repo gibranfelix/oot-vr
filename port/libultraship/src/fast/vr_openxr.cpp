@@ -2004,13 +2004,16 @@ bool vr_begin_frame() {
     // the same head-pivot turn accumulation, so the physics sim and every game-facing pose
     // compose identically. Suspended in flat-screen mode (right stick navigates menus) and in
     // third person (the stock game owns the camera and the right stick is pure C-buttons).
+    // A mostly-vertical up push is C-up (padmgr.c, so Navi talks) and never turns (#53).
     if (xr.input_initialized && !vr_panel_shown() && xr.first_person && CVarGetInteger("gVrSnapTurnOn", 0)) {
         static int snap_latch = 0;
         const float sx = xr.thumbstick_x[1];
+        const float sy = xr.thumbstick_y[1];
+        const bool up_push = sy > 0.5f && (sy * sy) >= (sx * sx);
         if (CVarGetInteger("gVrTurnStyle", 0) == 1) {
             const float dead = CVarGetFloat("gVrSmoothTurnDeadzone", 0.25f);
             const float mag = fabsf(sx);
-            if (mag > dead) {
+            if (mag > dead && !up_push) {
                 float frac = 1.0f;
                 if (CVarGetInteger("gVrSmoothTurnAnalog", 1)) {
                     frac = (mag - dead) / (1.0f - dead);
@@ -2025,7 +2028,7 @@ bool vr_begin_frame() {
                                    CVarGetFloat("gVrSmoothTurnSpeed", 120.0f) * dt);
             }
             snap_latch = 0;
-        } else if (snap_latch == 0 && fabsf(sx) > 0.6f) {
+        } else if (snap_latch == 0 && !up_push && fabsf(sx) > 0.6f) {
             snap_latch = (sx > 0.0f) ? 1 : -1;
             vr_apply_snap_turn(snap_latch * CVarGetFloat("gVrSnapTurnDegrees", 45.0f));
         } else if (snap_latch != 0 && fabsf(sx) < 0.3f) {
