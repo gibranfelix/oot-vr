@@ -3,7 +3,16 @@
 @{GLSL_VERSION}
 
 @if(VERTEX_SHADER)
+    @if(o_multiview)
+        // SOH [VR] Multiview: one draw for the two eyes. aVtxPos is the left eye, aVtxPos2 the right eye.
+        #extension GL_OVR_multiview2 : require
+        layout(num_views = 2) in;
+    @end
     @{attr} vec4 aVtxPos;
+    @if(o_multiview)
+        @{attr} vec4 aVtxPos2;
+        @{update_floats(4)}
+    @end
 
     @for(i in 0..2)
         @if(o_textures[i])
@@ -74,6 +83,11 @@
             vInput@{i + 1} = aInput@{i + 1};
         @end
         gl_Position = aVtxPos;
+        @if(o_multiview)
+            if (gl_ViewID_OVR == 1u) {
+                gl_Position = aVtxPos2;
+            }
+        @end
         @if(opengles)
             gl_Position.z *= 0.3f;
         @end

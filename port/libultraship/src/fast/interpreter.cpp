@@ -31,6 +31,7 @@
 #include "fast/backends/gfx_rendering_api.h"
 #include "fast/vr_openxr.h"
 #include "fast/HostPointer.h"
+#include "fast/stereo_raster.h"        // SOH [VR]
 #include "fast/frame_resource_cache.h" // SOH [Quest]
 
 #include "ship/window/gui/Gui.h"
@@ -117,7 +118,9 @@ constexpr size_t MAX_TRI_BUFFER = 256;
 Interpreter::Interpreter() {
     mRsp = new RSP();
     mRdp = new RDP();
-    mBufVbo = new float[MAX_TRI_BUFFER * (32 * 3)];
+    // SOH [VR] 64 floats for each vertex, not 32: a multiview draw adds the right-eye position
+    // (4 floats), and Flush counts triangles, not floats.
+    mBufVbo = new float[MAX_TRI_BUFFER * (64 * 3)];
 }
 
 Interpreter::~Interpreter() {
@@ -1528,9 +1531,16 @@ void Interpreter::GfxSpMatrix(uint8_t parameters, const int32_t* addr) {
         if (vr_is_initialized() && !vr_is_rendering_hud()) {
             if (parameters & mtx_load) {
                 float vr_proj[4][4], vr_view[4][4];
-                vr_get_projection_matrix(vr_get_current_eye(), vr_proj);
-                vr_get_view_matrix(vr_get_current_eye(), vr_view);
+                // In a multiview pass, P_matrix is the left eye and P_matrix_r the right eye.
+                const int eye = mStereoPass ? 0 : vr_get_current_eye();
+                vr_get_projection_matrix(eye, vr_proj);
+                vr_get_view_matrix(eye, vr_view);
                 MatrixMul(mRsp->P_matrix, vr_view, vr_proj);
+                if (mStereoPass) {
+                    vr_get_projection_matrix(1, vr_proj);
+                    vr_get_view_matrix(1, vr_view);
+                    MatrixMul(mRsp->P_matrix_r, vr_view, vr_proj);
+                }
             }
             // MUL onto an eye projection would double-apply game transforms; ignore it in VR.
         } else if (parameters & mtx_load) {
@@ -1555,6 +1565,10 @@ void Interpreter::GfxSpMatrix(uint8_t parameters, const int32_t* addr) {
         mRsp->lights_changed = 1;
     }
     MatrixMul(mRsp->MP_matrix, mRsp->modelview_matrix_stack[mRsp->modelview_matrix_stack_size - 1], mRsp->P_matrix);
+    if (mStereoPass) { // SOH [VR]
+        MatrixMul(mRsp->MP_matrix_r, mRsp->modelview_matrix_stack[mRsp->modelview_matrix_stack_size - 1],
+                  mRsp->P_matrix_r);
+    }
 }
 
 void Interpreter::GfxSpPopMatrix(uint32_t count) {
@@ -1564,6 +1578,10 @@ void Interpreter::GfxSpPopMatrix(uint32_t count) {
             if (mRsp->modelview_matrix_stack_size > 0) {
                 MatrixMul(mRsp->MP_matrix, mRsp->modelview_matrix_stack[mRsp->modelview_matrix_stack_size - 1],
                           mRsp->P_matrix);
+                if (mStereoPass) { // SOH [VR]
+                    MatrixMul(mRsp->MP_matrix_r, mRsp->modelview_matrix_stack[mRsp->modelview_matrix_stack_size - 1],
+                              mRsp->P_matrix_r);
+                }
             }
         }
     }
@@ -1748,22 +1766,17 @@ void Interpreter::GfxSpVertex(size_t n_vertices, size_t dest_index, const F3DVtx
         d->v = V;
 
         // trivial clip rejection
-        d->clip_rej = 0;
-        if (x < -w) {
-            d->clip_rej |= 1; // CLIP_LEFT
-        }
-        if (x > w) {
-            d->clip_rej |= 2; // CLIP_RIGHT
-        }
-        if (y < -w) {
-            d->clip_rej |= 4; // CLIP_BOTTOM
-        }
-        if (y > w) {
-            d->clip_rej |= 8; // CLIP_TOP
-        }
-        // if (z < -w) d->clip_rej |= 16; // CLIP_NEAR
-        if (z > w) {
-            d->clip_rej |= 32; // CLIP_FAR
+        // SOH [VR] Through StereoRaster. In a multiview pass, also transform the vertex for the right
+        // eye, and keep only the planes that both eyes reject.
+        d->clip_rej = StereoRaster::ClipRejectMask({ x, y, z, w });
+        if (mStereoPass) {
+            const float(*m)[4] = mRsp->MP_matrix_r;
+            d->xr = v->ob[0] * m[0][0] + v->ob[1] * m[1][0] + v->ob[2] * m[2][0] + m[3][0];
+            d->yr = v->ob[0] * m[0][1] + v->ob[1] * m[1][1] + v->ob[2] * m[2][1] + m[3][1];
+            d->zr = v->ob[0] * m[0][2] + v->ob[1] * m[1][2] + v->ob[2] * m[2][2] + m[3][2];
+            d->wr = v->ob[0] * m[0][3] + v->ob[1] * m[1][3] + v->ob[2] * m[2][3] + m[3][3];
+            d->clip_rej = StereoRaster::StereoRejectMask(d->clip_rej,
+                                                         StereoRaster::ClipRejectMask({ d->xr, d->yr, d->zr, d->wr }));
         }
 
         d->x = x;
@@ -1830,36 +1843,32 @@ void Interpreter::GfxSpTri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx
     const uint32_t cull_back = get_attr(CULL_BACK);
 
     if ((mRsp->geometry_mode & cull_both) != 0) {
-        float dx1 = v1->x / (v1->w) - v2->x / (v2->w);
-        float dy1 = v1->y / (v1->w) - v2->y / (v2->w);
-        float dx2 = v3->x / (v3->w) - v2->x / (v2->w);
-        float dy2 = v3->y / (v3->w) - v2->y / (v2->w);
-        float cross = dx1 * dy2 - dy1 * dx2;
-
-        if ((v1->w < 0) ^ (v2->w < 0) ^ (v3->w < 0)) {
-            // If one vertex lies behind the eye, negating cross will give the correct result.
-            // If all vertices lie behind the eye, the triangle will be rejected anyway.
-            cross = -cross;
-        }
+        // SOH [VR] Through StereoRaster. In a multiview draw, drop the face only when both eyes see
+        // the culled side. Rectangles, and draws into a game framebuffer, have one position.
+        const bool stereo = mStereoPass && !mFbActive && !is_rect;
+        float cross = StereoRaster::ScreenCross({ v1->x, v1->y, v1->z, v1->w }, { v2->x, v2->y, v2->z, v2->w },
+                                                { v3->x, v3->y, v3->z, v3->w });
+        float cross_r =
+            stereo ? StereoRaster::ScreenCross({ v1->xr, v1->yr, v1->zr, v1->wr }, { v2->xr, v2->yr, v2->zr, v2->wr },
+                                               { v3->xr, v3->yr, v3->zr, v3->wr })
+                   : cross;
 
         // G_EX_INVERT_CULLING is a LUS extension, not tied to a specific ucode,
         // so apply it regardless of the active microcode handler.
         if ((mRsp->extra_geometry_mode & G_EX_INVERT_CULLING) != 0) {
             cross = -cross;
+            cross_r = -cross_r;
         }
 
         auto cull_type = mRsp->geometry_mode & cull_both;
-
+        StereoRaster::CullMode mode = StereoRaster::CullMode::Back;
         if (cull_type == cull_front) {
-            if (cross <= 0) {
-                return;
-            }
-        } else if (cull_type == cull_back) {
-            if (cross >= 0) {
-                return;
-            }
+            mode = StereoRaster::CullMode::Front;
         } else if (cull_type == cull_both) {
             // Why is this even an option?
+            mode = StereoRaster::CullMode::Both;
+        }
+        if (StereoRaster::IsCulledStereo(cross, cross_r, mode)) {
             return;
         }
     }
@@ -1951,11 +1960,19 @@ void Interpreter::GfxSpTri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx
     if (use_prim_depth) {
         cc_options |= SHADER_OPT(PRIM_DEPTH);
     }
+    // SOH [VR] A multiview pass draws into the two eyes. A game framebuffer has one view, so its
+    // draws keep the one-eye shader and the left-eye position.
+    const bool multiview = mStereoPass && !mFbActive;
+    if (multiview) {
+        cc_options |= SHADER_OPT_MULTIVIEW;
+    }
 
     if (!mShaderStack.empty()) {
         cc_options |= (mShaderStack.top() << SHADER_ID_SHIFT);
     } else {
-        cc_options |= -1 << SHADER_ID_SHIFT;
+        // SOH [VR] Only the 16 bits of the shader ID: -1 also set the bits above, and
+        // SHADER_OPT_MULTIVIEW is one of them.
+        cc_options |= (uint64_t)0xFFFF << SHADER_ID_SHIFT;
     }
 
     if (mRdp->loaded_texture[0].masked) {
@@ -2140,6 +2157,21 @@ void Interpreter::GfxSpTri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx
         mBufVbo[mBufVboLen++] = clip_parameters.invertY ? -v_arr[i]->y : v_arr[i]->y;
         mBufVbo[mBufVboLen++] = z;
         mBufVbo[mBufVboLen++] = w;
+
+        // SOH [VR] aVtxPos2: the right-eye position. A rectangle has one position for both eyes.
+        if (multiview) {
+            const bool own = !is_rect;
+            float zr = own ? v_arr[i]->zr : v_arr[i]->z;
+            const float wr = own ? v_arr[i]->wr : v_arr[i]->w;
+            const float yr = own ? v_arr[i]->yr : v_arr[i]->y;
+            if (clip_parameters.z_is_from_0_to_1) {
+                zr = (zr + wr) / 2.0f;
+            }
+            mBufVbo[mBufVboLen++] = own ? v_arr[i]->xr : v_arr[i]->x;
+            mBufVbo[mBufVboLen++] = clip_parameters.invertY ? -yr : yr;
+            mBufVbo[mBufVboLen++] = zr;
+            mBufVbo[mBufVboLen++] = wr;
+        }
 
         for (int t = 0; t < 2; t++) {
             if (!usedTextures[t]) {
@@ -5183,6 +5215,8 @@ void Interpreter::Run(Gfx* commands, const std::unordered_map<Mtx*, MtxF>& mtx_r
     // image that vr_begin_* has already acquired, bound, and cleared — binding the window
     // backbuffer or game FB here would clobber that. Re-assert the XR target instead.
     const bool vrPass = vr_is_initialized();
+    // SOH [VR] One Run for the two eyes (multiview). See mStereoPass.
+    mStereoPass = vrPass && vr_is_rendering_stereo();
 
     mRapi->UpdateFramebufferParameters(0, mGfxCurrentWindowDimensions.width, mGfxCurrentWindowDimensions.height, 1,
                                        false, true, true, !mRendersToFb);
@@ -5506,6 +5540,7 @@ void gfx_cc_get_features(uint64_t shader_id0, uint64_t shader_id1, struct CCFeat
     cc_features->opt_invisible = (shader_id1 & SHADER_OPT(INVISIBLE)) != 0;
     cc_features->opt_grayscale = (shader_id1 & SHADER_OPT(GRAYSCALE)) != 0;
     cc_features->opt_prim_depth = (shader_id1 & SHADER_OPT(PRIM_DEPTH)) != 0;
+    cc_features->opt_multiview = (shader_id1 & SHADER_OPT_MULTIVIEW) != 0; // SOH [VR]
 
     cc_features->clamp[0][0] = shader_id1 & SHADER_OPT(TEXEL0_CLAMP_S);
     cc_features->clamp[0][1] = shader_id1 & SHADER_OPT(TEXEL0_CLAMP_T);

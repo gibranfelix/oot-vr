@@ -54,6 +54,14 @@ void vr_get_frame_stats(struct VrFrameStats* out);
 void vr_begin_eye(int eye);
 void vr_end_eye(int eye);
 
+// SOH [VR] Multiview (issue #80). vr_is_multiview: the eyes render in one pass. Then call
+// vr_begin_eyes, run the interpreter one time, and call vr_end_eyes, not vr_begin_eye/vr_end_eye.
+// vr_is_rendering_stereo: true between vr_begin_eyes and vr_end_eyes.
+bool vr_is_multiview();
+bool vr_is_rendering_stereo();
+void vr_begin_eyes();
+void vr_end_eyes();
+
 // Matrix queries (used by gfx_pc.cpp matrix injection)
 void vr_get_projection_matrix(int eye, float out[4][4]);
 void vr_get_view_matrix(int eye, float out[4][4]);

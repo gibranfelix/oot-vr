@@ -350,6 +350,7 @@ static std::string BuildVsShader(const CCFeatures& cc_features) {
                                      { "o_grayscale", cc_features.opt_grayscale },
                                      { "o_alpha", cc_features.opt_alpha },
                                      { "o_inputs", cc_features.numInputs },
+                                     { "o_multiview", cc_features.opt_multiview }, // SOH [VR]
                                      { "update_floats", (InvokeFunc)UpdateFloats },
 #ifdef __APPLE__
                                      { "GLSL_VERSION", "#version 410 core" },
@@ -444,6 +445,15 @@ ShaderProgram* GfxRenderingAPIOGL::CreateAndLoadNewShader(uint64_t shader_id0, u
     glAttachShader(shader_program, vertex_shader);
     glAttachShader(shader_program, fragment_shader);
     glLinkProgram(shader_program);
+    // SOH [VR] Report a link error. Without this, a program that does not link draws nothing.
+    glGetProgramiv(shader_program, GL_LINK_STATUS, &success);
+    if (!success) {
+        char error_log[1024];
+        GLsizei length = 0;
+        glGetProgramInfoLog(shader_program, sizeof(error_log), &length, error_log);
+        SPDLOG_ERROR("Shader program link failed ({:#x} {:#x}): {}", shader_id0, shader_id1,
+                     std::string(error_log, length));
+    }
 
     size_t cnt = 0;
 
@@ -451,6 +461,13 @@ ShaderProgram* GfxRenderingAPIOGL::CreateAndLoadNewShader(uint64_t shader_id0, u
     prg->attribLocations[cnt] = glGetAttribLocation(shader_program, "aVtxPos");
     prg->attribSizes[cnt] = 4;
     ++cnt;
+
+    // SOH [VR] The right-eye position of a multiview draw follows aVtxPos in the vertex buffer.
+    if (cc_features.opt_multiview) {
+        prg->attribLocations[cnt] = glGetAttribLocation(shader_program, "aVtxPos2");
+        prg->attribSizes[cnt] = 4;
+        ++cnt;
+    }
 
     for (int i = 0; i < 2; i++) {
         if (cc_features.usedTextures[i]) {

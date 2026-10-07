@@ -87,6 +87,10 @@ enum class ShaderOpts {
 #define SHADER_OPT(opt) ((uint64_t)(1 << static_cast<int>(ShaderOpts::opt)))
 #endif
 
+// SOH [VR] The shader draws into the two eyes of a multiview framebuffer (issue #80). Bits 17-32
+// hold the shader ID (ShaderOpts::PRISM_SHADER), so this option uses bit 33.
+#define SHADER_OPT_MULTIVIEW ((uint64_t)1 << 33)
+
 struct ColorCombinerKey {
     uint64_t combine_mode;
     uint64_t options;
@@ -113,6 +117,7 @@ struct CCFeatures {
     bool opt_invisible;
     bool opt_grayscale;
     bool opt_prim_depth;
+    bool opt_multiview; // SOH [VR] SHADER_OPT_MULTIVIEW: draw into the two eyes in one pass
     bool usedTextures[2];
     bool used_masks[2];
     bool used_blend[2];
@@ -216,6 +221,8 @@ struct RGBA {
 
 struct LoadedVertex {
     float x, y, z, w;
+    // SOH [VR] Clip position for the right eye. Valid only in a multiview pass (mStereoPass).
+    float xr, yr, zr, wr;
     float u, v;
     struct RGBA color;
     uint8_t clip_rej;
@@ -241,6 +248,10 @@ struct RSP {
 
     float MP_matrix[4][4];
     float P_matrix[4][4];
+    // SOH [VR] The matrices of the right eye in a multiview pass. P_matrix and MP_matrix are then
+    // the matrices of the left eye.
+    float MP_matrix_r[4][4];
+    float P_matrix_r[4][4];
 
     F3DLight_t lookat[2];
     F3DLight current_lights[MAX_LIGHTS + 1];
@@ -532,6 +543,8 @@ class Interpreter {
     uintptr_t mSegmentPointers[MAX_SEGMENT_POINTERS]{};
 
     bool mFbActive{};
+    // SOH [VR] This Run draws the two eyes in one multiview pass (vr_is_rendering_stereo).
+    bool mStereoPass{};
     bool mRendersToFb{}; // game_renders_to_framebuffer;
     std::map<int, FBInfo>::iterator mActiveFrameBuffer;
     std::map<int, FBInfo> mFrameBuffers;

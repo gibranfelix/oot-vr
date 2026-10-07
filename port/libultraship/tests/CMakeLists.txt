@@ -29,6 +29,8 @@ add_executable(lus_tests
     vr_menu_input_tests.cpp
     # SOH [Quest] Renderer CPU helpers (pure logic, no OpenGL)
     renderer_cpu_tests.cpp
+    # SOH [VR] Multiview triangle rejection and culling (pure logic, no OpenGL)
+    stereo_raster_tests.cpp
 )
 
 if(ENABLE_SCRIPTING)
