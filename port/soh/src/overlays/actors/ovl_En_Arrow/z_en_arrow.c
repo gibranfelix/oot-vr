@@ -9,6 +9,7 @@
 #include "objects/object_gi_nuts/object_gi_nuts.h"
 
 #include "soh/Enhancements/game-interactor/GameInteractor_Hooks.h"
+#include "soh/Enhancements/vr-combat/VrCombat.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED | ACTOR_FLAG_DRAW_CULLING_DISABLED)
 
@@ -243,7 +244,9 @@ void EnArrow_Shoot(EnArrow* this, PlayState* play) {
             this->actor.shape.rot.x = this->actor.shape.rot.y = this->actor.shape.rot.z = 0;
         } else {
             Actor_SetProjectileSpeed(&this->actor, 150.0f);
-            this->timer = 12;
+            // SOH [VR] With the VR bow aim, the arrow flies farther. The arc does not change.
+            this->vrExtraFrames = (this->actor.params >= ARROW_NORMAL_LIT) ? VrCombat_ArrowExtraFrames() : 0;
+            this->timer = 12 + this->vrExtraFrames;
         }
     }
 }
@@ -309,7 +312,8 @@ void EnArrow_Fly(EnArrow* this, PlayState* play) {
         return;
     }
 
-    if (this->timer < 7.2000003f) {
+    // SOH [VR] vrExtraFrames: gravity starts on the same move as in the vanilla flight.
+    if (this->timer < 7.2000003f + this->vrExtraFrames) {
         this->actor.gravity = -0.4f;
     }
 

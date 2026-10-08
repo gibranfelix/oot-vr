@@ -140,7 +140,9 @@ bool VrCombat_AimTriggerConsumed(int32_t vrHand, uint16_t vrBtnMask);
 
 // Bow aim (VrBowAim.cpp). ArrowOnBow: the arrow position and direction from the bow hand matrix
 // (MtxF) and the draw (Player.unk_858). PredictArrowHit: the first surface on the arrow flight.
+// ArrowExtraFrames: the extra flight frames of a bow arrow, 0 when the VR bow aim is off.
 void VrCombat_ArrowOnBow(const float* handMf16, float draw, float* outPosXyz, float* outDirXyz);
+int32_t VrCombat_ArrowExtraFrames(void);
 bool VrCombat_PredictArrowHit(struct PlayState* play, const float* posXyz, const float* dirXyz, float* outHitXyz);
 // The physical shield's block collider in R_HAND limb model space (outXyz4 = 4 vertices x xyz,
 // vanilla zigzag order) — replaces the vanilla stance quad, whose size/offset never matched a

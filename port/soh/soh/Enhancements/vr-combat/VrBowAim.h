@@ -43,6 +43,13 @@ struct Flight {
 // All arrow types: normal, fire, ice, and light.
 constexpr Flight kArrowFlight = { 150.0f, 12, 7.2f, -0.4f, -150.0f };
 
+// In VR, the arrow flies kVrExtraFrames more, thus it hits what the player sees. The arc is the
+// same: gravity starts on the same move.
+constexpr int kVrExtraFrames = 24;
+constexpr Flight kArrowFlightVr = { kArrowFlight.speed, kArrowFlight.timer + kVrExtraFrames,
+                                    kArrowFlight.gravityBelowTimer + kVrExtraFrames, kArrowFlight.gravity,
+                                    kArrowFlight.minVelocityY };
+
 // Returns the first hit of the flight from pos along the unit vector dir. stepScale:
 // R_UPDATE_RATE * 0.5, as in Actor_UpdatePos. lineTest(a, b, &hit) tests one segment.
 template <typename LineTest>

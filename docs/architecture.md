@@ -161,6 +161,10 @@ hook cannot hold. The rule is in `VrAimMark.h`. For the bow, the aim mark shows
 where the arrow will hit. It follows the `EnArrow_Fly` flight to the first
 surface. The Bow Reticle enhancement does not show in VR first person.
 
+In VR, the arrow flies 24 frames more than in the vanilla game, thus it hits
+what the player sees. The arc does not change. With VR off, the flight is the
+vanilla flight.
+
 The host unit tests are in `port/soh/tests/vr/VrAimMarkTests.cpp` and
 `port/soh/tests/vr/VrBowAimTests.cpp`.
 

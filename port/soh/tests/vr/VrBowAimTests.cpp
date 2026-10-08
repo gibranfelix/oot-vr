@@ -174,6 +174,19 @@ static void TestGravityStartsOnTheFifthMove() {
     EXPECT(Near(starts[10].y, -0.4f * 21.0f));
 }
 
+static void TestVrFlightIsLongerWithTheSameArc() {
+    std::vector<Vec3> vanilla;
+    std::vector<Vec3> vr;
+    Vec3 hit;
+    PredictHit({ 0, 0, 0 }, { 0, 0, -1 }, 1.0f, kArrowFlight, WallZ{ -100000.0f, &vanilla }, &hit);
+    PredictHit({ 0, 0, 0 }, { 0, 0, -1 }, 1.0f, kArrowFlightVr, WallZ{ -100000.0f, &vr }, &hit);
+    EXPECT(vr.size() == vanilla.size() + kVrExtraFrames);
+    // The VR flight follows the vanilla arc, and continues after it.
+    for (size_t i = 0; i < vanilla.size(); i++) {
+        EXPECT(NearVec(vr[i], vanilla[i]));
+    }
+}
+
 static void TestDropFollowsTheVanillaFlight() {
     // The aim mark is on a far wall below the line of the bow, because the arrow drops.
     Vec3 hit;
@@ -201,6 +214,7 @@ int main() {
     TestHitsAWallStraightAhead();
     TestNoHitOutOfRange();
     TestGravityStartsOnTheFifthMove();
+    TestVrFlightIsLongerWithTheSameArc();
     TestDropFollowsTheVanillaFlight();
     TestUpwardShotKeepsItsPitch();
 

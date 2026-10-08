@@ -163,12 +163,14 @@ void ArrowFire_Fly(ArrowFire* this, PlayState* play) {
     }
     func_80865ECC(&this->unkPos, &this->actor.world.pos, 0.05f);
 
+    // SOH [VR] Fade in the last 12 frames of the flight, also in the longer VR flight. The vanilla
+    // timer is never more than 12.
     if (arrow->hitFlags & 1) {
         Audio_PlayActorSound2(&this->actor, NA_SE_IT_EXPLOSION_FRAME);
         ArrowFire_SetupAction(this, ArrowFire_Hit);
         this->timer = 32;
         this->alpha = 255;
-    } else if (arrow->timer < 34) {
+    } else if ((arrow->timer < 34) && (arrow->timer <= 12)) {
         if (this->alpha < 35) {
             Actor_Kill(&this->actor);
         } else {

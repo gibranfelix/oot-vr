@@ -8,6 +8,9 @@ extern "C" {
 #include "VrCombat.h"
 #include "VrBowAim.h"
 
+#include <libultraship/bridge/consolevariablebridge.h>
+#include <vr_interface.h>
+
 extern "C" void VrCombat_ArrowOnBow(const float* handMf16, float draw, float* outPosXyz, float* outDirXyz) {
     const float(*mf)[4] = reinterpret_cast<const float(*)[4]>(handMf16);
     VrBowAim::Vec3 pos;
@@ -19,6 +22,13 @@ extern "C" void VrCombat_ArrowOnBow(const float* handMf16, float draw, float* ou
     outDirXyz[0] = dir.x;
     outDirXyz[1] = dir.y;
     outDirXyz[2] = dir.z;
+}
+
+// Same rule as Player_VrMotionAimOn in z_player_lib.c.
+extern "C" int32_t VrCombat_ArrowExtraFrames(void) {
+    const bool bowAim = VR_IsInitialized() && VR_GetFirstPerson() && CVarGetInteger("gVrMotionHands", 1) &&
+                        CVarGetInteger("gVrWeaponAim", 1);
+    return bowAim ? VrBowAim::kVrExtraFrames : 0;
 }
 
 extern "C" bool VrCombat_PredictArrowHit(PlayState* play, const float* posXyz, const float* dirXyz,
@@ -38,7 +48,9 @@ extern "C" bool VrCombat_PredictArrowHit(PlayState* play, const float* posXyz, c
     };
     VrBowAim::Vec3 hit;
     if (!VrBowAim::PredictHit({ posXyz[0], posXyz[1], posXyz[2] }, { dirXyz[0], dirXyz[1], dirXyz[2] },
-                              R_UPDATE_RATE * 0.5f, VrBowAim::kArrowFlight, lineTest, &hit)) {
+                              R_UPDATE_RATE * 0.5f,
+                              (VrCombat_ArrowExtraFrames() > 0) ? VrBowAim::kArrowFlightVr : VrBowAim::kArrowFlight,
+                              lineTest, &hit)) {
         return false;
     }
     outHitXyz[0] = hit.x;
