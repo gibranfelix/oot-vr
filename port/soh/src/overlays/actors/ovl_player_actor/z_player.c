@@ -6424,7 +6424,7 @@ s32 func_8083BB20(Player* this) {
     // SOH [VR] Physical combat: for covered weapons, button attacks are replaced by real swings.
     // Every B attack (and with it combo chains, root motion and the stab lunge) originates from
     // this check, so suppressing it here retires the whole authored-attack state machine while
-    // the mode is active. The hammer keeps vanilla attacks.
+    // the mode is active. Physical combat covers all melee weapons.
     if (VrCombat_Active() && VrCombat_MeleeCovered(this)) {
         return 0;
     }
@@ -9239,6 +9239,17 @@ void func_80842A28(PlayState* play, Player* this) {
     play->actorCtx.unk_02 = 4;
     Player_RequestRumble(this, 255, 20, 150, 0);
     Player_PlaySfx(this, NA_SE_IT_HAMMER_HIT);
+}
+
+// SOH [VR] Physical combat: the physical Megaton Hammer has no attack animation, so the
+// vr-combat module detects the ground hit from the head motion and calls this shim. It starts the
+// same effects as the animation-driven ground hit in Player_Action_808502D0.
+void VrCombat_HammerGroundHit(PlayState* play, Player* this, const float* posXyz) {
+    static Vec3f zeroVec = { 0.0f, 0.0f, 0.0f };
+    Vec3f shockwavePos = { posXyz[0], posXyz[1], posXyz[2] };
+
+    func_80842A28(play, this);
+    EffectSsBlast_SpawnWhiteShockwave(play, &shockwavePos, &zeroVec, &zeroVec);
 }
 
 void func_80842A88(PlayState* play, Player* this) {

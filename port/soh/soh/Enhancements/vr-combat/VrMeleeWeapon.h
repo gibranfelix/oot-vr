@@ -15,24 +15,26 @@ constexpr int kBiggoron = 3; // also the Giant's Knife
 constexpr int kDekuStick = 4;
 constexpr int kHammer = 5;
 
-// Physical combat covers the swords and the Deku Stick. The hammer attacks with a button.
+// Physical combat covers all melee weapons: the swords, the Deku Stick, and the hammer.
 inline bool Covered(int held) {
-    return held == kMaster || held == kKokiri || held == kBiggoron || held == kDekuStick;
+    return held >= kMaster && held <= kHammer;
 }
 
 // [slash, jump slash] dmgFlags. The rows are the same as D_80854488 in z_player.c: Master, Kokiri
-// (also the broken Giant's Knife), Biggoron, Deku Stick.
-constexpr uint32_t kDmgFlags[4][2] = {
+// (also the broken Giant's Knife), Biggoron, Deku Stick, hammer. Rusted switches and hammer rocks
+// accept only the hammer flags.
+constexpr uint32_t kDmgFlags[5][2] = {
     { 0x00000200, 0x08000000 },
     { 0x00000100, 0x02000000 },
     { 0x00000400, 0x04000000 },
     { 0x00000002, 0x08000000 },
+    { 0x00000040, 0x40000000 },
 };
 
 // A heavy swing applies the jump slash flags. Other swings apply the slash flags.
 inline uint32_t DmgFlags(int held, bool brokenKnife, bool heavy) {
     int row = brokenKnife ? 1 : held - 1;
-    if (row < 0 || row > 3) {
+    if (row < 0 || row > 4) {
         row = 1;
     }
     return kDmgFlags[row][heavy ? 1 : 0];
