@@ -387,6 +387,10 @@ typedef enum {
 #define IS_RANDO (gSaveContext.ship.quest.id == QUEST_RANDOMIZER)
 #define IS_BOSS_RUSH (gSaveContext.ship.quest.id == QUEST_BOSSRUSH)
 
+// SOH [Quest] The EXPLORE option in the quest selector. It is not a quest.id value:
+// an EXPLORE file uses QUEST_NORMAL, or QUEST_MASTER when only Master Quest is available.
+#define FS_QUEST_EXPLORE (QUEST_BOSSRUSH + 1)
+
 typedef enum {
     /* 0x00 */ BTN_ENABLED,
     /* 0xFF */ BTN_DISABLED = 0xFF

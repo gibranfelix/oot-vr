@@ -26,7 +26,8 @@
 #include "soh/ShipUtils.h"
 
 #define MIN_QUEST (ResourceMgr_GameHasOriginal() ? QUEST_NORMAL : QUEST_MASTER)
-#define MAX_QUEST QUEST_BOSSRUSH
+// SOH [Quest] EXPLORE is the last option in the quest selector.
+#define MAX_QUEST FS_QUEST_EXPLORE
 
 void Sram_InitDebugSave(void);
 void Sram_InitBossRushSave();
@@ -670,6 +671,10 @@ void FileChoose_UpdateQuestMenu(GameState* thisx) {
 
     if (CHECK_BTN_ALL(input->press.button, BTN_A)) {
         gSaveContext.ship.quest.id = this->questType[this->buttonIndex];
+        // SOH [Quest] EXPLORE is not a quest.id value. Sram_InitSave sets the quest of the EXPLORE file.
+        if (gSaveContext.ship.quest.id == FS_QUEST_EXPLORE) {
+            gSaveContext.ship.quest.id = MIN_QUEST;
+        }
 
         if (this->questType[this->buttonIndex] == QUEST_BOSSRUSH) {
             Audio_PlaySoundGeneral(NA_SE_SY_FSEL_DECIDE_L, &gSfxDefaultPos, 4, &gSfxDefaultFreqAndVolScale,
@@ -1808,6 +1813,19 @@ void FileChoose_DrawWindowContents(GameState* thisx) {
                     this->state.gfxCtx, 160, 135,
                     ResourceMgr_GameHasOriginal() ? gTitleZeldaShieldLogoTex : gTitleZeldaShieldLogoMQTex, 160, 160);
                 FileChoose_DrawImageRGBA32(this->state.gfxCtx, 182, 180, gTitleBossRushSubtitleTex, 128, 32);
+                break;
+
+            // SOH [Quest] EXPLORE: the logo of the available dungeons, and the EXPLORE subtitle.
+            case FS_QUEST_EXPLORE:
+                gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 255, 255, 255, this->logoAlpha);
+                FileChoose_DrawTextureI8(this->state.gfxCtx, gTitleTheLegendOfTextTex, 72, 8, 156, 108, 72, 8, 1024,
+                                         1024);
+                FileChoose_DrawTextureI8(this->state.gfxCtx, gTitleOcarinaOfTimeTMTextTex, 96, 8, 154, 163, 96, 8, 1024,
+                                         1024);
+                FileChoose_DrawImageRGBA32(
+                    this->state.gfxCtx, 160, 135,
+                    ResourceMgr_GameHasOriginal() ? gTitleZeldaShieldLogoTex : gTitleZeldaShieldLogoMQTex, 160, 160);
+                FileChoose_DrawImageRGBA32(this->state.gfxCtx, 182, 180, gTitleExploreSubtitleTex, 128, 32);
                 break;
         }
     } else if (this->configMode == CM_BOSS_RUSH_MENU) {
