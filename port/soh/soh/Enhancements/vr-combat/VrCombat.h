@@ -29,9 +29,9 @@ bool VrCombat_InPlay(void);
 
 // --- Physical melee (VrSwing.cpp) ---
 
-// The held melee weapon is handled by physical combat: 1H swords (Master/Kokiri) and the broken
-// Giant's Knife. Sticks, hammer and the full Biggoron Sword keep vanilla button combat until
-// their own milestones. Also false for the co-op partner (only the real player swings).
+// The held melee weapon is handled by physical combat: the swords, the Giant's Knife and the
+// Deku Stick. The hammer keeps vanilla button combat until its own milestone. Also false for the
+// co-op partner (only the real player swings).
 bool VrCombat_MeleeCovered(struct Player* player);
 
 // Draw-time feed, called from the Player L_HAND PostLimbDraw seam with the live (controller)
@@ -49,6 +49,11 @@ bool VrCombat_MeleeQuadsHit(void);
 // setter func_80833A20, which plays the swing SFX / voice and counts the swing stat on the
 // 0 -> nonzero edge. The vr-combat module drives the state from real hand motion.
 void VrCombat_SetMeleeWeaponState(struct Player* player, int32_t newState);
+
+// Implemented in z_player.c (// SOH [VR]): forwards to the file-internal Deku Stick break
+// func_80842AC4 (stick effect, SFX, one stick from the ammo, empty hand). The vanilla attack
+// actions call it on a strike; physical combat calls it on the same strikes.
+void VrCombat_BreakDekuStick(struct PlayState* play, struct Player* player);
 
 // Visual-mesh harvest exclusion: brackets a display-list section the physical blade must NOT
 // collide with (the player's own arms/weapon, the sword trail) by emitting mask marker
