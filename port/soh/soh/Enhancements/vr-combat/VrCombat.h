@@ -29,8 +29,8 @@ bool VrCombat_InPlay(void);
 
 // --- Physical melee (VrSwing.cpp) ---
 
-// Physical combat covers the held melee weapon: a sword or the Deku Stick. False for the hammer
-// and for the co-op partner.
+// Physical combat covers the held melee weapon: a sword, the Deku Stick, or the hammer. False for
+// the co-op partner.
 bool VrCombat_MeleeCovered(struct Player* player);
 
 // Draw-time feed, called from the Player L_HAND PostLimbDraw seam with the live (controller)
@@ -51,6 +51,10 @@ void VrCombat_SetMeleeWeaponState(struct Player* player, int32_t newState);
 
 // In z_player.c. Calls the vanilla Deku Stick break, func_80842AC4.
 void VrCombat_BreakDekuStick(struct PlayState* play, struct Player* player);
+
+// In z_player.c. Starts the ground hit of the original game at posXyz (world units): screen
+// shake, enemy stun, rumble, sound, and shock wave.
+void VrCombat_HammerGroundHit(struct PlayState* play, struct Player* player, const float* posXyz);
 
 // Visual-mesh harvest exclusion: brackets a display-list section the physical blade must NOT
 // collide with (the player's own arms/weapon, the sword trail) by emitting mask marker

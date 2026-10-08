@@ -1037,6 +1037,26 @@ void SohMenu::AddMenuVRSettings() {
                      .Tooltip("Blade collider length for the Biggoron Sword / Giant's Knife (game "
                               "units). Default matches the visible blade. Swings one-handed for "
                               "now; real two-handed weight comes in a later update."));
+    AddWidget(physPath, "Megaton Hammer Length: %.0f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrPhysBladeLenHammer")
+        .Options(FloatSliderOptions()
+                     .Min(10.0f)
+                     .Max(45.0f)
+                     .DefaultValue(25.0f)
+                     .Step(1.0f)
+                     .Format("%.0f")
+                     .Tooltip("Collider length of the Megaton Hammer, from the grip to the head "
+                              "(game units)."));
+    AddWidget(physPath, "Hammer Ground Hit At: %.1f m/s", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrPhysHammerSlamSpeed")
+        .Options(FloatSliderOptions()
+                     .Min(1.0f)
+                     .Max(10.0f)
+                     .DefaultValue(4.0f)
+                     .Step(0.1f)
+                     .Format("%.1f")
+                     .Tooltip("Downward speed of the hammer head (meters/second) for a ground "
+                              "hit. A ground hit shakes the screen and stuns enemies near Link."));
     AddWidget(physPath, "Blade Width: %.0f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysBladeWidth")
         .Options(FloatSliderOptions()
@@ -1450,6 +1470,9 @@ void SohMenu::AddMenuVRSettings() {
                      "gVrPhysBladeLenKokiri=%.2f\n"
                      "gVrPhysBladeLenMaster=%.2f\n"
                      "gVrPhysBladeLenBiggoron=%.2f\n"
+                     "gVrPhysBladeLenHammer=%.2f\n"
+                     "gVrPhysHammerSlamSpeed=%.2f\n"
+                     "gVrPhysHammerSlamReach=%.2f\n"
                      "gVrPhysBladeWidth=%.2f\n"
                      "gVrPhysBladeThickness=%.2f\n"
                      "gVrPhysBladeRoll=%.1f\n"
@@ -1500,6 +1523,9 @@ void SohMenu::AddMenuVRSettings() {
                      CVarGetFloat("gVrPhysBladeLenKokiri", 18.0f),
                      CVarGetFloat("gVrPhysBladeLenMaster", 35.0f),
                      CVarGetFloat("gVrPhysBladeLenBiggoron", 55.0f),
+                     CVarGetFloat("gVrPhysBladeLenHammer", 25.0f),
+                     CVarGetFloat("gVrPhysHammerSlamSpeed", 4.0f),
+                     CVarGetFloat("gVrPhysHammerSlamReach", 8.0f),
                      CVarGetFloat("gVrPhysBladeWidth", 4.0f), CVarGetFloat("gVrPhysBladeThickness", 0.4f),
                      CVarGetFloat("gVrPhysBladeRoll", -90.0f), CVarGetFloat("gVrPhysBladeShiftFwd", 0.0f),
                      CVarGetFloat("gVrPhysBladeShiftEdge", 1.1f),

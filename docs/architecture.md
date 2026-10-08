@@ -48,7 +48,7 @@ The VR code that is new has its own files:
 | `port/libultraship/include/vr_interface.h` | The declarations of the `VR_*` functions, with comments |
 | `port/libultraship/src/fast/vr_physics.cpp` | The collision mesh for the physical hands |
 | `port/libultraship/src/fast/vr_menu_input.cpp` | The SoH menu with the Touch controllers: the Y toggle, the menu navigation, and the input filter for the game |
-| `port/soh/soh/Enhancements/vr-combat/` | Sword swing, shield, bow aim, and item selection |
+| `port/soh/soh/Enhancements/vr-combat/` | Sword and hammer swing, shield, bow aim, and item selection |
 | `port/soh/soh/SohGui/SohMenuVRSettings.cpp` | The VR settings menu |
 
 ## Render path
@@ -107,16 +107,21 @@ the slots, the debug save, and Boss Rush. Tests:
 
 ## Physical melee
 
-The swords and the Deku Stick hit when the player swings them. The Megaton
-Hammer attacks with a button.
+The swords, the Deku Stick, and the Megaton Hammer hit when the player swings
+them.
 
 - `VrSwing.cpp` measures the speed of the weapon. A slow movement does not hit.
 - Each weapon applies its vanilla damage flags.
 - The Deku Stick breaks on a hit, a bounce, or a wall, as in the vanilla game.
   The torches light the stick at its tip.
+- A hammer hit on a surface also makes a collider across the surface. The
+  rusted switch has a flat collider on its top.
+- A hammer ground hit occurs when the head moves down fast and touches a floor
+  near the feet of Link. `VrCombat_HammerGroundHit` in `z_player.c` then starts
+  the effects of the vanilla game.
 
-The rules are in `VrMeleeWeapon.h`. The host unit tests are in
-`port/soh/tests/vr/VrMeleeWeaponTests.cpp`.
+The rules are in `VrMeleeWeapon.h` and `VrHammerSlam.h`. The host unit tests
+are in `port/soh/tests/vr/`.
 
 ## Physical shield
 

@@ -9,6 +9,7 @@ MtxF* Matrix_GetCurrent(void);
 
 #include "VrCombat.h"
 #include "VrMeleeWeapon.h"
+#include "VrHammerSlam.h"
 
 #include "soh/cvar_prefixes.h"
 #include <libultraship/bridge/consolevariablebridge.h>
@@ -54,6 +55,13 @@ float sTickHandSpeed = 0.0f; // max raw hand speed this tick, m/s (the anti-wris
 bool sHaveBladePrev = false;
 Vec3f sPrevTip[2];
 Vec3f sPrevBase[2];
+
+// Hammer ground hit. The draw records the head position and its downward speed. The next player
+// update does the line test and the rule (VrHammerSlam.h), and starts the effects.
+VrHammerSlam::Detector sSlam;
+bool sHeadValid = false;
+Vec3f sHeadPos;
+float sTickHeadDownSpeed = 0.0f; // m/s
 
 // Mirror of the player melee quad init (D_80854650, z_player.c) with TOUCH_NEAREST from the
 // start: each quad damages only its nearest victim, like every vanilla sword quad.
@@ -127,6 +135,9 @@ struct PendingStrike {
     Vec3f pos;
     Vec3f normal;
     uint32_t dmgFlags;
+    // Hammer: also a quad across the surface. The rusted switch has a flat collider on its top. A
+    // quad parallel to the top does not touch it.
+    bool cross;
 };
 PendingStrike sPendingStrikes[4];
 int sPendingStrikeCount = 0;
@@ -391,8 +402,8 @@ inline int SwordHand() {
 }
 
 // Blade length in hand-model units (sliders are in game units; model = x100 before actor scale).
-// Defaults match the visual blades (the vanilla trail tips): Kokiri 30, Master 40, Biggoron 55.
-// The Deku Stick has no slider. It uses the vanilla length.
+// Defaults match the visual blades (the vanilla trail tips): Kokiri 30, Master 40, Biggoron 55,
+// hammer 25 (grip to head). The Deku Stick has no slider. It uses the vanilla length.
 float BladeLengthModelUnits(Player* player) {
     const s32 held = Player_GetMeleeWeaponHeld(player);
     if (held == VrMeleeWeapon::kBiggoron && Player_HoldsBrokenKnife(player)) {
@@ -407,6 +418,8 @@ float BladeLengthModelUnits(Player* player) {
             return CVarGetFloat("gVrPhysBladeLenKokiri", 18.0f) * 100.0f;
         case VrMeleeWeapon::kBiggoron:
             return CVarGetFloat("gVrPhysBladeLenBiggoron", 55.0f) * 100.0f;
+        case VrMeleeWeapon::kHammer:
+            return CVarGetFloat("gVrPhysBladeLenHammer", 25.0f) * 100.0f;
         default:
             return 3000.0f;
     }
@@ -969,6 +982,8 @@ void EnsureQuads(PlayState* play, Player* player) {
     sQuadsUsed = 0;
     sTier = VrMeleeWeapon::kIdle;
     sHaveBladePrev = false;
+    sHeadValid = false;
+    sSlam.Reset();
     // New scene: puppet/impulse Actor* keys from the previous scene must not survive to match
     // recycled allocations in this one.
     memset(sPuppets, 0, sizeof(sPuppets));
@@ -1080,6 +1095,8 @@ extern "C" void VrCombat_FeedMelee(PlayState* play, Player* player) {
 
     sTickTipSpeed = 0.0f;
     sTickHandSpeed = 0.0f;
+    sTickHeadDownSpeed = 0.0f;
+    bool haveHeadSpeed = false;
 
     if (haveEff && path.count >= 1) {
         const Vec3f midLocal = vscale(vadd(tipLocal0, baseLocal0), 0.5f);
@@ -1101,6 +1118,13 @@ extern "C" void VrCombat_FeedMelee(PlayState* play, Player* player) {
             if (handSpd > sTickHandSpeed) {
                 sTickHandSpeed = handSpd;
             }
+            // Downward speed of the tip (the hammer head): only y of v + w x r.
+            const Vec3f rT = vscale(qrot(q, tipLocal0), 1.0f / worldScale);
+            const float down = -(s.linVelMps[1] + s.angVelRps[2] * rT.x - s.angVelRps[0] * rT.z);
+            if (!haveHeadSpeed || down > sTickHeadDownSpeed) {
+                sTickHeadDownSpeed = down;
+                haveHeadSpeed = true;
+            }
         }
     } else {
         // Sparse tick (hitch / hand just tracked): fall back to the hand's own speed.
@@ -1108,8 +1132,13 @@ extern "C" void VrCombat_FeedMelee(PlayState* play, Player* player) {
         float ang[3];
         if (VR_GetHandVelocity(hand, lin, ang)) {
             sTickHandSpeed = sTickTipSpeed = sqrtf(lin[0] * lin[0] + lin[1] * lin[1] + lin[2] * lin[2]);
+            sTickHeadDownSpeed = -lin[1];
         }
     }
+
+    // Head position for the ground hit: the tip of the effective pose.
+    sHeadPos = tip0;
+    sHeadValid = Player_GetMeleeWeaponHeld(player) == VrMeleeWeapon::kHammer;
 
     // ---- 2. Tier hysteresis ----
     // Damage additionally requires the HAND itself to move: a stationary-wrist flick can spin
@@ -1276,6 +1305,10 @@ extern "C" void VrCombat_FeedMelee(PlayState* play, Player* player) {
         const Vec3f e2 = vscale(t2, 9.0f);
         RegisterQuad(play, st.dmgFlags, vsub(vsub(c, e1), e2), vsub(vadd(c, e1), e2), vadd(vsub(c, e1), e2),
                      vadd(vadd(c, e1), e2));
+        if (st.cross) {
+            const Vec3f out = vadd(st.pos, vscale(st.normal, 6.0f));
+            RegisterQuad(play, st.dmgFlags, vsub(out, e1), vadd(out, e1), vsub(c, e1), vadd(c, e1));
+        }
     }
     sPendingStrikeCount = 0;
 
@@ -1351,6 +1384,50 @@ extern "C" void VrCombat_FeedMelee(PlayState* play, Player* player) {
 }
 
 namespace VrCombat {
+
+// Hammer ground hit, from the head that the last draw recorded. The line test goes down through
+// the head.
+static void HammerGroundHit(PlayState* play, Player* player) {
+    if (!sHeadValid || Player_GetMeleeWeaponHeld(player) != VrMeleeWeapon::kHammer) {
+        sHeadValid = false;
+        sSlam.Reset();
+        return;
+    }
+    sHeadValid = false;
+
+    const float reach = CVarGetFloat("gVrPhysHammerSlamReach", 8.0f);
+    Vec3f from = { sHeadPos.x, sHeadPos.y + 20.0f, sHeadPos.z };
+    Vec3f to = { sHeadPos.x, sHeadPos.y - reach, sHeadPos.z };
+    Vec3f hitPos;
+    CollisionPoly* poly = NULL;
+    s32 bgId;
+    VrHammerSlam::Sample s;
+    s.headDownSpeedMps = sTickHeadDownSpeed;
+    s.headOnSurface = BgCheck_EntityLineTest1(&play->colCtx, &from, &to, &hitPos, &poly, true, true, false,
+                                              true, &bgId) &&
+                      poly != NULL && !SurfaceType_IsIgnoredByEntities(&play->colCtx, poly, bgId);
+    if (s.headOnSurface) {
+        s.surfaceNormalY = COLPOLY_GET_NORMAL(poly->normal.y);
+        s.surfaceYRelFeet = hitPos.y - player->actor.world.pos.y;
+    }
+
+    VrHammerSlam::Params p;
+    p.minDownSpeedMps = CVarGetFloat("gVrPhysHammerSlamSpeed", 4.0f);
+    if (sSlam.Update(p, s)) {
+        const float pos[3] = { hitPos.x, hitPos.y, hitPos.z };
+        VrCombat_HammerGroundHit(play, player, pos);
+        VR_TriggerHaptic(SwordHand(), 1.0f, 0.0f, 150.0f);
+        // Also hit the actor under the head (a rusted switch). The sim can miss this contact.
+        if (sPendingStrikeCount < 4) {
+            PendingStrike& st = sPendingStrikes[sPendingStrikeCount++];
+            st.pos = hitPos;
+            st.normal = { COLPOLY_GET_NORMAL(poly->normal.x), COLPOLY_GET_NORMAL(poly->normal.y),
+                          COLPOLY_GET_NORMAL(poly->normal.z) };
+            st.dmgFlags = WeaponDmgFlags(player, true);
+            st.cross = true;
+        }
+    }
+}
 
 void Swing_OnPlayerUpdate(PlayState* play, Player* player) {
     // Pacifist testing mode: refresh every enemy's freezeTimer so their updates never run —
@@ -1439,8 +1516,11 @@ void Swing_OnPlayerUpdate(PlayState* play, Player* player) {
             st.pos = pos;
             st.normal = { events[i].normal[0], events[i].normal[1], events[i].normal[2] };
             st.dmgFlags = WeaponDmgFlags(player, sTickTipSpeed >= heavySpeed);
+            st.cross = Player_GetMeleeWeaponHeld(player) == VrMeleeWeapon::kHammer;
         }
     }
+
+    HammerGroundHit(play, player);
 
     if (sQuadsPlay != play) {
         return;
@@ -1585,6 +1665,8 @@ void Swing_Deactivate(PlayState* play, Player* player) {
     sHaveBladePrev = false;
     sPendingStrikeCount = 0;
     sDebugBladeValid = false;
+    sHeadValid = false;
+    sSlam.Reset();
     // Drop the puppets: the skelanime warp hooks keep running while combat is off and match
     // by actor pointer, so a limb displaced at the moment of deactivation would otherwise
     // stay warped forever (nothing solves or decays the offsets anymore).
