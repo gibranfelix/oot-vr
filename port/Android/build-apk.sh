@@ -21,7 +21,14 @@ JOBS="$(nproc)"
 [ -f "$NDK/build/cmake/android.toolchain.cmake" ] || { echo "NDK not found at $NDK (set ANDROID_NDK_HOME)" >&2; exit 1; }
 
 # 1. soh.o2r - the PORT's assets - needs ZAPD running on the host, so it is a separate build.
-if [ ! -f "$PORT/soh.o2r" ]; then
+# Build it again when a shader or a custom asset is newer: an old soh.o2r with new code can draw
+# a black world. soh/assets/custom/shaders is a copy that the build makes, so it is not checked.
+soh_o2r_is_old() {
+    [ ! -f "$PORT/soh.o2r" ] && return 0
+    [ -n "$(find "$PORT/libultraship/src/fast/shaders" "$PORT/soh/assets/custom" \
+        -path "$PORT/soh/assets/custom/shaders" -prune -o -type f -newer "$PORT/soh.o2r" -print -quit)" ]
+}
+if soh_o2r_is_old; then
     echo "==> host build: soh.o2r"
     cmake -S "$PORT" -B "$PORT/build-host" -G Ninja -DCMAKE_BUILD_TYPE=Release
     cmake --build "$PORT/build-host" --target GenerateSohOtr -j "$JOBS"
