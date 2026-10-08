@@ -152,18 +152,19 @@ them when the player shoots.
 | Weapon | Direction |
 |---|---|
 | Hookshot, longshot | The barrel. With motion hands, the hand limb has the controller pose. |
-| Bow | The arrow on the bow model (`Player_VrAimArrowOnBow`). The math is in `VrBowAim.h`. |
-| Slingshot | The aim ray of the controller (`Player_VrAimHeldProjectile`). |
+| Bow | The arrow on the bow model (`Player_VrAimHeldShot`). The math is in `VrBowAim.h`. |
+| Slingshot | The seed in the pouch of the slingshot model (`Player_VrAimHeldShot`). The math is in `VrBowAim.h`. |
 
 The aim mark is the hookshot reticle. `Player_DrawReticleAt` draws it in the
 world. For the hookshot, it is green when the hook can hold, and red when the
-hook cannot hold. The rule is in `VrAimMark.h`. For the bow, the aim mark shows
-where the arrow will hit. It follows the `EnArrow_Fly` flight to the first
-surface. The Bow Reticle enhancement does not show in VR first person.
+hook cannot hold. The rule is in `VrAimMark.h`. For the bow and the slingshot,
+the aim mark shows where the shot will hit. It follows the `EnArrow_Fly` flight
+to the first surface. The Bow Reticle enhancement does not show in VR first
+person.
 
 In VR, the arrow flies 24 frames more than in the vanilla game, thus it hits
 what the player sees. The arc does not change. With VR off, the flight is the
-vanilla flight.
+vanilla flight. The seed flight does not change.
 
 The host unit tests are in `port/soh/tests/vr/VrAimMarkTests.cpp` and
 `port/soh/tests/vr/VrBowAimTests.cpp`.

@@ -45,8 +45,8 @@ bool sProjTriggerPressed = false;
 bool sProjTriggerPrev = false;
 
 int AimHand() {
-    // The hand that aims held projectiles (see Player_VrAimHeldProjectile): the bow rides
-    // Link's RIGHT hand model, driven by the player's LEFT controller when right-handed.
+    // The hand that holds the bow or the slingshot (Link's right hand). Right-handed: the left
+    // controller.
     return CVarGetInteger("gVrLeftHanded", 0) ? VR_HAND_RIGHT : VR_HAND_LEFT;
 }
 
