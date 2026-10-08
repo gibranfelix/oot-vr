@@ -82,9 +82,16 @@ inline int NextTier(int tier, float tipSpeed, float handSpeed, const Speeds& s) 
 
 // Vanilla breaks the Deku Stick when an attack hits something, bounces off something hard, or
 // strikes a wall (func_80842DF4 -> func_80842AC4). Physical combat has the same three events: a
-// damage quad hit, a damage quad bounce, and a damaging swing that touches the world.
-inline bool StickStrikeBreaks(bool quadHit, bool quadBounced, bool hotWorldContact) {
-    return quadHit || quadBounced || hotWorldContact;
+// damage quad hit, a damage quad bounce, and a damaging swing that touches a wall.
+inline bool StickStrikeBreaks(bool quadHit, bool quadBounced, bool hotWallContact) {
+    return quadHit || quadBounced || hotWallContact;
+}
+
+// The vanilla wall test checks walls only, not floors or ceilings. A contact is a wall contact
+// when its surface normal is mostly horizontal (normalY is the vertical part of a unit normal).
+constexpr float kMaxWallNormalY = 0.5f;
+inline bool IsWallNormal(float normalY) {
+    return normalY < kMaxWallNormalY && normalY > -kMaxWallNormalY;
 }
 
 } // namespace VrMeleeWeapon

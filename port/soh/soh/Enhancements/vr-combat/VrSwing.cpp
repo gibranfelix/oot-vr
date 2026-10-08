@@ -46,10 +46,7 @@ ColliderQuad sQuads[kMaxQuads];
 PlayState* sQuadsPlay = nullptr;
 int sQuadsUsed = 0;
 
-constexpr int TIER_IDLE = VrMeleeWeapon::kIdle;
-constexpr int TIER_ARMED = VrMeleeWeapon::kArmed;
-constexpr int TIER_HOT = VrMeleeWeapon::kHot;
-int sTier = TIER_IDLE;
+int sTier = VrMeleeWeapon::kIdle;
 float sTickTipSpeed = 0.0f;  // max blade-midpoint speed measured this tick, m/s
 float sTickHandSpeed = 0.0f; // max raw hand speed this tick, m/s (the anti-wrist-flick floor)
 
@@ -399,17 +396,17 @@ inline int SwordHand() {
 // The Deku Stick has no slider: its length is the vanilla one, which shrinks while it burns.
 float BladeLengthModelUnits(Player* player) {
     const s32 held = Player_GetMeleeWeaponHeld(player);
-    if (held == 3 && Player_HoldsBrokenKnife(player)) {
+    if (held == VrMeleeWeapon::kBiggoron && Player_HoldsBrokenKnife(player)) {
         return 1500.0f; // broken Giant's Knife stub
     }
     switch (held) {
         case VrMeleeWeapon::kDekuStick:
             return VrMeleeWeapon::StickLengthModelUnits(player->unk_85C);
-        case 1:
+        case VrMeleeWeapon::kMaster:
             return CVarGetFloat("gVrPhysBladeLenMaster", 35.0f) * 100.0f;
-        case 2:
+        case VrMeleeWeapon::kKokiri:
             return CVarGetFloat("gVrPhysBladeLenKokiri", 18.0f) * 100.0f;
-        case 3:
+        case VrMeleeWeapon::kBiggoron:
             return CVarGetFloat("gVrPhysBladeLenBiggoron", 55.0f) * 100.0f;
         default:
             return 3000.0f;
@@ -971,7 +968,7 @@ void EnsureQuads(PlayState* play, Player* player) {
     }
     sQuadsPlay = play;
     sQuadsUsed = 0;
-    sTier = TIER_IDLE;
+    sTier = VrMeleeWeapon::kIdle;
     sHaveBladePrev = false;
     // New scene: puppet/impulse Actor* keys from the previous scene must not survive to match
     // recycled allocations in this one.
@@ -1242,14 +1239,14 @@ extern "C" void VrCombat_FeedMelee(PlayState* play, Player* player) {
     // so spin-only AI branches stay cold. The setter shim plays the swing SFX on the 0->nonzero
     // edge, exactly like a vanilla attack.
     player->meleeWeaponAnimation = PLAYER_MWA_FORWARD_SLASH_1H;
-    if (sTier == TIER_IDLE) {
+    if (sTier == VrMeleeWeapon::kIdle) {
         player->meleeWeaponState = 0;
     } else {
-        VrCombat_SetMeleeWeaponState(player, (sTier == TIER_HOT) ? 1 : -1);
+        VrCombat_SetMeleeWeaponState(player, (sTier == VrMeleeWeapon::kHot) ? 1 : -1);
     }
 
     // ---- 4. Sword trail ----
-    if (sTier != TIER_IDLE) {
+    if (sTier != VrMeleeWeapon::kIdle) {
         if (func_80090480(play, NULL, &player->meleeWeaponInfo[0], &tip0, &base0) &&
             !(player->stateFlags1 & PLAYER_STATE1_SHIELDING) &&
             !CVarGetInteger(CVAR_ENHANCEMENT("DisableLinkSwordTrail"), 0)) {
@@ -1286,7 +1283,7 @@ extern "C" void VrCombat_FeedMelee(PlayState* play, Player* player) {
 
     VrBladeSample bladePath[16];
     const int bladeN = inertiaOn ? VR_PhysGetBladePath(VR_PHYS_SLOT_WEAPON, bladePath, 16) : 0;
-    if (sTier == TIER_HOT) {
+    if (sTier == VrMeleeWeapon::kHot) {
         const uint32_t dmgFlags = WeaponDmgFlags(player, sTickTipSpeed >= heavySpeed);
 
         if (bladeN >= 2) {
@@ -1399,7 +1396,7 @@ void Swing_OnPlayerUpdate(PlayState* play, Player* player) {
     // haptics already fired VR-side with zero latency).
     VrContactEvent events[8];
     const int eventCount = VR_PhysDrainEvents(events, 8);
-    bool hotWorldContact = false; // a damaging swing struck a wall or a hard collider
+    bool hotWallContact = false; // a damaging swing struck a wall (hard colliders bounce instead)
     for (int i = 0; i < eventCount; i++) {
         if (events[i].type != VR_PHYS_EV_CONTACT_BEGIN || events[i].slot != VR_PHYS_SLOT_WEAPON) {
             continue;
@@ -1414,8 +1411,9 @@ void Swing_OnPlayerUpdate(PlayState* play, Player* player) {
         const int kind = PrimKind(events[i].primId);
         const int detail = PrimDetail(events[i].primId);
         if (events[i].impactMps > 0.4f) {
-            if (sTier == TIER_HOT && (kind == kPrimKindWall || kind == kPrimKindHard)) {
-                hotWorldContact = true;
+            if (sTier == VrMeleeWeapon::kHot && kind == kPrimKindWall &&
+                VrMeleeWeapon::IsWallNormal(events[i].normal[1])) {
+                hotWallContact = true;
             }
             if (kind == kPrimKindWall) {
                 if (detail == 0xA) {
@@ -1437,7 +1435,7 @@ void Swing_OnPlayerUpdate(PlayState* play, Player* player) {
 
         // A damaging swing that physically struck something: queue a strike for the next draw.
         // Damage class from the swing that carried the impact.
-        if (sTier == TIER_HOT && sPendingStrikeCount < 4) {
+        if (sTier == VrMeleeWeapon::kHot && sPendingStrikeCount < 4) {
             const float heavySpeed = CVarGetFloat("gVrPhysHeavySpeed", 8.0f);
             PendingStrike& st = sPendingStrikes[sPendingStrikeCount++];
             st.pos = pos;
@@ -1516,8 +1514,8 @@ void Swing_OnPlayerUpdate(PlayState* play, Player* player) {
         // heavy swing thumps long and hard.
         const float amp = 0.45f + 0.09f * sTickTipSpeed;
         VR_TriggerHaptic(SwordHand(), amp > 1.0f ? 1.0f : amp, 0.0f, 45.0f + 12.0f * sTickTipSpeed);
-        if (sTier == TIER_HOT) {
-            sTier = TIER_ARMED; // one strike per swing: re-cross the hit speed to strike again
+        if (sTier == VrMeleeWeapon::kHot) {
+            sTier = VrMeleeWeapon::kArmed; // one strike per swing: re-cross the hit speed to strike again
         }
     }
     for (int i = 0; i < sQuadsUsed; i++) {
@@ -1528,7 +1526,7 @@ void Swing_OnPlayerUpdate(PlayState* play, Player* player) {
     // The Deku Stick breaks on the same strikes as in vanilla. The break drops the stick from the
     // hand, so strikes queued for the next draw must not land with the next weapon.
     if (Player_GetMeleeWeaponHeld(player) == VrMeleeWeapon::kDekuStick &&
-        VrMeleeWeapon::StickStrikeBreaks(hit, bounced, hotWorldContact)) {
+        VrMeleeWeapon::StickStrikeBreaks(hit, bounced, hotWallContact)) {
         VrCombat_BreakDekuStick(play, player);
         sPendingStrikeCount = 0;
     }
@@ -1586,7 +1584,7 @@ void Swing_Deactivate(PlayState* play, Player* player) {
     VR_PhysSetObject(VR_PHYS_SLOT_WEAPON, NULL);
     VR_PhysSetContactPrims(NULL, 0);
     VR_PhysSetMeshRegion(NULL, 0.0f, 0);
-    sTier = TIER_IDLE;
+    sTier = VrMeleeWeapon::kIdle;
     sHaveBladePrev = false;
     sPendingStrikeCount = 0;
     sDebugBladeValid = false;

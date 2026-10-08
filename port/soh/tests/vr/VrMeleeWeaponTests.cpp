@@ -88,6 +88,14 @@ static void StickDoesNotBreakWithoutAStrike() {
     EXPECT(!StickStrikeBreaks(false, false, false));
 }
 
+static void OnlyWallsCountAsWalls() {
+    EXPECT(IsWallNormal(0.0f));
+    EXPECT(IsWallNormal(0.3f));
+    EXPECT(!IsWallNormal(1.0f));  // floor
+    EXPECT(!IsWallNormal(-1.0f)); // ceiling
+    EXPECT(!IsWallNormal(0.8f));  // slope
+}
+
 int main() {
     SwordsAndStickAreCovered();
     HammerAndEmptyHandsAreNotCovered();
@@ -101,6 +109,7 @@ int main() {
     HotStaysHotUntilTheSwingDecays();
     StickBreaksOnEveryVanillaStrike();
     StickDoesNotBreakWithoutAStrike();
+    OnlyWallsCountAsWalls();
 
     if (sFailures != 0) {
         std::printf("%d failure(s)\n", sFailures);
