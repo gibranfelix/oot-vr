@@ -8,6 +8,8 @@
 #include "soh/Enhancements/randomizer/randomizer.h"
 #include "soh/Enhancements/Restorations/GetItemManipulation.h"
 #include <ship/Context.h>
+// SOH [VR] Hide the options that VR sets.
+#include <vr_interface.h>
 
 extern "C" {
 #include "functions.h"
@@ -998,6 +1000,8 @@ void SohMenu::AddMenuEnhancements() {
     AddWidget(path, "Hookshot", WIDGET_SEPARATOR_TEXT);
     AddWidget(path, "Targetable Hookshot Reticle", WIDGET_CVAR_CHECKBOX)
         .CVar(CVAR_ENHANCEMENT("HookshotableReticle"))
+        // SOH [VR] In VR, the reticle is always green or red.
+        .PreFunc([](WidgetInfo& info) { info.isHidden = VR_IsInitialized(); })
         .Options(CheckboxOptions().Tooltip(
             "Makes the Hookshot Reticle use a different color when aiming at hookshotable collision."));
 

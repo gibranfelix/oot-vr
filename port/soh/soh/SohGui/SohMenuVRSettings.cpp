@@ -895,11 +895,9 @@ void SohMenu::AddMenuVRSettings() {
         .CVar("gVrWeaponAim")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrMotionHands", 1); })
         .Options(CheckboxOptions().DefaultValue(true).Tooltip(
-            "Slingshot seeds, arrows and the hookshot launch from your weapon hand and fly where "
-            "that controller points (its aim ray - the same ray runtimes use for menu pointing). "
-            "The weapon rides the hand holding the bow/slingshot model. Even while Z-targeted, "
-            "your hand decides the shot; lock-on only steers the camera. Off = the stock "
-            "stick-aiming behavior."));
+            "Seeds and arrows fly where the hand with the bow or the slingshot points. The hookshot "
+            "shoots along its barrel. When you lock on to a target, your hand still aims the shot. "
+            "Off: the thumbstick aims, as in the original game."));
     AddWidget(gameplayPath, "Left-Handed Mode", WIDGET_CVAR_CHECKBOX)
         .CVar("gVrLeftHanded")
         .Options(CheckboxOptions().Tooltip(
