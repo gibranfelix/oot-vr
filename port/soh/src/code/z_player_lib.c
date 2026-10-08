@@ -1845,6 +1845,45 @@ void func_80090A28(Player* this, Vec3f* vecs) {
     Matrix_MultVec3f(&D_80126098, &vecs[2]);
 }
 
+// SOH [VR] The reticle draw is a function, because the bow aim mark also uses it. hookColors: the
+// VB_TARGETABLE_HOOKSHOT_RETICLE hook can set the color.
+static void Player_DrawReticleAt(PlayState* play, Player* this, Vec3f* point, CollisionPoly* colPoly, s32 bgId,
+                                 s32 hookColors) {
+    Vec3f sp68;
+    f32 sp64;
+
+    // SOH [VR] In VR, the overlay goes to the HUD quad. Draw the reticle in the world.
+    s32 vrInWorld = VR_IsInitialized();
+    TwoHeadGfxArena vrOverlay = play->state.gfxCtx->overlay;
+    if (vrInWorld) {
+        play->state.gfxCtx->overlay = play->state.gfxCtx->polyXlu;
+    }
+
+    OPEN_DISPS(play->state.gfxCtx);
+
+    OVERLAY_DISP = Gfx_SetupDL(OVERLAY_DISP, 0x07);
+
+    SkinMatrix_Vec3fMtxFMultXYZW(&play->viewProjectionMtxF, point, &sp68, &sp64);
+
+    const f32 sp60 = (sp64 < 200.0f) ? 0.08f : (sp64 / 200.0f) * 0.08f;
+
+    Matrix_Translate(point->x, point->y, point->z, MTXMODE_NEW);
+    Matrix_Scale(sp60, sp60, sp60, MTXMODE_APPLY);
+
+    gSPMatrix(OVERLAY_DISP++, MATRIX_NEWMTX(play->state.gfxCtx), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    if (!hookColors || GameInteractor_Should(VB_TARGETABLE_HOOKSHOT_RETICLE, true, colPoly, bgId)) {
+        gSPSegment(OVERLAY_DISP++, 0x06, play->objectCtx.status[this->actor.objBankIndex].segment);
+        gSPDisplayList(OVERLAY_DISP++, gLinkAdultHookshotReticleDL);
+    }
+
+    CLOSE_DISPS(play->state.gfxCtx);
+
+    if (vrInWorld) {
+        play->state.gfxCtx->polyXlu = play->state.gfxCtx->overlay;
+        play->state.gfxCtx->overlay = vrOverlay;
+    }
+}
+
 void Player_DrawHookshotReticle(PlayState* play, Player* this, f32 hookshotRange) {
     static Vec3f D_801260C8 = { -500.0f, -100.0f, 0.0f };
     CollisionPoly* colPoly;
@@ -1852,8 +1891,6 @@ void Player_DrawHookshotReticle(PlayState* play, Player* this, f32 hookshotRange
     Vec3f hookshotStart;
     Vec3f hookshotEnd;
     Vec3f firstHit;
-    Vec3f sp68;
-    f32 sp64;
 
     D_801260C8.z = 0.0f;
     Matrix_MultVec3f(&D_801260C8, &hookshotStart);
@@ -1861,36 +1898,7 @@ void Player_DrawHookshotReticle(PlayState* play, Player* this, f32 hookshotRange
     Matrix_MultVec3f(&D_801260C8, &hookshotEnd);
 
     if (BgCheck_AnyLineTest3(&play->colCtx, &hookshotStart, &hookshotEnd, &firstHit, &colPoly, 1, 1, 1, 1, &bgId)) {
-        // SOH [VR] In VR, the overlay goes to the HUD quad. Draw the reticle in the world.
-        s32 vrInWorld = VR_IsInitialized();
-        TwoHeadGfxArena vrOverlay = play->state.gfxCtx->overlay;
-        if (vrInWorld) {
-            play->state.gfxCtx->overlay = play->state.gfxCtx->polyXlu;
-        }
-
-        OPEN_DISPS(play->state.gfxCtx);
-
-        OVERLAY_DISP = Gfx_SetupDL(OVERLAY_DISP, 0x07);
-
-        SkinMatrix_Vec3fMtxFMultXYZW(&play->viewProjectionMtxF, &firstHit, &sp68, &sp64);
-
-        const f32 sp60 = (sp64 < 200.0f) ? 0.08f : (sp64 / 200.0f) * 0.08f;
-
-        Matrix_Translate(firstHit.x, firstHit.y, firstHit.z, MTXMODE_NEW);
-        Matrix_Scale(sp60, sp60, sp60, MTXMODE_APPLY);
-
-        gSPMatrix(OVERLAY_DISP++, MATRIX_NEWMTX(play->state.gfxCtx), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-        if (GameInteractor_Should(VB_TARGETABLE_HOOKSHOT_RETICLE, true, colPoly, bgId)) {
-            gSPSegment(OVERLAY_DISP++, 0x06, play->objectCtx.status[this->actor.objBankIndex].segment);
-            gSPDisplayList(OVERLAY_DISP++, gLinkAdultHookshotReticleDL);
-        }
-
-        CLOSE_DISPS(play->state.gfxCtx);
-
-        if (vrInWorld) {
-            play->state.gfxCtx->polyXlu = play->state.gfxCtx->overlay;
-            play->state.gfxCtx->overlay = vrOverlay;
-        }
+        Player_DrawReticleAt(play, this, &firstHit, colPoly, bgId, true);
     }
 }
 
@@ -1945,12 +1953,17 @@ Vec3f sLeftRightFootLimbModelFootPos[] = {
     { 200.0f, 200.0f, 0.0f },
 };
 
-// SOH [VR] Motion aim: the arrow or the seed starts on the aim ray of the weapon hand and goes
-// along it. EnArrow_Shoot reads world.pos and world.rot. This runs after Z-targeting, thus the hand
-// controls the shot. The hookshot does not use this function.
+// SOH [VR] VR first person, motion hands, and weapon aim are on.
+static s32 Player_VrMotionAimOn(void) {
+    return VR_IsInitialized() && VR_GetFirstPerson() && CVarGetInteger("gVrMotionHands", 1) &&
+           CVarGetInteger("gVrWeaponAim", 1);
+}
+
+// SOH [VR] Motion aim: the seed starts on the aim ray of the weapon hand and goes along it.
+// EnArrow_Shoot reads world.pos and world.rot. This runs after Z-targeting, thus the hand controls
+// the shot. The bow uses Player_VrAimArrowOnBow. The hookshot does not use this function.
 static void Player_VrAimHeldProjectile(Player* this, Actor* heldActor) {
-    if (!(VR_IsInitialized() && VR_GetFirstPerson() && CVarGetInteger("gVrMotionHands", 1) &&
-          CVarGetInteger("gVrWeaponAim", 1))) {
+    if (!Player_VrMotionAimOn() || Player_HoldsBow(this)) {
         return;
     }
     s32 vrWeaponHand = CVarGetInteger("gVrLeftHanded", 0) ? VR_HAND_RIGHT : VR_HAND_LEFT;
@@ -1967,6 +1980,39 @@ static void Player_VrAimHeldProjectile(Player* this, Actor* heldActor) {
     heldActor->world.rot.y = Math_Vec3f_Yaw(&vrOrigin, &vrTarget);
     heldActor->world.rot.z = 0;
     heldActor->shape.rot = heldActor->world.rot;
+}
+
+// SOH [VR] Put the arrow on the nock and point it along the bow. EnArrow_Shoot reads this pose at
+// release. Also draw the aim mark. Needs the bow hand matrix on the stack and a current unk_858.
+static void Player_VrAimArrowOnBow(PlayState* play, Player* this) {
+    Actor* arrow = this->heldActor;
+    MtxF handMf;
+    Vec3f pos;
+    Vec3f dir;
+    Vec3f ahead;
+    Vec3f hit;
+
+    if (!Player_VrMotionAimOn() || !Player_HoldsBow(this) || (arrow == NULL) ||
+        !(this->stateFlags1 & PLAYER_STATE1_READY_TO_FIRE)) {
+        return;
+    }
+    Matrix_Get(&handMf);
+    VrCombat_ArrowOnBow(&handMf.mf[0][0], this->unk_858, &pos.x, &dir.x);
+    ahead.x = pos.x + dir.x * 100.0f;
+    ahead.y = pos.y + dir.y * 100.0f;
+    ahead.z = pos.z + dir.z * 100.0f;
+    arrow->world.pos = pos;
+    arrow->world.rot.x = Math_Vec3f_Pitch(&pos, &ahead);
+    arrow->world.rot.y = Math_Vec3f_Yaw(&pos, &ahead);
+    arrow->world.rot.z = 0;
+    arrow->shape.rot = arrow->world.rot;
+
+    // The aim mark has the default reticle color: the hook colors are not for arrows.
+    if (VrCombat_PredictArrowHit(play, &pos.x, &dir.x, &hit.x)) {
+        Matrix_Push();
+        Player_DrawReticleAt(play, this, &hit, NULL, 0, false);
+        Matrix_Pop();
+    }
 }
 
 void Player_PostLimbDrawGameplay(PlayState* play, s32 limbIndex, Gfx** dList, Vec3s* rot, void* thisx) {
@@ -2152,6 +2198,9 @@ void Player_PostLimbDrawGameplay(PlayState* play, s32 limbIndex, Gfx** dList, Ve
             Matrix_Pop();
 
             CLOSE_DISPS(play->state.gfxCtx);
+
+            // SOH [VR] Bow aim.
+            Player_VrAimArrowOnBow(play, this);
         } else if ((this->actor.scale.y >= 0.0f) && (this->rightHandType == PLAYER_MODELTYPE_RH_SHIELD)) {
             Matrix_Get(&this->shieldMf);
             Player_UpdateShieldCollider(play, this, &this->shieldQuad, sRightHandLimbModelShieldQuadVertices);
