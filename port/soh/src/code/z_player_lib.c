@@ -1861,6 +1861,13 @@ void Player_DrawHookshotReticle(PlayState* play, Player* this, f32 hookshotRange
     Matrix_MultVec3f(&D_801260C8, &hookshotEnd);
 
     if (BgCheck_AnyLineTest3(&play->colCtx, &hookshotStart, &hookshotEnd, &firstHit, &colPoly, 1, 1, 1, 1, &bgId)) {
+        // SOH [VR] In VR, the overlay goes to the HUD quad. Draw the reticle in the world.
+        s32 vrInWorld = VR_IsInitialized();
+        TwoHeadGfxArena vrOverlay = play->state.gfxCtx->overlay;
+        if (vrInWorld) {
+            play->state.gfxCtx->overlay = play->state.gfxCtx->polyXlu;
+        }
+
         OPEN_DISPS(play->state.gfxCtx);
 
         OVERLAY_DISP = Gfx_SetupDL(OVERLAY_DISP, 0x07);
@@ -1879,6 +1886,11 @@ void Player_DrawHookshotReticle(PlayState* play, Player* this, f32 hookshotRange
         }
 
         CLOSE_DISPS(play->state.gfxCtx);
+
+        if (vrInWorld) {
+            play->state.gfxCtx->polyXlu = play->state.gfxCtx->overlay;
+            play->state.gfxCtx->overlay = vrOverlay;
+        }
     }
 }
 
