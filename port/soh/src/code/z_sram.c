@@ -8,6 +8,7 @@
 #include "soh/OTRGlobals.h"
 #include "soh/SaveManager.h"
 #include "soh/ResourceManagerHelpers.h"
+#include "soh/Enhancements/explore/Explore.h" // SOH [Quest]
 
 #define NUM_DUNGEONS 8
 #define NUM_COWS 10
@@ -267,6 +268,11 @@ void Sram_InitSave(FileChooseContext* fileChooseCtx) {
         Randomizer_InitSaveFile();
     } else {
         gSaveContext.ship.quest.id = currentQuest;
+    }
+
+    // SOH [Quest] EXPLORE replaces the new save with the maxed save, and sets the quest to normal or Master Quest.
+    if (currentQuest == FS_QUEST_EXPLORE) {
+        Explore_InitSave();
     }
 
     Save_SaveFile();

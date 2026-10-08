@@ -81,6 +81,8 @@ class SaveManager {
 
     void Init();
     void InitFile(bool isDebug);
+    // SOH [Quest] Public, because the EXPLORE option in file select uses the maxed save.
+    static void InitFileMaxed();
     void SaveFile(int fileNum);
     void SaveSection(int fileNum, int sectionID, bool threaded);
     int GetSaveSectionID(std::string& name);
@@ -167,7 +169,6 @@ class SaveManager {
     static void InitFileImpl(bool isDebug);
     static void InitFileNormal();
     static void InitFileDebug();
-    static void InitFileMaxed();
 
     static void LoadRandomizer();
     static void SaveRandomizer(SaveContext* saveContext, int sectionID, bool fullSave);
