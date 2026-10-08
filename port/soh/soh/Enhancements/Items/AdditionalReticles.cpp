@@ -1,5 +1,6 @@
 #include "soh/Enhancements/game-interactor/GameInteractor.h"
 #include "soh/ShipInit.hpp"
+#include <vr_interface.h>
 
 extern "C" {
 #include "z64.h"
@@ -40,8 +41,11 @@ void RegisterAdditionalReticles() {
     COND_VB_SHOULD(VB_DRAW_ADDITIONAL_RETICLES, shouldRegister, {
         Player* player = va_arg(args, Player*);
         Actor* heldActor = player->heldActor;
+        // SOH [VR] The VR aim mark replaces the bow reticle.
+        bool vrBowAim = VR_IsInitialized() && VR_GetFirstPerson() && CVarGetInteger("gVrMotionHands", 1) &&
+                        CVarGetInteger("gVrWeaponAim", 1);
         if (CVAR_BOW_RETICLE_VALUE &&
-            ((player->heldItemAction >= PLAYER_IA_BOW && player->heldItemAction <= PLAYER_IA_BOW_LIGHT) ||
+            ((!vrBowAim && player->heldItemAction >= PLAYER_IA_BOW && player->heldItemAction <= PLAYER_IA_BOW_LIGHT) ||
              player->heldItemAction == PLAYER_IA_SLINGSHOT)) {
             if (heldActor != NULL) {
                 MtxF sp44;

@@ -48,7 +48,7 @@ The VR code that is new has its own files:
 | `port/libultraship/include/vr_interface.h` | The declarations of the `VR_*` functions, with comments |
 | `port/libultraship/src/fast/vr_physics.cpp` | The collision mesh for the physical hands |
 | `port/libultraship/src/fast/vr_menu_input.cpp` | The SoH menu with the Touch controllers: the Y toggle, the menu navigation, and the input filter for the game |
-| `port/soh/soh/Enhancements/vr-combat/` | Sword swing, shield, and item selection |
+| `port/soh/soh/Enhancements/vr-combat/` | Sword swing, shield, bow aim, and item selection |
 | `port/soh/soh/SohGui/SohMenuVRSettings.cpp` | The VR settings menu |
 
 ## Render path
@@ -147,11 +147,17 @@ them when the player shoots.
 | Weapon | Direction |
 |---|---|
 | Hookshot, longshot | The barrel. With motion hands, the hand limb has the controller pose. |
-| Slingshot, bow | The aim ray of the controller (`Player_VrAimHeldProjectile`). |
+| Bow | The arrow on the bow model (`Player_VrAimArrowOnBow`). The math is in `VrBowAim.h`. |
+| Slingshot | The aim ray of the controller (`Player_VrAimHeldProjectile`). |
 
-The aim mark is the hookshot reticle. In VR, it is green when the hook can
-hold, and red when the hook cannot hold. The rule is in `VrAimMark.h`. The host
-unit tests are in `port/soh/tests/vr/VrAimMarkTests.cpp`.
+The aim mark is the hookshot reticle. `Player_DrawReticleAt` draws it in the
+world. For the hookshot, it is green when the hook can hold, and red when the
+hook cannot hold. The rule is in `VrAimMark.h`. For the bow, the aim mark shows
+where the arrow will hit. It follows the `EnArrow_Fly` flight to the first
+surface. The Bow Reticle enhancement does not show in VR first person.
+
+The host unit tests are in `port/soh/tests/vr/VrAimMarkTests.cpp` and
+`port/soh/tests/vr/VrBowAimTests.cpp`.
 
 ## Camera and movement
 
