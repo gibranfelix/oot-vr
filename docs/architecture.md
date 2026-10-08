@@ -105,6 +105,19 @@ Boss Rush does not use a save slot. Its `fileNum` is `0xFE`.
 the slots, the debug save, and Boss Rush. Tests:
 `port/soh/tests/vr/VrGameplayGateTests.cpp`.
 
+## Physical melee
+
+The swords and the Deku Stick hit when the player swings them. The Megaton
+Hammer attacks with a button.
+
+- `VrSwing.cpp` measures the speed of the weapon. A slow movement does not hit.
+- Each weapon applies its vanilla damage flags.
+- The Deku Stick breaks on a hit, a bounce, or a wall, as in the vanilla game.
+  The torches light the stick at its tip.
+
+The rules are in `VrMeleeWeapon.h`. The host unit tests are in
+`port/soh/tests/vr/VrMeleeWeaponTests.cpp`.
+
 ## Physical shield
 
 The shield is in the off hand while the sword is in the sword hand. No button

@@ -1991,7 +1991,15 @@ void Player_PostLimbDrawGameplay(PlayState* play, s32 limbIndex, Gfx** dList, Ve
             if (this->actor.scale.y >= 0.0f) {
                 D_80126080.x = this->unk_85C * 5000.0f;
                 func_80090A28(this, sp124);
-                if (this->meleeWeaponState != 0) {
+                if (VrCombat_Active() && VrCombat_MeleeCovered(this)) {
+                    // SOH [VR] Physical combat: the Deku Stick swings as the swords do. Keep the tip
+                    // current at idle, because the torches read it to light the stick.
+                    EffectBlure_ChangeType(Effect_GetByIndex(this->meleeWeaponEffectIndex), TRAIL_TYPE_STICK);
+                    VrCombat_FeedMelee(play, this);
+                    if (this->meleeWeaponState == 0) {
+                        Math_Vec3f_Copy(&this->meleeWeaponInfo[0].tip, &sp124[0]);
+                    }
+                } else if (this->meleeWeaponState != 0) {
                     EffectBlure_ChangeType(Effect_GetByIndex(this->meleeWeaponEffectIndex), TRAIL_TYPE_STICK);
                     func_800906D4(play, this, sp124);
                 } else {
