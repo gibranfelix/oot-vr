@@ -138,6 +138,21 @@ The pure geometry is in `VrShieldGeometry.h`. The host unit tests are in
 `port/soh/tests/vr/VrShieldGeometryTests.cpp`. The first lines of the file
 show how to run them.
 
+## Ranged weapons
+
+`Player_PostLimbDrawGameplay` in `port/soh/src/code/z_player_lib.c` sets the
+start point and the direction of the held projectile. The flight code reads
+them when the player shoots.
+
+| Weapon | Direction |
+|---|---|
+| Hookshot, longshot | The barrel. With motion hands, the hand limb has the controller pose. |
+| Slingshot, bow | The aim ray of the controller (`Player_VrAimHeldProjectile`). |
+
+The aim mark is the hookshot reticle. In VR, it is green when the hook can
+hold, and red when the hook cannot hold. The rule is in `VrAimMark.h`. The host
+unit tests are in `port/soh/tests/vr/VrAimMarkTests.cpp`.
+
 ## Camera and movement
 
 - **First-person camera.** Vanilla Ocarina of Time has a first-person camera:
