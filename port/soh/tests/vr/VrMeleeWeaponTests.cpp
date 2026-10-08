@@ -22,16 +22,22 @@ static int sFailures = 0;
 
 static const Speeds kDefaults = { 2.0f, 5.0f, 0.8f, 1.2f };
 
-static void SwordsAndStickAreCovered() {
+static void AllMeleeWeaponsAreCovered() {
     EXPECT(Covered(kMaster));
     EXPECT(Covered(kKokiri));
     EXPECT(Covered(kBiggoron));
     EXPECT(Covered(kDekuStick));
+    EXPECT(Covered(kHammer));
 }
 
-static void HammerAndEmptyHandsAreNotCovered() {
+static void EmptyHandsAreNotCovered() {
     EXPECT(!Covered(kNone));
-    EXPECT(!Covered(kHammer));
+}
+
+static void HammerUsesVanillaHammerDamage() {
+    // Rusted switches and hammer rocks accept only these flags.
+    EXPECT(DmgFlags(kHammer, false, false) == 0x00000040);
+    EXPECT(DmgFlags(kHammer, false, true) == 0x40000000);
 }
 
 static void StickUsesVanillaStickDamage() {
@@ -48,7 +54,7 @@ static void SwordDamageIsUnchanged() {
 
 static void UnknownWeaponFallsBackToKokiri() {
     EXPECT(DmgFlags(kNone, false, false) == 0x00000100);
-    EXPECT(DmgFlags(kHammer, false, false) == 0x00000100);
+    EXPECT(DmgFlags(6, false, false) == 0x00000100);
 }
 
 static void StickLengthFollowsBurnDown() {
@@ -97,8 +103,9 @@ static void OnlyWallsCountAsWalls() {
 }
 
 int main() {
-    SwordsAndStickAreCovered();
-    HammerAndEmptyHandsAreNotCovered();
+    AllMeleeWeaponsAreCovered();
+    EmptyHandsAreNotCovered();
+    HammerUsesVanillaHammerDamage();
     StickUsesVanillaStickDamage();
     SwordDamageIsUnchanged();
     UnknownWeaponFallsBackToKokiri();
