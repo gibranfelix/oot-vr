@@ -613,8 +613,7 @@ extern "C" uint16_t VrItemSelect_TriggerItemMask(int32_t vrHand) {
         return 0;
     }
     // Physical combat owns the weapons it covers: the swing IS the attack, so the trigger stays
-    // idle rather than also emitting B. The weapon physical combat does NOT cover (the hammer)
-    // keeps button attacks, so it keeps the mirror.
+    // idle rather than also emitting B. The hammer attacks with a button, so it keeps the mirror.
     if (VrCombat_Active() && VrCombat_MeleeCovered(player)) {
         return 0;
     }

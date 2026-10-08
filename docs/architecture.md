@@ -107,16 +107,15 @@ the slots, the debug save, and Boss Rush. Tests:
 
 ## Physical melee
 
-The swords and the Deku Stick hit when the player swings them. No button is
-necessary. The Megaton Hammer keeps the attack with a button.
+The swords and the Deku Stick hit when the player swings them. The Megaton
+Hammer attacks with a button.
 
-- **Swing speed.** `VrSwing.cpp` measures the speed of the weapon on each
-  tick. A slow movement does not hit. A fast movement of the arm hits.
-- **Damage.** Each weapon applies its vanilla damage flags.
-- **Deku Stick.** The stick breaks when it hits an enemy, an object, or a
-  wall. The torches light the stick at its tip, as in the original game.
+- `VrSwing.cpp` measures the speed of the weapon. A slow movement does not hit.
+- Each weapon applies its vanilla damage flags.
+- The Deku Stick breaks on a hit, a bounce, or a wall, as in the vanilla game.
+  The torches light the stick at its tip.
 
-The pure rules are in `VrMeleeWeapon.h`. The host unit tests are in
+The rules are in `VrMeleeWeapon.h`. The host unit tests are in
 `port/soh/tests/vr/VrMeleeWeaponTests.cpp`.
 
 ## Physical shield

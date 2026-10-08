@@ -1992,9 +1992,8 @@ void Player_PostLimbDrawGameplay(PlayState* play, s32 limbIndex, Gfx** dList, Ve
                 D_80126080.x = this->unk_85C * 5000.0f;
                 func_80090A28(this, sp124);
                 if (VrCombat_Active() && VrCombat_MeleeCovered(this)) {
-                    // SOH [VR] Physical combat: the Deku Stick swings like the swords (see the
-                    // sword branch below). The stick tip stays current when the swing is idle,
-                    // because the torches light the stick and read its fire at this tip.
+                    // SOH [VR] Physical combat: the Deku Stick swings as the swords do. Keep the tip
+                    // current at idle, because the torches read it to light the stick.
                     EffectBlure_ChangeType(Effect_GetByIndex(this->meleeWeaponEffectIndex), TRAIL_TYPE_STICK);
                     VrCombat_FeedMelee(play, this);
                     if (this->meleeWeaponState == 0) {

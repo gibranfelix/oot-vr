@@ -6424,7 +6424,7 @@ s32 func_8083BB20(Player* this) {
     // SOH [VR] Physical combat: for covered weapons, button attacks are replaced by real swings.
     // Every B attack (and with it combo chains, root motion and the stab lunge) originates from
     // this check, so suppressing it here retires the whole authored-attack state machine while
-    // the mode is active. The uncovered weapon (the hammer, for now) keeps vanilla attacks.
+    // the mode is active. The hammer keeps vanilla attacks.
     if (VrCombat_Active() && VrCombat_MeleeCovered(this)) {
         return 0;
     }
@@ -9262,8 +9262,7 @@ s32 func_80842AC4(PlayState* play, Player* this) {
     return 0;
 }
 
-// SOH [VR] Physical combat breaks the Deku Stick on the same strikes as the vanilla attack
-// actions (hit, bounce, wall); this shim exposes the file-internal break to the module.
+// SOH [VR] Lets physical combat break the Deku Stick.
 void VrCombat_BreakDekuStick(PlayState* play, Player* this) {
     func_80842AC4(play, this);
 }

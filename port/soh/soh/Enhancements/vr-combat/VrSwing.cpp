@@ -77,7 +77,6 @@ ColliderQuadInit sVrQuadInit = {
     { { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } } },
 };
 
-// The held weapon's slash or jump-slash dmgFlags (table in VrMeleeWeapon.h).
 uint32_t WeaponDmgFlags(Player* player, bool heavy) {
     return VrMeleeWeapon::DmgFlags(Player_GetMeleeWeaponHeld(player), Player_HoldsBrokenKnife(player), heavy);
 }
@@ -393,7 +392,7 @@ inline int SwordHand() {
 
 // Blade length in hand-model units (sliders are in game units; model = x100 before actor scale).
 // Defaults match the visual blades (the vanilla trail tips): Kokiri 30, Master 40, Biggoron 55.
-// The Deku Stick has no slider: its length is the vanilla one, which shrinks while it burns.
+// The Deku Stick has no slider. It uses the vanilla length.
 float BladeLengthModelUnits(Player* player) {
     const s32 held = Player_GetMeleeWeaponHeld(player);
     if (held == VrMeleeWeapon::kBiggoron && Player_HoldsBrokenKnife(player)) {
@@ -1008,7 +1007,6 @@ extern "C" bool VrCombat_MeleeCovered(Player* player) {
     if (player->actor.category != ACTORCAT_PLAYER) {
         return false; // co-op partner keeps vanilla behavior
     }
-    // Swords and the Deku Stick; the hammer is still vanilla (rule in VrMeleeWeapon.h).
     return VrMeleeWeapon::Covered(Player_GetMeleeWeaponHeld(player));
 }
 
@@ -1396,7 +1394,7 @@ void Swing_OnPlayerUpdate(PlayState* play, Player* player) {
     // haptics already fired VR-side with zero latency).
     VrContactEvent events[8];
     const int eventCount = VR_PhysDrainEvents(events, 8);
-    bool hotWallContact = false; // a damaging swing struck a wall (hard colliders bounce instead)
+    bool hotWallContact = false;
     for (int i = 0; i < eventCount; i++) {
         if (events[i].type != VR_PHYS_EV_CONTACT_BEGIN || events[i].slot != VR_PHYS_SLOT_WEAPON) {
             continue;
@@ -1515,7 +1513,7 @@ void Swing_OnPlayerUpdate(PlayState* play, Player* player) {
         const float amp = 0.45f + 0.09f * sTickTipSpeed;
         VR_TriggerHaptic(SwordHand(), amp > 1.0f ? 1.0f : amp, 0.0f, 45.0f + 12.0f * sTickTipSpeed);
         if (sTier == VrMeleeWeapon::kHot) {
-            sTier = VrMeleeWeapon::kArmed; // one strike per swing: re-cross the hit speed to strike again
+            sTier = VrMeleeWeapon::kArmed; // one strike per swing
         }
     }
     for (int i = 0; i < sQuadsUsed; i++) {
@@ -1523,8 +1521,7 @@ void Swing_OnPlayerUpdate(PlayState* play, Player* player) {
     }
     sQuadsUsed = 0;
 
-    // The Deku Stick breaks on the same strikes as in vanilla. The break drops the stick from the
-    // hand, so strikes queued for the next draw must not land with the next weapon.
+    // The stick goes out of the hand when it breaks. Thus, cancel the queued strikes.
     if (Player_GetMeleeWeaponHeld(player) == VrMeleeWeapon::kDekuStick &&
         VrMeleeWeapon::StickStrikeBreaks(hit, bounced, hotWallContact)) {
         VrCombat_BreakDekuStick(play, player);
