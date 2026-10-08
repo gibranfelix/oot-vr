@@ -114,9 +114,14 @@ them.
 - Each weapon applies its vanilla damage flags.
 - The Deku Stick breaks on a hit, a bounce, or a wall, as in the vanilla game.
   The torches light the stick at its tip.
+- A hammer hit on a surface also makes a collider across the surface. The
+  rusted switch has a flat collider on its top.
+- A hammer ground hit occurs when the head moves down fast and touches a floor
+  near the feet of Link. `VrCombat_HammerGroundHit` in `z_player.c` then starts
+  the effects of the vanilla game.
 
-The rules are in `VrMeleeWeapon.h`. The host unit tests are in
-`port/soh/tests/vr/VrMeleeWeaponTests.cpp`.
+The rules are in `VrMeleeWeapon.h` and `VrHammerSlam.h`. The host unit tests
+are in `port/soh/tests/vr/`.
 
 ## Physical shield
 
@@ -137,26 +142,6 @@ does the block.
 The pure geometry is in `VrShieldGeometry.h`. The host unit tests are in
 `port/soh/tests/vr/VrShieldGeometryTests.cpp`. The first lines of the file
 show how to run them.
-
-## Physical hammer
-
-The Megaton Hammer uses the swing system of the swords (`VrSwing.cpp`). No
-button is necessary.
-
-- **Hit.** A fast swing makes the hit collider. The collider has the damage
-  type of the hammer. Rusted switches and the rocks that only the hammer breaks
-  read this damage type. A hammer hit on a surface also makes a collider across
-  the surface. The rusted switch has a flat collider on its top, and a
-  collider that is parallel to the top does not touch it.
-- **Ground hit.** The game measures the downward speed of the hammer head. A
-  line test under the head finds the floor. A fast hit on a floor near the feet
-  of Link starts the ground hit of the original game: `VrCombat_HammerGroundHit`
-  in `z_player.c`. The head must leave the floor before the next ground hit.
-- **Shield.** The shield rule for two-hand weapons does not change. Read
-  `Player_CanShieldWithTwoHandedWeapon`.
-
-The rule for the ground hit is in `VrHammerSlam.h`. The host unit tests are in
-`port/soh/tests/vr/VrHammerSlamTests.cpp`.
 
 ## Camera and movement
 

@@ -1,33 +1,31 @@
 #pragma once
 
-// Pure rule behind the physical Megaton Hammer ground hit (VrSwing.cpp): no game types, so the
-// host tests in port/soh/tests/vr/VrHammerSlamTests.cpp can build it alone.
+// Rule for the ground hit of the physical Megaton Hammer. No game types: the host tests in
+// port/soh/tests/vr/VrHammerSlamTests.cpp build it alone.
 //
-// The original game starts the ground hit (screen shake, shock wave, enemy stun) at a fixed frame
-// of the hammer attack animation, and only when the floor is within 40 units of Link's feet
-// (Player_Action_808502D0). In VR there is no animation: a slam is the hammer head arriving on a
-// floor surface fast enough, moving down. One slam per contact: the head must leave the surface
-// before it can slam again.
+// A ground hit occurs when the hammer head moves down fast and touches a floor. The floor must be
+// within 40 units of the feet of Link, as in the original game (Player_Action_808502D0). The head
+// must leave the surface before the next ground hit.
 
 namespace VrHammerSlam {
 
 struct Params {
-    float minDownSpeedMps = 4.0f;  // downward speed of the head, physical m/s
-    float floorMinNormalY = 0.5f;  // steeper surfaces are walls, not floor
-    float maxFeetOffset = 40.0f;   // the original game's floor window around Link's feet, game units
+    float minDownSpeedMps = 4.0f;  // m/s
+    float floorMinNormalY = 0.5f;  // a steeper surface is a wall
+    float maxFeetOffset = 40.0f;   // game units
 };
 
 // One game tick of the hammer head.
 struct Sample {
-    float headDownSpeedMps = 0.0f; // max downward speed this tick (negative = moving up)
-    bool headOnSurface = false;    // the probe under the head found level geometry
-    float surfaceNormalY = 0.0f;   // of the surface the probe found
-    float surfaceYRelFeet = 0.0f;  // surface height minus Link's feet height, game units
+    float headDownSpeedMps = 0.0f; // maximum in this tick; negative when the head moves up
+    bool headOnSurface = false;    // the line test under the head found a surface
+    float surfaceNormalY = 0.0f;
+    float surfaceYRelFeet = 0.0f;  // surface height minus the height of the feet, game units
 };
 
 class Detector {
   public:
-    // True on the tick the slam happens.
+    // True on the tick of the ground hit.
     bool Update(const Params& p, const Sample& s) {
         if (!s.headOnSurface) {
             mLatched = false;

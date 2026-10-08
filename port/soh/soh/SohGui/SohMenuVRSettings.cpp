@@ -1047,8 +1047,8 @@ void SohMenu::AddMenuVRSettings() {
                      .DefaultValue(25.0f)
                      .Step(1.0f)
                      .Format("%.0f")
-                     .Tooltip("Collider length for the Megaton Hammer, from the grip to the head "
-                              "(game units). The head is the end of the collider."));
+                     .Tooltip("Collider length of the Megaton Hammer, from the grip to the head "
+                              "(game units)."));
     AddWidget(physPath, "Hammer Ground Hit At: %.1f m/s", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysHammerSlamSpeed")
         .Options(FloatSliderOptions()
@@ -1057,8 +1057,8 @@ void SohMenu::AddMenuVRSettings() {
                      .DefaultValue(4.0f)
                      .Step(0.1f)
                      .Format("%.1f")
-                     .Tooltip("Downward speed of the hammer head (real meters/second) for a ground "
-                              "hit: the screen shakes and a shock wave stuns enemies near Link."));
+                     .Tooltip("Downward speed of the hammer head (meters/second) for a ground "
+                              "hit. A ground hit shakes the screen and stuns enemies near Link."));
     AddWidget(physPath, "Blade Width: %.0f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysBladeWidth")
         .Options(FloatSliderOptions()

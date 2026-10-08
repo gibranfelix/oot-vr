@@ -9241,9 +9241,9 @@ void func_80842A28(PlayState* play, Player* this) {
     Player_PlaySfx(this, NA_SE_IT_HAMMER_HIT);
 }
 
-// SOH [VR] Physical combat: the physical Megaton Hammer has no attack animation, so the
-// vr-combat module detects the ground hit from the head motion and calls this shim. It starts the
-// same effects as the animation-driven ground hit in Player_Action_808502D0.
+// SOH [VR] Physical combat: the physical hammer has no attack animation. The vr-combat module
+// finds the ground hit and calls this function. The effects are the same as in
+// Player_Action_808502D0.
 void VrCombat_HammerGroundHit(PlayState* play, Player* this, const float* posXyz) {
     static Vec3f zeroVec = { 0.0f, 0.0f, 0.0f };
     Vec3f shockwavePos = { posXyz[0], posXyz[1], posXyz[2] };

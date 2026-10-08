@@ -56,13 +56,12 @@ bool sHaveBladePrev = false;
 Vec3f sPrevTip[2];
 Vec3f sPrevBase[2];
 
-// Megaton Hammer ground hit: the draw-time feed records where the head is and how fast it moved
-// down this tick; the next player update probes the floor under it and runs the slam rule
-// (VrHammerSlam.h). The effects run at update time, where the original game runs them.
+// Hammer ground hit. The draw records the head position and its downward speed. The next player
+// update does the line test and the rule (VrHammerSlam.h), and starts the effects.
 VrHammerSlam::Detector sSlam;
 bool sHeadValid = false;
 Vec3f sHeadPos;
-float sTickHeadDownSpeed = 0.0f; // m/s, negative = moving up
+float sTickHeadDownSpeed = 0.0f; // m/s
 
 // Mirror of the player melee quad init (D_80854650, z_player.c) with TOUCH_NEAREST from the
 // start: each quad damages only its nearest victim, like every vanilla sword quad.
@@ -136,8 +135,8 @@ struct PendingStrike {
     Vec3f pos;
     Vec3f normal;
     uint32_t dmgFlags;
-    // Also register a quad across the surface (hammer). A rusted switch is hit through a flat
-    // tris collider on its top; a quad parallel to that plane never touches it.
+    // Hammer: also a quad across the surface. The rusted switch has a flat collider on its top. A
+    // quad parallel to the top does not touch it.
     bool cross;
 };
 PendingStrike sPendingStrikes[4];
@@ -1119,8 +1118,7 @@ extern "C" void VrCombat_FeedMelee(PlayState* play, Player* player) {
             if (handSpd > sTickHandSpeed) {
                 sTickHandSpeed = handSpd;
             }
-            // Downward speed of the tip: the hammer head for the ground-hit rule. Only y of
-            // v + w x r is needed.
+            // Downward speed of the tip (the hammer head): only y of v + w x r.
             const Vec3f rT = vscale(qrot(q, tipLocal0), 1.0f / worldScale);
             const float down = -(s.linVelMps[1] + s.angVelRps[2] * rT.x - s.angVelRps[0] * rT.z);
             if (!haveHeadSpeed || down > sTickHeadDownSpeed) {
@@ -1138,7 +1136,7 @@ extern "C" void VrCombat_FeedMelee(PlayState* play, Player* player) {
         }
     }
 
-    // The head (the tip of the effective, possibly sim-stopped, pose) for the ground-hit probe.
+    // Head position for the ground hit: the tip of the effective pose.
     sHeadPos = tip0;
     sHeadValid = Player_GetMeleeWeaponHeld(player) == VrMeleeWeapon::kHammer;
 
@@ -1387,8 +1385,8 @@ extern "C" void VrCombat_FeedMelee(PlayState* play, Player* player) {
 
 namespace VrCombat {
 
-// Megaton Hammer ground hit, from the head recorded by the last draw. The probe is the original
-// game's test for a weapon in level geometry, turned down: a short vertical line through the head.
+// Hammer ground hit, from the head that the last draw recorded. The line test goes down through
+// the head.
 static void HammerGroundHit(PlayState* play, Player* player) {
     if (!sHeadValid || Player_GetMeleeWeaponHeld(player) != VrMeleeWeapon::kHammer) {
         sHeadValid = false;
@@ -1419,8 +1417,7 @@ static void HammerGroundHit(PlayState* play, Player* player) {
         const float pos[3] = { hitPos.x, hitPos.y, hitPos.z };
         VrCombat_HammerGroundHit(play, player, pos);
         VR_TriggerHaptic(SwordHand(), 1.0f, 0.0f, 150.0f);
-        // The slam also strikes what is under the head (a rusted switch), also when the sim
-        // reported no contact this tick.
+        // Also hit the actor under the head (a rusted switch). The sim can miss this contact.
         if (sPendingStrikeCount < 4) {
             PendingStrike& st = sPendingStrikes[sPendingStrikeCount++];
             st.pos = hitPos;
