@@ -2000,6 +2000,21 @@ static void Player_VrAimHeldShot(PlayState* play, Player* this, s32 slingshotMod
     }
 }
 
+// SOH [VR] The aim mark of the boomerang trigger throw. No aim mark with Z-targeting.
+static void Player_VrAimBoomerang(PlayState* play, Player* this) {
+    Vec3f hit;
+
+    if (!Player_VrMotionAimOn() || (this->heldItemAction != PLAYER_IA_BOOMERANG) || (this->unk_834 == 0) ||
+        (this->stateFlags1 & PLAYER_STATE1_BOOMERANG_THROWN) || (this->focusActor != NULL)) {
+        return;
+    }
+    if (VrCombat_BoomerangAimMark(play, &hit.x)) {
+        Matrix_Push();
+        Player_DrawReticleAt(play, this, &hit, NULL, 0, false);
+        Matrix_Pop();
+    }
+}
+
 void Player_PostLimbDrawGameplay(PlayState* play, s32 limbIndex, Gfx** dList, Vec3s* rot, void* thisx) {
     Player* this = (Player*)thisx;
 
@@ -2109,6 +2124,9 @@ void Player_PostLimbDrawGameplay(PlayState* play, s32 limbIndex, Gfx** dList, Ve
                 Matrix_Get(&this->mf_9E0);
                 Matrix_MtxFToYXZRotS(&this->mf_9E0, &this->unk_3BC, 0);
             }
+
+            // SOH [VR] Boomerang aim.
+            Player_VrAimBoomerang(play, this);
         }
     } else if (limbIndex == PLAYER_LIMB_R_HAND) {
         Actor* heldActor = this->heldActor;

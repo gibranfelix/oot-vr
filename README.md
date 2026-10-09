@@ -49,6 +49,7 @@ The right hand holds the sword. The left hand holds the shield and the items.
 | Right thumbstick click (hold) | Open the item selector. Move your hand to an item, then release.        |
 | Left trigger                  | Use the item. For the bow, hold to pull the string, release to shoot.   |
 | Right trigger                 | Z-target.                                                               |
+| Right grip                    | Boomerang: hold, move the arm to throw, then release.                   |
 | Both grips (hold)             | Hold the sword and the shield.                                          |
 | A button                      | N64 A: action, talk, roll.                                              |
 | B button                      | N64 B.                                                                  |

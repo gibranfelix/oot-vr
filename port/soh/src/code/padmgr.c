@@ -431,11 +431,12 @@ void PadMgr_HandleRetraceMsg(PadMgr* padMgr) {
                     // selector mode both triggers belong to item use, and the two-hand quick-swap
                     // chord suspends its inputs' bindings while fully held. While aiming a
                     // projectile (classic mode), the aim hand's trigger is the FIRE control and
-                    // its binding is likewise suspended.
+                    // its binding is likewise suspended. The grip of the boomerang hand throws it.
                     if (VrItemSelect_ConsumesInput(vrHandIdx, sVrBtnMasks[vrBtnIdx]) ||
                         VrItemSelect_TriggerConsumed(vrHandIdx, sVrBtnMasks[vrBtnIdx]) ||
                         VrItemSelect_SwapConsumed(vrHandIdx, sVrBtnMasks[vrBtnIdx]) ||
-                        VrCombat_AimTriggerConsumed(vrHandIdx, sVrBtnMasks[vrBtnIdx])) {
+                        VrCombat_AimTriggerConsumed(vrHandIdx, sVrBtnMasks[vrBtnIdx]) ||
+                        VrCombat_BoomerangGripConsumed(vrHandIdx, sVrBtnMasks[vrBtnIdx])) {
                         continue;
                     }
                     if (vrState & sVrBtnMasks[vrBtnIdx]) {

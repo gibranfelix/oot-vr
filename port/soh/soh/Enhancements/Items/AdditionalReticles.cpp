@@ -41,10 +41,10 @@ void RegisterAdditionalReticles() {
     COND_VB_SHOULD(VB_DRAW_ADDITIONAL_RETICLES, shouldRegister, {
         Player* player = va_arg(args, Player*);
         Actor* heldActor = player->heldActor;
-        // SOH [VR] The VR aim mark replaces this reticle.
-        bool vrBowAim = VR_IsInitialized() && VR_GetFirstPerson() && CVarGetInteger("gVrMotionHands", 1) &&
-                        CVarGetInteger("gVrWeaponAim", 1);
-        if (CVAR_BOW_RETICLE_VALUE && !vrBowAim &&
+        // SOH [VR] The VR aim mark replaces these reticles.
+        bool vrAim = VR_IsInitialized() && VR_GetFirstPerson() && CVarGetInteger("gVrMotionHands", 1) &&
+                     CVarGetInteger("gVrWeaponAim", 1);
+        if (CVAR_BOW_RETICLE_VALUE && !vrAim &&
             ((player->heldItemAction >= PLAYER_IA_BOW && player->heldItemAction <= PLAYER_IA_BOW_LIGHT) ||
              player->heldItemAction == PLAYER_IA_SLINGSHOT)) {
             if (heldActor != NULL) {
@@ -58,7 +58,7 @@ void RegisterAdditionalReticles() {
                     Player_DrawHookshotReticle(gPlayState, player, RETICLE_MAX);
                 }
             }
-        } else if (CVAR_BOOMERANG_RETICLE_VALUE && player->heldItemAction == PLAYER_IA_BOOMERANG) {
+        } else if (CVAR_BOOMERANG_RETICLE_VALUE && !vrAim && player->heldItemAction == PLAYER_IA_BOOMERANG) {
             if (Player_HoldsBoomerang(player)) {
                 if (LINK_IS_ADULT) {
                     Matrix_RotateZYX(BoomerangViewAdult.x, BoomerangViewAdult.y, BoomerangViewAdult.z, MTXMODE_APPLY);

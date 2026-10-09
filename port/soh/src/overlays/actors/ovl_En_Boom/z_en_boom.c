@@ -150,7 +150,8 @@ void EnBoom_Fly(EnBoom* this, PlayState* play) {
     }
 
     // Set xyz speed, move forward, and play the boomerang sound
-    Actor_SetProjectileSpeed(&this->actor, 12.0f);
+    // SOH [VR] The VR flight is faster.
+    Actor_SetProjectileSpeed(&this->actor, (this->actor.params == EN_BOOM_PARAMS_VR) ? VR_BOOMERANG_SPEED : 12.0f);
     Actor_MoveXZGravity(&this->actor);
     Actor_PlaySfx_Flagged(&this->actor, NA_SE_IT_BOOMERANG_FLY - SFX_FLAG);
 
@@ -173,7 +174,9 @@ void EnBoom_Fly(EnBoom* this, PlayState* play) {
         this->moveTo = &player->actor;
 
         // If the boomerang is less than 40 units away from Link, he can catch it.
-        if (distFromLink < 40.0f || player->boomerangQuickRecall) {
+        // SOH [VR] A larger catch zone: the faster VR flight can fly past Link.
+        if (distFromLink < ((this->actor.params == EN_BOOM_PARAMS_VR) ? VR_BOOMERANG_CATCH_DIST : 40.0f) ||
+            player->boomerangQuickRecall) {
             target = this->grabbed;
             if (target != NULL) {
                 Math_Vec3f_Copy(&target->world.pos, &player->actor.world.pos);

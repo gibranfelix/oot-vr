@@ -147,6 +147,21 @@ void VrCombat_SeedOnSlingshot(const float* handMf16, float draw, bool childTilt,
 int32_t VrCombat_ArrowExtraFrames(void);
 bool VrCombat_PredictShotHit(struct PlayState* play, const float* posXyz, const float* dirXyz, bool seed,
                              float* outHitXyz);
+// Boomerang (VrBoomerang.cpp). A throw goes from pos to at. moves: EnBoom.returnTimer. toTarget:
+// EnBoom.moveTo is the Z-target.
+typedef struct VrCombatBoomerangThrow {
+    float pos[3];
+    float at[3];
+    int32_t moves;
+    bool toTarget;
+} VrCombatBoomerangThrow;
+// The throws return false when there is no VR throw. targetXyz: the Z-target focus, or NULL.
+// TriggerThrow: along the aim ray. TakeGripThrow: the grip throw of the last tick, one time.
+// AimMark: where the trigger throw hits. GripConsumed: padmgr skips the grip binding.
+bool VrCombat_BoomerangTriggerThrow(const float* targetXyz, VrCombatBoomerangThrow* out);
+bool VrCombat_BoomerangTakeGripThrow(const float* targetXyz, VrCombatBoomerangThrow* out);
+bool VrCombat_BoomerangAimMark(struct PlayState* play, float* outHitXyz);
+bool VrCombat_BoomerangGripConsumed(int32_t vrHand, uint16_t vrBtnMask);
 // The physical shield's block collider in R_HAND limb model space (outXyz4 = 4 vertices x xyz,
 // vanilla zigzag order) — replaces the vanilla stance quad, whose size/offset never matched a
 // controller-held shield. Its size and position come from the mesh of the shield in the hand
@@ -176,6 +191,11 @@ struct TickPath {
     int count;
 };
 const TickPath& GetTickPath(int hand);
+
+// VR first person, motion hands, and weapon aim are on (VrBowAim.cpp).
+bool WeaponAimOn();
+// The boomerang grip throw (VrBoomerang.cpp). Call after the hand paths of the tick are read.
+void Boomerang_OnPlayerUpdate(Player* player);
 
 // Per-tick swing bookkeeping (VrSwing.cpp), driven from VrCombat's OnPlayerUpdate hook:
 // reads back last tick's quad results (hit haptics, one-hit-per-swing demotion), then resets

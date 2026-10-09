@@ -1,6 +1,8 @@
 #pragma once
 
-// Bow and slingshot aim math (VrBowAim.cpp). No game types. Tests: port/soh/tests/vr/VrBowAimTests.cpp.
+// Bow, slingshot, and boomerang aim math (VrBowAim.cpp). No game types. Tests: port/soh/tests/vr/VrBowAimTests.cpp.
+
+#include "VrBoomerangFlight.h"
 
 #include <cmath>
 
@@ -73,6 +75,10 @@ constexpr Flight kArrowFlight = { 150.0f, 12, 7.2f, -0.4f, -150.0f };
 
 // EnArrow_Shoot for ARROW_SEED.
 constexpr Flight kSeedFlight = { 80.0f, 15, 7.2f, -0.4f, -150.0f };
+
+// The boomerang trigger throw in VR: 10 moves of 36 units (VR_BOOMERANG_TRIGGER_RANGE), no
+// gravity. PredictHit moves timer - 1 times.
+constexpr Flight kBoomerangFlightVr = { VR_BOOMERANG_SPEED, 11, 0.0f, 0.0f, -150.0f };
 
 // In VR, the arrow flies kVrExtraFrames more, thus it hits what the player sees. The arc is the
 // same: gravity starts on the same move.
