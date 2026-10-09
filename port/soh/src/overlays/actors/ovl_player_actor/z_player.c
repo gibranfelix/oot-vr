@@ -3303,6 +3303,45 @@ void func_808357E8(Player* this, Gfx** dLists) {
     }
 }
 
+// SOH [VR] Throw the boomerang from the hand, with the VR flight and no throw animation. grip: the
+// grip throw. Else: the trigger throw. Returns false when there is no VR throw.
+static s32 Player_VrThrowBoomerang(Player* this, PlayState* play, s32 grip) {
+    const f32* target = (this->focusActor != NULL) ? &this->focusActor->focus.pos.x : NULL;
+    VrCombatBoomerangThrow vrThrow;
+    Vec3f pos;
+    Vec3f at;
+    EnBoom* boomerang;
+
+    if (grip ? !VrCombat_BoomerangTakeGripThrow(target, &vrThrow)
+             : !VrCombat_BoomerangTriggerThrow(target, &vrThrow)) {
+        return false;
+    }
+    pos.x = vrThrow.pos[0];
+    pos.y = vrThrow.pos[1];
+    pos.z = vrThrow.pos[2];
+    at.x = vrThrow.at[0];
+    at.y = vrThrow.at[1];
+    at.z = vrThrow.at[2];
+    boomerang = (EnBoom*)Actor_Spawn(&play->actorCtx, play, ACTOR_EN_BOOM, pos.x, pos.y, pos.z,
+                                     Math_Vec3f_Pitch(&pos, &at), Math_Vec3f_Yaw(&pos, &at), 0, EN_BOOM_PARAMS_VR);
+    if (boomerang == NULL) {
+        return false;
+    }
+    this->boomerangActor = &boomerang->actor;
+    boomerang->moveTo = vrThrow.toTarget ? this->focusActor : NULL;
+    boomerang->returnTimer = vrThrow.moves;
+    this->stateFlags1 |= PLAYER_STATE1_BOOMERANG_THROWN;
+    if (!Player_CheckHostileLockOn(this)) {
+        Player_SetParallel(this);
+    }
+    this->unk_A73 = 4;
+    Player_PlaySfx(this, NA_SE_IT_BOOMERANG_THROW);
+    Player_PlayVoiceSfx(this, NA_SE_VO_LI_SWORD_N);
+    this->unk_834 = 0;
+    Player_SetUpperActionFunc(this, func_80835B60);
+    return true;
+}
+
 s32 func_80835800(Player* this, PlayState* play) {
     if (func_80834758(play, this)) {
         return true;
@@ -3310,7 +3349,9 @@ s32 func_80835800(Player* this, PlayState* play) {
 
     if (this->stateFlags1 & PLAYER_STATE1_BOOMERANG_THROWN) {
         Player_SetUpperActionFunc(this, func_80835B60);
-    } else if (func_80834F2C(this, play)) {
+    } else if (Player_VrThrowBoomerang(this, play, true)) { // SOH [VR] The grip throw.
+        return true;
+    } else if (!VrItemSelect_BlocksUse(this) && func_80834F2C(this, play)) { // SOH [VR] Rule 3 of the item selector.
         return true;
     }
 
@@ -3318,6 +3359,10 @@ s32 func_80835800(Player* this, PlayState* play) {
 }
 
 s32 func_80835884(Player* this, PlayState* play) {
+    // SOH [VR] The trigger throw does not wait for the wind-up animation.
+    if (!sHeldItemButtonIsHeldDown && Player_VrThrowBoomerang(this, play, false)) {
+        return true;
+    }
     if (LinkAnimation_Update(play, &this->upperSkelAnime)) {
         Player_SetUpperActionFunc(this, func_808358F0);
         LinkAnimation_PlayLoop(play, &this->upperSkelAnime, &gPlayerAnim_link_boom_throw_waitR);
@@ -3346,6 +3391,10 @@ s32 func_808358F0(Player* this, PlayState* play) {
     func_80834EB8(this, play);
 
     if (!sHeldItemButtonIsHeldDown) {
+        // SOH [VR] The trigger throw.
+        if (Player_VrThrowBoomerang(this, play, false)) {
+            return true;
+        }
         Player_SetUpperActionFunc(this, func_808359FC);
         LinkAnimation_PlayOnce(play, &this->upperSkelAnime,
                                (this->unk_870 < 0.5f) ? &gPlayerAnim_link_boom_throwR : &gPlayerAnim_link_boom_throwL);

@@ -3,6 +3,8 @@
 
 #include <libultraship/libultra.h>
 #include "global.h"
+// SOH [VR] EN_BOOM_PARAMS_VR: the VR flight.
+#include "soh/Enhancements/vr-combat/VrBoomerangFlight.h"
 
 struct EnBoom;
 

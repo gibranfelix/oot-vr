@@ -38,10 +38,13 @@ extern "C" void VrCombat_SeedOnSlingshot(const float* handMf16, float draw, bool
 }
 
 // Same rule as Player_VrMotionAimOn in z_player_lib.c.
+bool VrCombat::WeaponAimOn() {
+    return VR_IsInitialized() && VR_GetFirstPerson() && CVarGetInteger("gVrMotionHands", 1) &&
+           CVarGetInteger("gVrWeaponAim", 1);
+}
+
 extern "C" int32_t VrCombat_ArrowExtraFrames(void) {
-    const bool bowAim = VR_IsInitialized() && VR_GetFirstPerson() && CVarGetInteger("gVrMotionHands", 1) &&
-                        CVarGetInteger("gVrWeaponAim", 1);
-    return bowAim ? VrBowAim::kVrExtraFrames : 0;
+    return VrCombat::WeaponAimOn() ? VrBowAim::kVrExtraFrames : 0;
 }
 
 extern "C" bool VrCombat_PredictShotHit(PlayState* play, const float* posXyz, const float* dirXyz, bool seed,

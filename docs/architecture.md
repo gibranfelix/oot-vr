@@ -48,7 +48,7 @@ The VR code that is new has its own files:
 | `port/libultraship/include/vr_interface.h` | The declarations of the `VR_*` functions, with comments |
 | `port/libultraship/src/fast/vr_physics.cpp` | The collision mesh for the physical hands |
 | `port/libultraship/src/fast/vr_menu_input.cpp` | The SoH menu with the Touch controllers: the Y toggle, the menu navigation, and the input filter for the game |
-| `port/soh/soh/Enhancements/vr-combat/` | Sword and hammer swing, shield, bow aim, and item selection |
+| `port/soh/soh/Enhancements/vr-combat/` | Sword and hammer swing, shield, bow and boomerang aim, and item selection |
 | `port/soh/soh/SohGui/SohMenuVRSettings.cpp` | The VR settings menu |
 
 ## Render path
@@ -143,6 +143,21 @@ The pure geometry is in `VrShieldGeometry.h`. The host unit tests are in
 `port/soh/tests/vr/VrShieldGeometryTests.cpp`. The first lines of the file
 show how to run them.
 
+## Item selector
+
+`VrItemSelect.cpp` is the item selector. It presses the C button of the item
+(`EmulateButtonPress`), thus each item uses the vanilla path. Three rules
+change the vanilla path:
+
+1. No button changes the held item (`VB_CHANGE_HELD_ITEM_AND_USE_ITEM`).
+2. The off-hand trigger is the button of the held item. The sword-hand trigger
+   is Z-target (`VrItemSelect_TriggerItemMask`).
+3. The item selector takes a throwable item out and does not use it
+   (`SelectorOnlyTakesOut`, `VrItemSelect_BlocksUse`).
+
+`Player_UseItem` in `z_player.c` uses an instant item immediately.
+`HeldItemVrHand` tells which hand holds the item.
+
 ## Ranged weapons
 
 `Player_PostLimbDrawGameplay` in `port/soh/src/code/z_player_lib.c` sets the
@@ -154,6 +169,8 @@ them when the player shoots.
 | Hookshot, longshot | The barrel. With motion hands, the hand limb has the controller pose. |
 | Bow | The arrow on the bow model (`Player_VrAimHeldShot`). The math is in `VrBowAim.h`. |
 | Slingshot | The seed in the pouch of the slingshot model (`Player_VrAimHeldShot`). The math is in `VrBowAim.h`. |
+| Boomerang, left trigger | The controller aim ray (`Player_VrThrowBoomerang` in `z_player.c`). |
+| Boomerang, right grip | The hand velocity at the release. The math is in `VrBoomerangThrow.h`. |
 
 The aim mark is the hookshot reticle. `Player_DrawReticleAt` draws it in the
 world. For the hookshot, it is green when the hook can hold, and red when the
@@ -166,8 +183,15 @@ In VR, the arrow flies 24 frames more than in the vanilla game, thus it hits
 what the player sees. The arc does not change. With VR off, the flight is the
 vanilla flight. The seed flight does not change.
 
-The host unit tests are in `port/soh/tests/vr/VrAimMarkTests.cpp` and
-`port/soh/tests/vr/VrBowAimTests.cpp`.
+The VR boomerang throws spawn `EnBoom` with `EN_BOOM_PARAMS_VR`. This flight
+is two times faster, has the same range, and has a catch distance of 60 units
+(`VrBoomerangFlight.h`). With Z-targeting, the boomerang turns to the target
+only if the throw is in a cone of 30 degrees. Only the trigger throw has an aim
+mark.
+
+The host unit tests are in `port/soh/tests/vr/VrAimMarkTests.cpp`,
+`port/soh/tests/vr/VrBowAimTests.cpp`, and
+`port/soh/tests/vr/VrBoomerangThrowTests.cpp`.
 
 ## Camera and movement
 

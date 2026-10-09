@@ -88,6 +88,8 @@ void OnPlayerUpdateVrCombat() {
     for (int hand = 0; hand < 2; hand++) {
         sTickPath[hand].count = VR_GetHandPath(hand, sTickPath[hand].samples, ARRAY_COUNT(sTickPath[hand].samples));
     }
+
+    VrCombat::Boomerang_OnPlayerUpdate(player);
 }
 
 } // namespace

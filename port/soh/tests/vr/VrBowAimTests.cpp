@@ -256,6 +256,34 @@ static void TestSeedFlightIsTheVanillaSeedFlight() {
     EXPECT(Near(starts[8].y, -0.4f));
 }
 
+static void TestBoomerangFliesStraightTenMoves() {
+    std::vector<Vec3> starts;
+    Vec3 hit = { 7, 7, 7 };
+    // The VR flight: speed 24, R_UPDATE_RATE 3. It moves 10 times before returnTimer turns it back.
+    const bool found =
+        PredictHit({ 0, 0, 0 }, { 0, 0, -1 }, 1.5f, kBoomerangFlightVr, WallZ{ -100000.0f, &starts }, &hit);
+    EXPECT(!found);
+    EXPECT(starts.size() == 10);
+    EXPECT(Near(starts[1].z, -36.0f));
+    // No gravity.
+    EXPECT(Near(starts[9].y, 0.0f));
+}
+
+static void TestBoomerangHitsAWallInRange() {
+    Vec3 hit;
+    EXPECT(PredictHit({ 0, 0, 0 }, { 0, 0, -1 }, 1.5f, kBoomerangFlightVr, WallZ{ -350.0f, nullptr }, &hit));
+    EXPECT(NearVec(hit, { 0.0f, 0.0f, -350.0f }));
+    // The vanilla range: the boomerang turns back at 360 units.
+    EXPECT(!PredictHit({ 0, 0, 0 }, { 0, 0, -1 }, 1.5f, kBoomerangFlightVr, WallZ{ -370.0f, nullptr }, &hit));
+}
+
+static void TestBoomerangKeepsItsPitch() {
+    Vec3 hit;
+    const float k = std::sqrt(0.5f);
+    EXPECT(PredictHit({ 0, 0, 0 }, { 0, -k, -k }, 1.5f, kBoomerangFlightVr, WallZ{ -200.0f, nullptr }, &hit));
+    EXPECT(Near(hit.y, -200.0f, 0.01f));
+}
+
 int main() {
     TestArrowLiesAlongTheBowHandY();
     TestDrawPullsTheNockBack();
@@ -272,6 +300,9 @@ int main() {
     TestDrawPullsThePouchBack();
     TestChildStringTiltMovesThePouchNotTheDirection();
     TestSeedFlightIsTheVanillaSeedFlight();
+    TestBoomerangFliesStraightTenMoves();
+    TestBoomerangHitsAWallInRange();
+    TestBoomerangKeepsItsPitch();
 
     if (sFailures == 0) {
         std::printf("VrBowAim: all tests passed\n");
