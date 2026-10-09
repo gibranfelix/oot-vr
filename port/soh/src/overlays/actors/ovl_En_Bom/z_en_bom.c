@@ -9,6 +9,7 @@
 #include "objects/gameplay_keep/gameplay_keep.h"
 #include "soh/Enhancements/game-interactor/GameInteractor.h"
 #include "soh/ShipUtils.h"
+#include "soh/Enhancements/vr-combat/VrCombat.h" // SOH [VR]
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED | ACTOR_FLAG_DRAW_CULLING_DISABLED)
 
@@ -392,7 +393,16 @@ void EnBom_Draw(Actor* thisx, PlayState* play) {
     OPEN_DISPS(play->state.gfxCtx);
 
     if (thisx->params == BOMB_BODY) {
+        // SOH [VR] In VR first person, the bomb has the same real size for child and adult Link.
+        // It still sits on the ground. The explosion size does not change.
+        f32 vrScale = VrCombat_BombDrawScale();
+
         Gfx_SetupDL_25Opa(play->state.gfxCtx);
+        Matrix_Push();
+        if (vrScale < 1.0f) {
+            Matrix_Translate(0.0f, -thisx->shape.yOffset * (1.0f - vrScale), 0.0f, MTXMODE_APPLY);
+            Matrix_Scale(vrScale, vrScale, vrScale, MTXMODE_APPLY);
+        }
         if (!CVarGetInteger(CVAR_ENHANCEMENT("DisableBombBillboarding"), 0)) {
             Matrix_ReplaceRotation(&play->billboardMtxF);
         }
@@ -406,6 +416,7 @@ void EnBom_Draw(Actor* thisx, PlayState* play) {
         gDPSetEnvColor(POLY_OPA_DISP++, (s16)this->flashIntensity, 0, 40, 255);
         gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, (s16)this->flashIntensity, 0, 40, 255);
         gSPDisplayList(POLY_OPA_DISP++, gBombBodyDL);
+        Matrix_Pop(); // SOH [VR]
         Collider_UpdateSpheres(0, &this->explosionCollider);
     }
 

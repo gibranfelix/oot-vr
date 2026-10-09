@@ -51,6 +51,11 @@ float UnitsPerMeter() {
     return (ws < 1.0f) ? 35.0f : ws;
 }
 
+// The EnBom position is the bottom of the bomb. This is the height of the center.
+float CenterHeight() {
+    return 0.5f * VrBombThrow::kBombModelDiameter * VrCombat_BombDrawScale();
+}
+
 // Link carries a bomb (from the belt, or from the vanilla take-out).
 bool Carrying(Player* player) {
     return (player->stateFlags1 & PLAYER_STATE1_CARRYING_ACTOR) && (player->heldActor != NULL) &&
@@ -90,12 +95,12 @@ VrBombThrow::HandInput Hand(int hand) {
 
 void MakeRelease(Player* player, const VrBombThrow::Result& r) {
     sRelease.pos[0] = r.pos.x;
-    sRelease.pos[1] = r.pos.y;
+    sRelease.pos[1] = r.pos.y - CenterHeight();
     sRelease.pos[2] = r.pos.z;
     sRelease.thrown = (r.event == VrBombThrow::Event::Throw);
     VrBombThrow::Vec3 v = { 0.0f, 0.0f, 0.0f };
     if (sRelease.thrown) {
-        v = VrBombThrow::ThrowVelocity(r.velMps, UnitsPerMeter(), 60.0f / R_UPDATE_RATE);
+        v = VrBombThrow::ThrowVelocity(r.velMps, 60.0f / R_UPDATE_RATE);
         // The hand velocity does not contain the walk of Link.
         v.x += player->actor.velocity.x;
         v.z += player->actor.velocity.z;
@@ -208,7 +213,26 @@ extern "C" bool VrCombat_BombHeldPos(Player* player, float* outXyz) {
         return true;
     }
     float quat[4];
-    return (sHolder.Hand() >= 0) && VR_GetHandPose(sHolder.Hand(), outXyz, quat);
+    if ((sHolder.Hand() < 0) || !VR_GetHandPose(sHolder.Hand(), outXyz, quat)) {
+        return false;
+    }
+    outXyz[1] -= CenterHeight();
+    return true;
+}
+
+extern "C" bool VrCombat_BombInHand(Player* player, bool* swordHand) {
+    if ((player == NULL) || !VrCombat_BombUsesBelt(player) || !Carrying(player) || (sHolder.Hand() < 0)) {
+        return false;
+    }
+    *swordHand = (sHolder.Hand() == SwordHand());
+    return true;
+}
+
+extern "C" float VrCombat_BombDrawScale(void) {
+    if (!VR_IsInitialized() || !VR_GetFirstPerson()) {
+        return 1.0f;
+    }
+    return VrBombThrow::DrawScale(UnitsPerMeter());
 }
 
 extern "C" bool VrCombat_BombTakeRelease(VrCombatBombRelease* out) {

@@ -255,22 +255,37 @@ static void TestBeltIsBelowTheEyesInFrontOfLink() {
 }
 
 static void TestThrowVelocityIsInGameUnitsForEachTick() {
-    // 2 m/s at 35 units for each meter and 20 ticks for each second: 3.5 units for each tick.
-    Vec3 v = ThrowVelocity({ 0.0f, 2.0f, 0.0f }, 35.0f, 20.0f);
-    EXPECT(Near(v.y, 3.5f * kThrowGain));
+    // 2 m/s at 40 units for each meter and 20 ticks for each second: 4 units for each tick.
+    Vec3 v = ThrowVelocity({ 0.0f, 2.0f, 0.0f }, 20.0f);
+    EXPECT(Near(v.y, 4.0f * kThrowGain));
     EXPECT(Near(v.x, 0.0f) && Near(v.z, 0.0f));
     // A very fast throw is clamped. The direction does not change.
-    v = ThrowVelocity({ 30.0f, 0.0f, 40.0f }, 35.0f, 20.0f);
+    v = ThrowVelocity({ 30.0f, 0.0f, 40.0f }, 20.0f);
     EXPECT(Near(std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z), kMaxThrowSpeed));
     EXPECT(Near(v.x / v.z, 0.75f));
 }
 
-static void TestMaxThrowGoesTwoTimesTheVanillaDistance() {
+static void TestMediumThrowGoesAsFarAsTheVanillaThrow() {
+    // A medium throw: 4 m/s at 45 degrees.
+    const float k = std::sqrt(0.5f);
+    const Vec3 v = ThrowVelocity({ 0.0f, 4.0f * k, 4.0f * k }, 20.0f);
+    const float range = v.z * (2.0f * v.y / kBombGravity);
+    EXPECT(range >= 0.8f * 160.0f && range <= 1.2f * 160.0f);
+}
+
+static void TestBombIsTheSameSizeForChildAndAdult() {
+    // Child Link: about 22 units for each meter. Adult Link: about 37.
+    EXPECT(Near(DrawScale(22.0f) * kBombModelDiameter / 22.0f, kBombDiameterM, 0.001f));
+    EXPECT(Near(DrawScale(37.0f) * kBombModelDiameter / 37.0f, kBombDiameterM, 0.001f));
+    EXPECT(Near(DrawScale(1000.0f), 1.0f));
+}
+
+static void TestMaxThrowGoesFartherThanTheVanillaThrow() {
     // Vanilla: 8 forward and 12 up, gravity 1.2: 20 ticks in the air, 160 units.
     const float vanilla = 8.0f * (2.0f * 12.0f / kBombGravity);
     // The best angle (45 degrees) at the max speed, from the same height.
     const float best = kMaxThrowSpeed * kMaxThrowSpeed / kBombGravity;
-    EXPECT(best >= 1.9f * vanilla && best <= 2.1f * vanilla);
+    EXPECT(best >= 2.4f * vanilla && best <= 2.6f * vanilla);
 }
 
 int main() {
@@ -291,7 +306,9 @@ int main() {
     TestOneReleaseForOneGrab();
     TestBeltIsBelowTheEyesInFrontOfLink();
     TestThrowVelocityIsInGameUnitsForEachTick();
-    TestMaxThrowGoesTwoTimesTheVanillaDistance();
+    TestMediumThrowGoesAsFarAsTheVanillaThrow();
+    TestBombIsTheSameSizeForChildAndAdult();
+    TestMaxThrowGoesFartherThanTheVanillaThrow();
 
     if (sFailures == 0) {
         std::printf("VrBombThrow: all tests passed\n");

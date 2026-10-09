@@ -181,6 +181,11 @@ bool VrCombat_BombTakeGrab(void);
 bool VrCombat_BombHeldPos(struct Player* player, float* outXyz);
 bool VrCombat_BombTakeRelease(VrCombatBombRelease* out);
 bool VrCombat_BombGripConsumed(int32_t vrHand, uint16_t vrBtnMask);
+// A hand holds the bomb with the grip. swordHand: the hand is the sword hand.
+bool VrCombat_BombInHand(struct Player* player, bool* swordHand);
+// The scale of the bomb model in VR first person: the bomb has the same real size for child Link
+// and adult Link. 1 when VR is off.
+float VrCombat_BombDrawScale(void);
 // The physical shield's block collider in R_HAND limb model space (outXyz4 = 4 vertices x xyz,
 // vanilla zigzag order) — replaces the vanilla stance quad, whose size/offset never matched a
 // controller-held shield. Its size and position come from the mesh of the shield in the hand

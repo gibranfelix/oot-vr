@@ -171,6 +171,10 @@ has no fuse and no ammo cost.
 | The off-hand trigger | `Player_InitExplosiveIA` spawns the bomb, and `Player_ActionHandler_9` throws it. |
 | A throw is done | `Player_DetachHeldActor` keeps the bombs selected. |
 
+In VR first person, `EnBom_Draw` draws the bomb 15 cm wide in the real world,
+for child Link and adult Link. The explosion size does not change. The throw
+distance does not use the world scale.
+
 The math is in `VrBombThrow.h`. The host unit tests are in
 `port/soh/tests/vr/VrBombThrowTests.cpp`.
 

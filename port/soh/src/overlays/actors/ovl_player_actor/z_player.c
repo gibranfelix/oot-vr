@@ -3328,8 +3328,34 @@ static s32 Player_VrReleaseBomb(Player* this, PlayState* play) {
     return true;
 }
 
+extern Gfx** sPlayerDListGroups[]; // SOH [VR] z_player_lib.c
+
+// SOH [VR] The hand that holds the bomb with the grip is closed. The other hand gets its model
+// back.
+static void Player_VrCloseBombHand(Player* this) {
+    static s32 sClosed = false;
+    bool swordHand;
+
+    if (VrCombat_BombInHand(this, &swordHand)) {
+        Player_SetModels(this, this->modelGroup);
+        if (swordHand) {
+            this->leftHandType = PLAYER_MODELTYPE_LH_CLOSED;
+            this->leftHandDLists = &sPlayerDListGroups[PLAYER_MODELTYPE_LH_CLOSED][gSaveContext.linkAge];
+        } else {
+            this->rightHandType = PLAYER_MODELTYPE_RH_CLOSED;
+            this->rightHandDLists = &sPlayerDListGroups[PLAYER_MODELTYPE_RH_CLOSED][gSaveContext.linkAge];
+        }
+        sClosed = true;
+    } else if (sClosed) {
+        Player_SetModels(this, this->modelGroup);
+        sClosed = false;
+    }
+}
+
 s32 Player_UpperAction_CarryActor(Player* this, PlayState* play) {
     Actor* heldActor = this->heldActor;
+
+    Player_VrCloseBombHand(this); // SOH [VR]
 
     if (heldActor == NULL) {
         // SOH [VR] The hands are empty, and the bomb waits on the belt.
@@ -12844,21 +12870,27 @@ void Player_DrawGameplay(PlayState* play, Player* this, s32 lod, Gfx* cullDList,
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
-// SOH [VR] The bomb on the belt: the EnBom model without the fuse flash.
+// SOH [VR] The bomb on the belt: the EnBom_Draw model without the fuse flash. pos is the center.
 static void Player_VrDrawBeltBomb(PlayState* play, Player* this) {
     Vec3f pos;
+    Vec3f lightDir;
+    f32 scale = 0.01f * VrCombat_BombDrawScale();
 
     if (!VrCombat_BombBeltPos(this, &pos.x)) {
         return;
     }
+    lightDir.x = play->envCtx.dirLight1.params.dir.x;
+    lightDir.y = play->envCtx.dirLight1.params.dir.y;
+    lightDir.z = play->envCtx.dirLight1.params.dir.z;
 
     OPEN_DISPS(play->state.gfxCtx);
 
     Gfx_SetupDL_25Opa(play->state.gfxCtx);
     Matrix_Push();
     Matrix_Translate(pos.x, pos.y, pos.z, MTXMODE_NEW);
-    Matrix_RotateY(BINANG_TO_RAD(this->actor.shape.rot.y), MTXMODE_APPLY);
-    Matrix_Scale(0.01f, 0.01f, 0.01f, MTXMODE_APPLY);
+    Matrix_Scale(scale, scale, scale, MTXMODE_APPLY);
+    Matrix_ReplaceRotation(&play->billboardMtxF);
+    func_8002EABC(&pos, &play->view.eye, &lightDir, play->state.gfxCtx);
     gSPMatrix(POLY_OPA_DISP++, MATRIX_NEWMTX(play->state.gfxCtx), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gSPDisplayList(POLY_OPA_DISP++, gBombCapDL);
     Matrix_RotateZYX(0x4000, 0, 0, MTXMODE_APPLY);
