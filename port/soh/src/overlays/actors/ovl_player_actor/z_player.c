@@ -3351,7 +3351,7 @@ s32 func_80835800(Player* this, PlayState* play) {
         Player_SetUpperActionFunc(this, func_80835B60);
     } else if (Player_VrThrowBoomerang(this, play, true)) { // SOH [VR] The grip throw.
         return true;
-    } else if (func_80834F2C(this, play)) {
+    } else if (!VrItemSelect_BlocksUse(this) && func_80834F2C(this, play)) { // SOH [VR] #96
         return true;
     }
 

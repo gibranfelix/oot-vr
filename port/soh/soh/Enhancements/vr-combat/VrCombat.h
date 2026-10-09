@@ -123,6 +123,10 @@ bool VrItemSelect_TriggerConsumed(int32_t vrHand, uint16_t vrBtnMask);
 // their bindings untouched.
 bool VrItemSelect_SwapConsumed(int32_t vrHand, uint16_t vrBtnMask);
 
+// Throwable items (#96): the selector takes the item out, and does not use it. True while the
+// press of the selector can still use the held item.
+bool VrItemSelect_BlocksUse(struct Player* player);
+
 // True while the ocarina interface is up (free play, song playback, scarecrow recording, the
 // frog and Skull Kid minigames — every msgMode from OCARINA_STARTING through FROGS_WAITING).
 // While true, padmgr swaps to the dedicated OCARINA binding set (sVrBindOca*) and every

@@ -36,8 +36,8 @@ s8 Player_ItemToItemAction(s32 item);
 // and padmgr skips the held input's normal button binding via VrItemSelect_ConsumesInput.
 //
 // SELECTOR MODE also changes how items are USED. The selector equips; the OFF-HAND TRIGGER fires
-// the held item, in either hand, and the sword-hand trigger is always Z-target. That is two
-// rules, both below:
+// the held item, in either hand, and the sword-hand trigger is always Z-target. That is three
+// rules, all below:
 //
 //  1. No button may CHANGE the held item (VB_CHANGE_HELD_ITEM_AND_USE_ITEM below). One rule
 //     covers "C buttons no longer pull out items" AND "B no longer draws the sword" — drawing
@@ -55,6 +55,8 @@ s8 Player_ItemToItemAction(s32 item);
 //     back to a binding while the hands are empty: an input that changes meaning with hidden
 //     state is worse in VR than an idle one. For the same reason each trigger keeps one role
 //     whatever the hands hold, instead of following the item to its hand.
+//  3. The selector takes a throwable item (#96) out to the hand, and does not use it
+//     (SelectorOnlyTakesOut). The player throws it with the arm, or with the off-hand trigger.
 
 namespace {
 
@@ -73,6 +75,12 @@ Vec3f sHeadRight; // camera right captured at open: stable targets, "left is lef
 // EmulateButtonPress is consumed by the next pad poll, a tick or two after ExecuteSector runs, so
 // the block below has to let its own press through by more than a same-frame stamp.
 int sEquipGrace = 0;
+
+// Throwable items (#96): the selector takes them out, and does not use them. #97 to #99 add the
+// bomb, the bombchu, and the Deku nut.
+bool SelectorOnlyTakesOut(Player* player) {
+    return (player != NULL) && (player->heldItemAction == PLAYER_IA_BOOMERANG);
+}
 
 int SwordHand() {
     return CVarGetInteger("gVrLeftHanded", 0) ? VR_HAND_LEFT : VR_HAND_RIGHT;
@@ -590,6 +598,10 @@ extern "C" bool VrItemSelect_ModeActive(void) {
     return SelectorModeInPlay();
 }
 
+extern "C" bool VrItemSelect_BlocksUse(Player* player) {
+    return SelectorModeInPlay() && (sEquipGrace > 0) && SelectorOnlyTakesOut(player);
+}
+
 extern "C" uint16_t VrItemSelect_TriggerItemMask(int32_t vrHand) {
     if (!SelectorModeInPlay() || gPlayState == NULL) {
         return 0;
@@ -642,6 +654,18 @@ static void RegisterVrItemSelect() {
         Player* player = (gPlayState != NULL) ? GET_PLAYER(gPlayState) : NULL;
         if (SelectorModeInPlay() && (sEquipGrace == 0) && (player != NULL) &&
             (Player_ItemToItemAction(item) != player->heldItemAction)) {
+            *should = false;
+        }
+        // Rule 3: selecting a throwable item that is already in the hand does not use it.
+        if (VrItemSelect_BlocksUse(player) && (Player_ItemToItemAction(item) == player->heldItemAction)) {
+            *should = false;
+        }
+    });
+
+    // Rule 3: a throwable item does not get used at the end of the change animation.
+    COND_VB_SHOULD(VB_USE_HELD_ITEM_AFTER_CHANGE, CVarGetInteger("gVrItemSelect", 1), {
+        Player* player = va_arg(args, Player*);
+        if (SelectorModeInPlay() && SelectorOnlyTakesOut(player)) {
             *should = false;
         }
     });
