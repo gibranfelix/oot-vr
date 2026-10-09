@@ -20,6 +20,12 @@ JOBS="$(nproc)"
 
 [ -f "$NDK/build/cmake/android.toolchain.cmake" ] || { echo "NDK not found at $NDK (set ANDROID_NDK_HOME)" >&2; exit 1; }
 
+# ccache, if installed, makes the next builds faster. The output does not change.
+LAUNCHER=()
+if command -v ccache >/dev/null; then
+    LAUNCHER=(-DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache)
+fi
+
 # 1. soh.o2r - the PORT's assets - needs ZAPD running on the host, so it is a separate build.
 # Build it again when a shader or a custom asset is newer: an old soh.o2r with new code can draw
 # a black world. soh/assets/custom/shaders is a copy that the build makes, so it is not checked.
@@ -30,14 +36,14 @@ soh_o2r_is_old() {
 }
 if soh_o2r_is_old; then
     echo "==> host build: soh.o2r"
-    cmake -S "$PORT" -B "$PORT/build-host" -G Ninja -DCMAKE_BUILD_TYPE=Release
+    cmake -S "$PORT" -B "$PORT/build-host" -G Ninja -DCMAKE_BUILD_TYPE=Release "${LAUNCHER[@]}"
     cmake --build "$PORT/build-host" --target GenerateSohOtr -j "$JOBS"
 fi
 
 # 2. The game for arm64. The OpenXR loader is fetched by CMake (see the root CMakeLists).
 # SPDLOG_MIN_CUTOFF: the trace log messages are not in the Quest build (issue #47).
 echo "==> arm64 build"
-cmake -S "$PORT" -B "$PORT/build-quest" -G Ninja \
+cmake -S "$PORT" -B "$PORT/build-quest" -G Ninja "${LAUNCHER[@]}" \
     -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake" \
     -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-24 -DANDROID_STL=c++_static \
     -DUSE_OPENGLES=ON -DSDL_SHARED=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_REMOTE_CONTROL=0 \

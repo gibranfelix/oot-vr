@@ -35,6 +35,8 @@ The script does these steps:
 
 The APK is at `port/Android/app/build/outputs/apk/debug/app-debug.apk`.
 
+If `ccache` is installed, the script uses it.
+
 ## Make the game assets: `oot.o2r`
 
 The game assets come from **your** legal copy of the game: a dump of a
