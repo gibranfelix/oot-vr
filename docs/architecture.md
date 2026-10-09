@@ -194,7 +194,8 @@ contain the shared code. The nut has no actor on the belt or in the hand.
 | The off-hand trigger | `Player_UseItem` does the vanilla nut throw. |
 
 The nut has no collider, as in the vanilla game. It flashes when it touches a
-wall or the floor. The nut is 10 cm above the bomb on the belt.
+wall or the floor. The nut is 10 cm above the bomb on the belt. The hand that
+holds the nut stays open, and the nut is on the palm (`VrGripHand.cpp`).
 
 In VR stereo, `z_play.c` does not draw the screen flash of the nut. The flash is
 a 2D fill, and it shows as a small gray rectangle in VR.
