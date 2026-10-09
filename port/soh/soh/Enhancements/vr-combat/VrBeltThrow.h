@@ -45,18 +45,6 @@ inline Vec3 PalmOffset(const float quat[4], bool leftHand, float unitsPerMeter, 
     return { d * (1.0f - 2.0f * (y * y + z * z)), d * (2.0f * (x * y + w * z)), d * (2.0f * (x * z - w * y)) };
 }
 
-// The item center is forwardM in front of the closed hand, along the controller (-Z of the grip
-// pose).
-inline Vec3 ForwardOffset(const float quat[4], float unitsPerMeter, float forwardM) {
-    const float d = -forwardM * unitsPerMeter;
-    const float x = quat[0];
-    const float y = quat[1];
-    const float z = quat[2];
-    const float w = quat[3];
-    // The local +Z axis of the rotation.
-    return { d * (2.0f * (x * z + w * y)), d * (2.0f * (y * z - w * x)), d * (1.0f - 2.0f * (x * x + y * y)) };
-}
-
 // The hand velocity in m/s to the item velocity in units for each tick. maxSpeed: units for each
 // tick.
 inline Vec3 ThrowVelocity(const Vec3& velMps, float ticksPerSecond, float gain, float maxSpeed) {

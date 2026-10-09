@@ -19,9 +19,8 @@ void Feed(VrBeltThrow::Holder& holder);
 // distance above the belt.
 VrBeltThrow::Input MakeInput(Player* player, bool beltReady, bool carrying, float raiseM = 0.0f);
 VrBeltThrow::Vec3 BeltPos(Player* player, float raiseM = 0.0f);
-// The item center: palmOffsetM out of the palm, and forwardM in front of the fist. False when the
-// hand is not tracked.
-bool PosInHand(int hand, float palmOffsetM, float* outXyz, float forwardM = 0.0f);
+// The item center, palmOffsetM in front of the palm. False when the hand is not tracked.
+bool PosInHand(int hand, float palmOffsetM, float* outXyz);
 // The haptics of the reach and the grab. Updates inReach.
 void Haptics(const VrBeltThrow::Result& r, bool inReach[2]);
 

@@ -23,9 +23,8 @@ constexpr float kNutModelDiameter = 100.0f;
 constexpr float kNutDiameterM = 0.08f;
 // The nut is above the bomb on the belt: the small nut is easier to see.
 constexpr float kBeltRaiseM = 0.1f;
-// The nut is between the thumb and the first finger: in front of the fist, out of the palm.
-constexpr float kForwardOffsetM = 0.06f;
-constexpr float kPalmOffsetM = 0.02f;
+// The hand stays open, and the nut is on the palm (VrGripHand.cpp).
+constexpr float kPalmOffsetM = 0.04f;
 
 // The draw scale of the nut model.
 inline float DrawScale(float unitsPerMeter) {

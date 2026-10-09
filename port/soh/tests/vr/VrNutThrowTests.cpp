@@ -78,21 +78,7 @@ static void TestTheNutHasTheSameRealSizeForChildAndAdult() {
     EXPECT(Near(DrawScale(37.0f) * kNutModelDiameter / 37.0f, kNutDiameterM, 0.001f));
 }
 
-static void TestTheNutIsInFrontOfTheFist() {
-    const float s = 40.0f;
-    // -Z of the OpenXR grip pose points forward, along the controller.
-    const float identity[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-    Vec3 o = ForwardOffset(identity, s, kForwardOffsetM);
-    EXPECT(Near(o.x, 0.0f) && Near(o.y, 0.0f) && Near(o.z, -kForwardOffsetM * s));
-    // The hand points down (-90 degrees about +X).
-    const float h = std::sqrt(0.5f);
-    const float down[4] = { -h, 0.0f, 0.0f, h };
-    o = ForwardOffset(down, s, kForwardOffsetM);
-    EXPECT(Near(o.x, 0.0f) && Near(o.y, -kForwardOffsetM * s) && Near(o.z, 0.0f));
-}
-
 int main() {
-    TestTheNutIsInFrontOfTheFist();
     TestTheNutGoesBackWhenTheHandStopsCarrying();
     TestThrowVelocityIsInGameUnitsForEachTick();
     TestTheFastestThrowIsLimited();

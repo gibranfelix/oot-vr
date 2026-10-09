@@ -89,17 +89,16 @@ VrBeltThrow::Vec3 VrBelt::BeltPos(Player* player, float raiseM) {
     return p;
 }
 
-bool VrBelt::PosInHand(int hand, float palmOffsetM, float* outXyz, float forwardM) {
+bool VrBelt::PosInHand(int hand, float palmOffsetM, float* outXyz) {
     float quat[4];
     if (!VR_GetHandPose(hand, outXyz, quat)) {
         return false;
     }
-    const float upm = UnitsPerMeter();
-    const VrBeltThrow::Vec3 p = VrBeltThrow::PalmOffset(quat, hand == VR_HAND_LEFT, upm, palmOffsetM);
-    const VrBeltThrow::Vec3 f = VrBeltThrow::ForwardOffset(quat, upm, forwardM);
-    outXyz[0] += p.x + f.x;
-    outXyz[1] += p.y + f.y;
-    outXyz[2] += p.z + f.z;
+    const VrBeltThrow::Vec3 o =
+        VrBeltThrow::PalmOffset(quat, hand == VR_HAND_LEFT, UnitsPerMeter(), palmOffsetM);
+    outXyz[0] += o.x;
+    outXyz[1] += o.y;
+    outXyz[2] += o.z;
     return true;
 }
 

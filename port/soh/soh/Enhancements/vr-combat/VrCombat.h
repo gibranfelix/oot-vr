@@ -192,6 +192,8 @@ bool VrCombat_NutBeltUseNow(struct Player* player);
 bool VrCombat_NutBeltPos(struct Player* player, float* outXyz);
 bool VrCombat_NutHeldPos(struct Player* player, float* outXyz);
 float VrCombat_NutDrawScale(void);
+// The VR hand that holds the nut, or -1.
+int32_t VrCombat_NutHand(void);
 // The EnArrow timer of a nut from the hand.
 uint8_t VrCombat_NutFlightTicks(void);
 bool VrCombat_NutGripConsumed(int32_t vrHand, uint16_t vrBtnMask);
