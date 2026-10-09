@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>OoT VR – VR Settings mockup</title>
+<style>
+  :root {
+    --bg: #101114;
+    --panel: #17181c;
+    --line: #2a2c33;
+    --text: #e8e8ea;
+    --dim: #9a9ca5;
+    --accent: #1f5eff;
+    --accent-soft: #1b2b55;
+    --chip: #22242b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: grid; place-items: center;
+    background: radial-gradient(ellipse at top, #4b7bd1 0%, #8fb6e8 45%, #5c8f3a 46%, #3f6b26 100%);
+    font-family: "Montserrat", "Segoe UI", system-ui, sans-serif; color: var(--text);
+  }
+  /* The panel swapchain is 4:3. */
+  .panel {
+    width: 1024px; height: 768px; background: var(--bg); border-radius: 6px;
+    display: grid; grid-template-rows: 56px 1fr; overflow: hidden;
+    box-shadow: 0 30px 80px rgba(0,0,0,.55);
+  }
+  .top { display: flex; align-items: center; gap: 6px; padding: 0 16px; border-bottom: 2px solid #fff2; }
+  .top .tab { padding: 8px 14px; border-radius: 4px; color: var(--dim); font-size: 17px; }
+  .top .tab.on { background: var(--accent); color: #fff; }
+  .top .spacer { flex: 1; }
+  .top .close { width: 36px; height: 36px; border-radius: 6px; background: #c0262d; display: grid; place-items: center; font-weight: 700; }
+  .body { display: grid; grid-template-columns: 210px 1fr; min-height: 0; }
+  .side { border-right: 1px solid var(--line); padding: 14px 10px; display: flex; flex-direction: column; gap: 4px; }
+  .side button {
+    all: unset; cursor: pointer; padding: 11px 14px; border-radius: 6px; font-size: 18px; color: var(--text);
+  }
+  .side button.on { background: var(--accent); }
+  .side button:hover:not(.on) { background: var(--chip); }
+  .side .sep { flex: 1; }
+  .side .dev { color: var(--dim); font-size: 15px; }
+  .side .dev small { display: block; font-size: 12px; color: #6d6f78; }
+  .content { padding: 18px 22px; overflow-y: auto; }
+  .page { display: none; }
+  .page.on { display: block; }
+  h2 { margin: 0 0 4px; font-size: 22px; }
+  .lead { margin: 0 0 16px; color: var(--dim); font-size: 15px; }
+
+  /* Big cards: the main choices. */
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  .card.wide { grid-column: span 2; }
+  .card .label { font-size: 17px; font-weight: 600; margin-bottom: 10px; display: flex; gap: 8px; align-items: center; }
+  .card .label .ico { font-size: 20px; }
+  .seg { display: flex; gap: 8px; }
+  .seg button {
+    all: unset; cursor: pointer; flex: 1; text-align: center; padding: 14px 8px; border-radius: 8px;
+    background: var(--chip); font-size: 17px; border: 2px solid transparent; line-height: 1.15;
+  }
+  .seg button small { display: block; font-size: 12.5px; color: var(--dim); margin-top: 3px; }
+  .seg button.on { background: var(--accent-soft); border-color: var(--accent); }
+  .seg button.on small { color: #b9c8ff; }
+
+  /* Normal rows: the details. */
+  .group { margin: 18px 0 8px; font-size: 14px; color: var(--dim); text-transform: uppercase; letter-spacing: .08em; display: flex; align-items: center; gap: 10px; }
+  .group::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .row { display: grid; grid-template-columns: 260px 1fr; align-items: center; gap: 14px; padding: 7px 0; font-size: 16px; }
+  .slider { position: relative; height: 34px; background: var(--accent); border-radius: 4px; display: grid; place-items: center; font-size: 15px; }
+  .slider::before { content: ""; position: absolute; left: var(--p); top: 3px; width: 26px; height: 28px; background: #ffffff55; border-radius: 3px; transform: translateX(-50%); }
+  .check { display: flex; align-items: center; gap: 12px; font-size: 16px; padding: 7px 0; }
+  .check i { width: 28px; height: 28px; border-radius: 4px; background: var(--accent); display: grid; place-items: center; font-style: normal; font-weight: 700; }
+  .check i.off { background: var(--chip); }
+  .select { background: var(--accent); padding: 7px 12px; border-radius: 4px; font-size: 15px; justify-self: start; min-width: 200px; display: flex; justify-content: space-between; }
+  .hint { font-size: 13px; color: var(--dim); margin-top: -2px; }
+
+  .map { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .map table { width: 100%; border-collapse: collapse; font-size: 15px; background: var(--panel); border-radius: 10px; overflow: hidden; }
+  .map th { text-align: left; padding: 9px 12px; background: #1d1f25; font-size: 15px; }
+  .map td { padding: 7px 12px; border-top: 1px solid var(--line); }
+  .map td:last-child { color: #b9c8ff; }
+
+  .devlist { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .devlist div { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; font-size: 15px; }
+  .devlist div small { display: block; color: var(--dim); font-size: 13px; margin-top: 3px; }
+</style>
+</head>
+<body>
+<div class="panel">
+  <div class="top">
+    <span class="tab">Settings</span>
+    <span class="tab on">VR</span>
+    <span class="tab">Enhancements</span>
+    <span class="tab">Randomizer</span>
+    <span class="spacer"></span>
+    <span class="close">✕</span>
+  </div>
+  <div class="body">
+    <nav class="side">
+      <button data-p="quick" class="on">Quick Setup</button>
+      <button data-p="move">Movement</button>
+      <button data-p="controls">Controls</button>
+      <button data-p="hud">HUD</button>
+      <button data-p="display">Display</button>
+      <span class="sep"></span>
+      <button data-p="dev" class="dev">Developer<small>Shows only with Dev Tools on</small></button>
+    </nav>
+
+    <main class="content">
+      <!-- QUICK SETUP -->
+      <section class="page on" id="quick">
+        <h2>Quick Setup</h2>
+        <p class="lead">The main choices. Each tab on the left has more settings.</p>
+        <div class="cards">
+          <div class="card">
+            <div class="label"><span class="ico">👁</span>View</div>
+            <div class="seg"><button class="on">First Person<small>You are Link</small></button><button>Third Person<small>Camera behind Link</small></button></div>
+          </div>
+          <div class="card">
+            <div class="label"><span class="ico">🗡</span>Sword hand</div>
+            <div class="seg"><button class="on">Right</button><button>Left</button></div>
+          </div>
+          <div class="card wide">
+            <div class="label"><span class="ico">🕹</span>Right stick</div>
+            <div class="seg" id="stick">
+              <button class="on" data-v="items">Items<small>Flick to take a C item<br>Turn with your body</small></button>
+              <button data-v="snap">Snap Turn<small>Turn in steps</small></button>
+              <button data-v="smooth">Smooth Turn<small>Turn without steps</small></button>
+            </div>
+          </div>
+          <div class="card wide">
+            <div class="label"><span class="ico">🎒</span>Use items</div>
+            <div class="seg" id="items">
+              <button class="on" data-v="sel">Item Selector<small id="h-sel"></small></button>
+              <button data-v="c">C Buttons<small id="h-c"></small></button>
+            </div>
+          </div>
+          <div class="card wide">
+            <div class="label"><span class="ico">❤</span>Hearts and items (HUD)</div>
+            <div class="seg"><button>In Front</button><button class="on">On the Wrist</button><button>On the Left Hand</button><button>On the Right Hand</button></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MOVEMENT -->
+      <section class="page" id="move">
+        <h2>Movement</h2>
+        <div class="cards">
+          <div class="card wide">
+            <div class="label">Right stick</div>
+            <div class="seg"><button class="on">Items<small>Turn with your body</small></button><button>Snap Turn</button><button>Smooth Turn</button></div>
+          </div>
+        </div>
+        <div class="group">Turning</div>
+        <div class="row"><span>Snap angle</span><div class="slider" style="--p:40%">45°</div></div>
+        <div class="row"><span>Smooth speed</span><div class="slider" style="--p:50%">120°/s</div></div>
+        <div class="check"><i>✓</i>Turn speed follows the stick</div>
+        <div class="group">Body</div>
+        <div class="check"><i>✓</i>Link walks where you look</div>
+        <div class="check"><i>✓</i>Make me the size of Link</div>
+        <div class="row"><span>Eye height</span><div class="slider" style="--p:45%">-9.0</div></div>
+        <div class="group">Z-targeting</div>
+        <div class="check"><i>✓</i>Turn the camera to the target</div>
+        <div class="row"><span>Turn speed</span><div class="slider" style="--p:60%">180°/s</div></div>
+      </section>
+
+      <!-- CONTROLS -->
+      <section class="page" id="controls">
+        <h2>Controls</h2>
+        <div class="cards">
+          <div class="card wide">
+            <div class="label">Use items</div>
+            <div class="seg">
+              <button class="on">Item Selector<small>Hold the stick click, move your hand to the item</small></button>
+              <button>C Buttons<small>Each item is on a button</small></button>
+            </div>
+          </div>
+        </div>
+        <div class="group">Item Selector</div>
+        <div class="row"><span>Hand</span><div class="select">Sword hand <span>▾</span></div></div>
+        <div class="row"><span>Hold to open</span><div class="select">Stick click <span>▾</span></div></div>
+        <div class="row"><span>Hand distance</span><div class="slider" style="--p:20%">5 cm</div></div>
+        <div class="group">Buttons</div>
+        <div class="map">
+          <table><tr><th>Left controller</th><th></th></tr>
+            <tr><td>Trigger</td><td>Use the item</td></tr>
+            <tr><td>Grip</td><td>Take from the belt</td></tr>
+            <tr><td>X</td><td>—</td></tr>
+            <tr><td>Y</td><td>This menu</td></tr>
+            <tr><td>Menu</td><td>Pause</td></tr></table>
+          <table><tr><th>Right controller</th><th></th></tr>
+            <tr><td>Trigger</td><td>Z-target</td></tr>
+            <tr><td>Grip</td><td>Boomerang, belt</td></tr>
+            <tr><td>A</td><td>A</td></tr>
+            <tr><td>B</td><td>B</td></tr>
+            <tr><td>Stick click</td><td>Item Selector</td></tr></table>
+        </div>
+        <p class="hint">Point at a button and push A to change it.</p>
+      </section>
+
+      <!-- HUD -->
+      <section class="page" id="hud">
+        <h2>HUD</h2>
+        <div class="cards">
+          <div class="card wide">
+            <div class="label">Hearts and items</div>
+            <div class="seg"><button>In Front</button><button class="on">On the Wrist</button><button>On the Left Hand</button><button>On the Right Hand</button></div>
+          </div>
+        </div>
+        <div class="group">Wrist</div>
+        <div class="check"><i>✓</i>Show only when I look at the wrist</div>
+        <div class="row"><span>Size</span><div class="slider" style="--p:35%">0.12 m</div></div>
+        <div class="row"><span>Up / down</span><div class="slider" style="--p:50%">0.03 m</div></div>
+        <div class="group">This menu</div>
+        <div class="row"><span>Distance</span><div class="slider" style="--p:40%">1.5 m</div></div>
+        <div class="row"><span>Size</span><div class="slider" style="--p:50%">1.6 m</div></div>
+      </section>
+
+      <!-- DISPLAY -->
+      <section class="page" id="display">
+        <h2>Display</h2>
+        <div class="group">Display</div>
+        <div class="row"><span>Resolution</span><div class="slider" style="--p:70%">1.00</div></div>
+        <div class="row"><span>Refresh rate</span><div class="select">Automatic <span>▾</span></div></div>
+        <div class="check"><i class="off"></i>Show the body of Link</div>
+        <div class="check"><i class="off"></i>Black bars in cutscenes</div>
+        <div class="check"><i>✓</i>Stay in VR when I take off the headset</div>
+      </section>
+
+      <!-- DEVELOPER -->
+      <section class="page" id="dev">
+        <h2>Developer</h2>
+        <p class="lead">For tests and tuning. The player does not need these settings.</p>
+        <div class="devlist">
+          <div>Sword and hammer physics<small>53 settings: speeds, colliders, inertia</small></div>
+          <div>Shield shape<small>11 settings</small></div>
+          <div>Hand calibration<small>21 settings: rotation, position, left hand</small></div>
+          <div>Render cost<small>Stereo divisor, HUD per tick, companion window</small></div>
+          <div>Live frame cost<small>Hz, ms per pass</small></div>
+          <div>Diagnostics<small>Debug overlay, physics log, haptic test</small></div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+<script>
+  document.querySelectorAll('.side button').forEach(b => b.onclick = () => {
+    document.querySelectorAll('.side button').forEach(x => x.classList.toggle('on', x === b));
+    document.querySelectorAll('.page').forEach(p => p.classList.toggle('on', p.id === b.dataset.p));
+  });
+  document.querySelectorAll('.seg').forEach(s => s.querySelectorAll('button').forEach(b => b.onclick = () => {
+    s.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  }));
+  // The right stick has one job. The hints of "Use items" tell where the items go.
+  function hints() {
+    const stick = document.querySelector('#stick .on').dataset.v;
+    document.getElementById('h-sel').innerHTML = stick === 'items'
+      ? 'Flick the stick, or hold the stick click and move your hand'
+      : 'Hold the stick click and move your hand';
+    document.getElementById('h-c').innerHTML = stick === 'items'
+      ? 'Flick the stick, or use X, B and Menu'
+      : 'Use X, B and Menu';
+  }
+  document.querySelectorAll('#stick button').forEach(b => b.addEventListener('click', hints));
+  hints();
+  const q = new URLSearchParams(location.search);
+  if (q.get('stick')) document.querySelector(`#stick [data-v="${q.get('stick')}"]`).click();
+  const p = new URLSearchParams(location.search).get('p');
+  if (p) document.querySelector(`.side button[data-p="${p}"]`)?.click();
+</script>
+</body>
+</html>
