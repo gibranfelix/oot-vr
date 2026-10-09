@@ -35,9 +35,7 @@ The script does these steps:
 
 The APK is at `port/Android/app/build/outputs/apk/debug/app-debug.apk`.
 
-If `ccache` is installed, the script uses it. To share the cache between
-worktrees, set `base_dir` to the parent directory of the worktrees and
-`hash_dir` to `false` in the ccache configuration.
+If `ccache` is installed, the script uses it.
 
 ## Make the game assets: `oot.o2r`
 
