@@ -167,8 +167,8 @@ bool VrCombat_BoomerangTriggerThrow(const float* targetXyz, VrCombatBoomerangThr
 bool VrCombat_BoomerangTakeGripThrow(const float* targetXyz, VrCombatBoomerangThrow* out);
 bool VrCombat_BoomerangAimMark(struct PlayState* play, float* outHitXyz);
 bool VrCombat_BoomerangGripConsumed(int32_t vrHand, uint16_t vrBtnMask);
-// The bomb belt (VrBomb.cpp). velocity: units for each tick. The Take functions return the event
-// of the last tick one time.
+// The bomb belt (VrBomb.cpp), also for the bombchu. velocity: units for each tick. The Take
+// functions return the event of the last tick one time.
 typedef struct VrCombatBombRelease {
     float pos[3];
     float velocity[3];
@@ -181,9 +181,15 @@ bool VrCombat_BombTakeGrab(void);
 bool VrCombat_BombHeldPos(struct Player* player, float* outXyz);
 bool VrCombat_BombTakeRelease(VrCombatBombRelease* out);
 bool VrCombat_BombGripConsumed(int32_t vrHand, uint16_t vrBtnMask);
-// The scale of the bomb model in VR first person: the bomb has the same real size for child Link
+// HeldYaw: where the bombchu in the hand will run. TakeStart: the start point and the run
+// direction of a bombchu that left the hand, one time. False for other bombchus.
+bool VrCombat_BombchuHeldYaw(struct Player* player, int16_t* outYaw);
+bool VrCombat_BombchuTakeStart(struct Actor* chu, float* outXyz, int16_t* outYaw);
+// The scale of the bomb and bombchu models in VR first person: the same real size for child Link
 // and adult Link. 1 when VR is off.
 float VrCombat_BombDrawScale(void);
+// The height of the model center above the actor position, with the draw scale.
+float VrCombat_BombCenterHeight(struct Player* player);
 // The Deku nut belt (VrNut.cpp). NutTakesOut: the item selector puts the nut on the belt.
 bool VrCombat_NutBeltOn(void);
 bool VrCombat_NutUsesBelt(struct Player* player);

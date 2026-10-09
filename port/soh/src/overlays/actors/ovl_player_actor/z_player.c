@@ -12848,7 +12848,8 @@ void Player_DrawGameplay(PlayState* play, Player* this, s32 lod, Gfx* cullDList,
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
-// SOH [VR] The bomb on the belt: the EnBom_Draw model without the fuse flash. pos is the center.
+// SOH [VR] The bomb or the bombchu on the belt, without the fuse flash or the blink. pos is the
+// center.
 static void Player_VrDrawBeltBomb(PlayState* play, Player* this) {
     Vec3f pos;
     Vec3f lightDir;
@@ -12865,18 +12866,28 @@ static void Player_VrDrawBeltBomb(PlayState* play, Player* this) {
 
     Gfx_SetupDL_25Opa(play->state.gfxCtx);
     Matrix_Push();
-    Matrix_Translate(pos.x, pos.y, pos.z, MTXMODE_NEW);
-    Matrix_Scale(scale, scale, scale, MTXMODE_APPLY);
-    Matrix_ReplaceRotation(&play->billboardMtxF);
-    func_8002EABC(&pos, &play->view.eye, &lightDir, play->state.gfxCtx);
-    gSPMatrix(POLY_OPA_DISP++, MATRIX_NEWMTX(play->state.gfxCtx), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gSPDisplayList(POLY_OPA_DISP++, gBombCapDL);
-    Matrix_RotateZYX(0x4000, 0, 0, MTXMODE_APPLY);
-    gSPMatrix(POLY_OPA_DISP++, MATRIX_NEWMTX(play->state.gfxCtx), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gDPPipeSync(POLY_OPA_DISP++);
-    gDPSetEnvColor(POLY_OPA_DISP++, 0, 0, 40, 255);
-    gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 0, 0, 40, 255);
-    gSPDisplayList(POLY_OPA_DISP++, gBombBodyDL);
+    if (this->heldItemAction == PLAYER_IA_BOMBCHU) {
+        Matrix_Translate(pos.x, pos.y - VrCombat_BombCenterHeight(this), pos.z, MTXMODE_NEW);
+        Matrix_RotateY(BINANG_TO_RAD(this->actor.shape.rot.y), MTXMODE_APPLY);
+        Matrix_Scale(scale, scale, scale, MTXMODE_APPLY);
+        func_8002EABC(&pos, &play->view.eye, &lightDir, play->state.gfxCtx);
+        gSPMatrix(POLY_OPA_DISP++, MATRIX_NEWMTX(play->state.gfxCtx), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+        gDPSetEnvColor(POLY_OPA_DISP++, 9, 9, 35, 255);
+        gSPDisplayList(POLY_OPA_DISP++, gBombchuDL);
+    } else {
+        Matrix_Translate(pos.x, pos.y, pos.z, MTXMODE_NEW);
+        Matrix_Scale(scale, scale, scale, MTXMODE_APPLY);
+        Matrix_ReplaceRotation(&play->billboardMtxF);
+        func_8002EABC(&pos, &play->view.eye, &lightDir, play->state.gfxCtx);
+        gSPMatrix(POLY_OPA_DISP++, MATRIX_NEWMTX(play->state.gfxCtx), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+        gSPDisplayList(POLY_OPA_DISP++, gBombCapDL);
+        Matrix_RotateZYX(0x4000, 0, 0, MTXMODE_APPLY);
+        gSPMatrix(POLY_OPA_DISP++, MATRIX_NEWMTX(play->state.gfxCtx), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+        gDPPipeSync(POLY_OPA_DISP++);
+        gDPSetEnvColor(POLY_OPA_DISP++, 0, 0, 40, 255);
+        gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 0, 0, 40, 255);
+        gSPDisplayList(POLY_OPA_DISP++, gBombBodyDL);
+    }
     Matrix_Pop();
 
     CLOSE_DISPS(play->state.gfxCtx);

@@ -2118,6 +2118,10 @@ void Player_PostLimbDrawGameplay(PlayState* play, s32 limbIndex, Gfx** dList, Ve
                         hookedActor->world.rot.x = hookedActor->shape.rot.x = spB8.x - this->unk_3BC.x;
                     } else {
                         hookedActor->world.rot.y = hookedActor->shape.rot.y = this->actor.shape.rot.y + this->unk_3BC.y;
+                        // SOH [VR] A bombchu from the belt points where it will run.
+                        if (VrCombat_BombchuHeldYaw(this, &hookedActor->shape.rot.y)) {
+                            hookedActor->world.rot.y = hookedActor->shape.rot.y;
+                        }
                     }
                 }
             } else {
