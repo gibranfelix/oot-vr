@@ -238,7 +238,11 @@ void EnArrow_Shoot(EnArrow* this, PlayState* play) {
         EnArrow_SetupAction(this, EnArrow_Fly);
         Math_Vec3f_Copy(&this->unk_210, &this->actor.world.pos);
 
-        if (this->actor.params >= ARROW_SEED) {
+        if (this->vrFromHand) {
+            // SOH [VR] The speed and the gravity come from the hand.
+            this->timer = VrCombat_NutFlightTicks();
+            this->actor.shape.rot.x = this->actor.shape.rot.y = this->actor.shape.rot.z = 0;
+        } else if (this->actor.params >= ARROW_SEED) {
             Actor_SetProjectileSpeed(&this->actor, 80.0f);
             this->timer = 15;
             this->actor.shape.rot.x = this->actor.shape.rot.y = this->actor.shape.rot.z = 0;
@@ -312,8 +316,9 @@ void EnArrow_Fly(EnArrow* this, PlayState* play) {
         return;
     }
 
-    // SOH [VR] vrExtraFrames: gravity starts on the same move as in the vanilla flight.
-    if (this->timer < 7.2000003f + this->vrExtraFrames) {
+    // SOH [VR] vrExtraFrames: gravity starts on the same move as in the vanilla flight. A nut from
+    // the hand keeps its gravity.
+    if (!this->vrFromHand && (this->timer < 7.2000003f + this->vrExtraFrames)) {
         this->actor.gravity = -0.4f;
     }
 
@@ -517,7 +522,7 @@ void EnArrow_Draw(Actor* thisx, PlayState* play) {
         Gfx_SetupDL_25Opa(play->state.gfxCtx);
         SkelAnime_DrawLod(play, this->skelAnime.skeleton, this->skelAnime.jointTable, NULL, NULL, this,
                           (this->actor.projectedPos.z < MREG(95)) ? 0 : 1);
-    } else if (this->actor.speedXZ != 0.0f) {
+    } else if ((this->actor.speedXZ != 0.0f) || this->vrFromHand) { // SOH [VR] A drop has no speed.
         alpha = (Math_CosS(this->timer * 5000) * 127.5f) + 127.5f;
 
         OPEN_DISPS(play->state.gfxCtx);

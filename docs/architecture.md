@@ -48,7 +48,7 @@ The VR code that is new has its own files:
 | `port/libultraship/include/vr_interface.h` | The declarations of the `VR_*` functions, with comments |
 | `port/libultraship/src/fast/vr_physics.cpp` | The collision mesh for the physical hands |
 | `port/libultraship/src/fast/vr_menu_input.cpp` | The SoH menu with the Touch controllers: the Y toggle, the menu navigation, and the input filter for the game |
-| `port/soh/soh/Enhancements/vr-combat/` | Sword and hammer swing, shield, bow and boomerang aim, bomb belt, and item selection |
+| `port/soh/soh/Enhancements/vr-combat/` | Sword and hammer swing, shield, bow and boomerang aim, belt, and item selection |
 | `port/soh/soh/SohGui/SohMenuVRSettings.cpp` | The VR settings menu |
 
 ## Render path
@@ -180,6 +180,21 @@ scale.
 
 The math is in `VrBombThrow.h`. The host unit tests are in
 `port/soh/tests/vr/VrBombThrowTests.cpp`.
+
+## Deku nut belt
+
+The Deku nut uses the same belt as the bomb. `VrBelt.cpp` and `VrBeltThrow.h`
+contain the shared code. The nut has no actor on the belt or in the hand.
+
+| Step | Code |
+|---|---|
+| The item selector takes the nut out | `Player_UseItem` sets `PLAYER_IA_DEKU_NUT`. It does not throw the nut. |
+| The grip is released | `VrNut.cpp` spawns an `EnArrow` nut with the hand velocity. |
+| The nut flies | `EnArrow` keeps the gravity of the hand (`vrFromHand`). |
+| The off-hand trigger | `Player_UseItem` does the vanilla nut throw. |
+
+The nut has no collider, as in the vanilla game. It flashes when it touches a
+wall or the floor.
 
 ## Ranged weapons
 

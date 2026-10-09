@@ -7,6 +7,7 @@ extern PlayState* gPlayState;
 }
 
 #include "VrCombat.h"
+#include "VrBelt.h"
 #include "VrBombThrow.h"
 
 #include "soh/Enhancements/game-interactor/GameInteractor.h"
@@ -30,27 +31,6 @@ VrCombatBombRelease sRelease;
 constexpr int kRefillTicks = 10;
 int sRefillTicks = kRefillTicks;
 
-// Link cannot take a bomb in these states.
-constexpr uint32_t kNoBeltFlags =
-    PLAYER_STATE1_LOADING | PLAYER_STATE1_INPUT_DISABLED | PLAYER_STATE1_TALKING | PLAYER_STATE1_DEAD |
-    PLAYER_STATE1_START_CHANGING_HELD_ITEM | PLAYER_STATE1_GETTING_ITEM | PLAYER_STATE1_CARRYING_ACTOR |
-    PLAYER_STATE1_HANGING_OFF_LEDGE | PLAYER_STATE1_CLIMBING_LEDGE | PLAYER_STATE1_FIRST_PERSON |
-    PLAYER_STATE1_CLIMBING_LADDER | PLAYER_STATE1_ON_HORSE | PLAYER_STATE1_DAMAGED | PLAYER_STATE1_IN_WATER |
-    PLAYER_STATE1_IN_ITEM_CS | PLAYER_STATE1_IN_CUTSCENE;
-
-int SwordHand() {
-    return CVarGetInteger("gVrLeftHanded", 0) ? VR_HAND_LEFT : VR_HAND_RIGHT;
-}
-
-bool OffHandTriggerHeld() {
-    return (VR_GetControllerButton(SwordHand() ^ 1) & VR_BTN_TRIGGER) != 0;
-}
-
-float UnitsPerMeter() {
-    const float ws = VR_GetWorldScale();
-    return (ws < 1.0f) ? 35.0f : ws;
-}
-
 // The EnBom position is the bottom of the bomb. This is the height of the center.
 float CenterHeight() {
     return 0.5f * VrBombThrow::kBombModelDiameter * VrCombat_BombDrawScale();
@@ -69,40 +49,15 @@ bool ExplosiveLimit(PlayState* play) {
 
 bool BeltReady(Player* player) {
     return (gPlayState != NULL) && VrCombat_BombUsesBelt(player) && (player->heldActor == NULL) &&
-           !(player->stateFlags1 & kNoBeltFlags) && (AMMO(ITEM_BOMB) > 0) && !ExplosiveLimit(gPlayState) &&
-           (sRefillTicks == 0);
-}
-
-VrBombThrow::Vec3 BeltPosNow(Player* player) {
-    float eye[3];
-    float fwd[3];
-    float up[3];
-    VR_GetCameraPose(eye, fwd, up);
-    const float yaw = player->actor.shape.rot.y * (M_PI / 0x8000);
-    return VrBombThrow::BeltAnchor({ eye[0], eye[1], eye[2] }, yaw, UnitsPerMeter());
-}
-
-VrBombThrow::HandInput Hand(int hand) {
-    float pos[3];
-    float quat[4];
-    VrBombThrow::HandInput h;
-    h.gripHeld = (VR_GetControllerButton(hand) & VR_BTN_GRIP) != 0;
-    // An untracked hand is far from the belt.
-    h.pos = VR_GetHandPose(hand, pos, quat) ? VrBombThrow::Vec3{ pos[0], pos[1], pos[2] }
-                                             : VrBombThrow::Vec3{ 1.0e6f, 1.0e6f, 1.0e6f };
-    return h;
+           !VrBelt::Blocked(player) && (AMMO(ITEM_BOMB) > 0) && !ExplosiveLimit(gPlayState) && (sRefillTicks == 0);
 }
 
 // The EnBom position for a bomb in the hand: the bomb center is in front of the palm.
 bool BombPosInHand(int hand, float* outXyz) {
-    float quat[4];
-    if (!VR_GetHandPose(hand, outXyz, quat)) {
+    if (!VrBelt::PosInHand(hand, VrBombThrow::kPalmOffsetM, outXyz)) {
         return false;
     }
-    const VrBombThrow::Vec3 o = VrBombThrow::PalmOffset(quat, hand == VR_HAND_LEFT, UnitsPerMeter());
-    outXyz[0] += o.x;
-    outXyz[1] += o.y - CenterHeight();
-    outXyz[2] += o.z;
+    outXyz[1] -= CenterHeight();
     return true;
 }
 
@@ -134,18 +89,7 @@ void VrCombat::Bomb_OnPlayerUpdate(Player* player) {
         sReleaseReady = false;
         return;
     }
-    for (int hand = 0; hand < 2; hand++) {
-        const TickPath& path = GetTickPath(hand);
-        if (path.count == 0) {
-            sHolder.Clear(hand);
-        }
-        for (int i = 0; i < path.count; i++) {
-            const VrHandSample& s = path.samples[i];
-            sHolder.AddSample(hand, { { s.pos[0], s.pos[1], s.pos[2] },
-                                      { s.linVelMps[0], s.linVelMps[1], s.linVelMps[2] },
-                                      s.timeNs });
-        }
-    }
+    VrBelt::Feed(sHolder);
 
     const bool carrying = Carrying(player);
     if (!carrying) {
@@ -157,27 +101,11 @@ void VrCombat::Bomb_OnPlayerUpdate(Player* player) {
         sRefillTicks--;
     }
 
-    VrBombThrow::Input in;
-    in.beltReady = BeltReady(player);
-    in.carrying = carrying;
-    in.swapChord = VrItemSelect_SwapChordHeld();
-    in.hands[VR_HAND_LEFT] = Hand(VR_HAND_LEFT);
-    in.hands[VR_HAND_RIGHT] = Hand(VR_HAND_RIGHT);
-    in.beltPos = BeltPosNow(player);
-    in.grabRadius = VrBombThrow::kGrabRadiusM * UnitsPerMeter();
-    in.firstHand = SwordHand();
-    const VrBombThrow::Result r = sHolder.Update(in);
-
-    for (int hand = 0; hand < 2; hand++) {
-        sInReach[hand] = r.inReach[hand];
-        if (r.reachPulse[hand]) {
-            VR_TriggerHaptic(hand, 0.25f, 0.0f, 15.0f);
-        }
-    }
+    const VrBombThrow::Result r = sHolder.Update(VrBelt::MakeInput(player, BeltReady(player), carrying));
+    VrBelt::Haptics(r, sInReach);
     switch (r.event) {
         case VrBombThrow::Event::Grab:
             sGrabReady = true;
-            VR_TriggerHaptic(r.hand, 0.5f, 0.0f, 35.0f);
             break;
         case VrBombThrow::Event::Throw:
             MakeRelease(player, r);
@@ -197,14 +125,14 @@ extern "C" bool VrCombat_BombUsesBelt(Player* player) {
 }
 
 extern "C" bool VrCombat_BombBeltUseNow(Player* player) {
-    return BeltReady(player) && OffHandTriggerHeld() && !VrItemSelect_BlocksUse(player);
+    return BeltReady(player) && VrBelt::OffHandTriggerHeld() && !VrItemSelect_BlocksUse(player);
 }
 
 extern "C" bool VrCombat_BombBeltPos(Player* player, float* outXyz) {
     if ((player == NULL) || !BeltReady(player)) {
         return false;
     }
-    const VrBombThrow::Vec3 p = BeltPosNow(player);
+    const VrBombThrow::Vec3 p = VrBelt::BeltPos(player);
     outXyz[0] = p.x;
     outXyz[1] = p.y;
     outXyz[2] = p.z;
@@ -234,7 +162,7 @@ extern "C" float VrCombat_BombDrawScale(void) {
     if (!VR_IsInitialized() || !VR_GetFirstPerson()) {
         return 1.0f;
     }
-    return VrBombThrow::DrawScale(UnitsPerMeter());
+    return VrBombThrow::DrawScale(VrBelt::UnitsPerMeter());
 }
 
 extern "C" bool VrCombat_BombTakeRelease(VrCombatBombRelease* out) {
@@ -260,7 +188,7 @@ static void RegisterVrBomb() {
     COND_VB_SHOULD(VB_THROW_OR_PUT_DOWN_HELD_ITEM, true, {
         Player* player = (gPlayState != NULL) ? GET_PLAYER(gPlayState) : NULL;
         if (VrCombat_BombUsesBelt(player) && Carrying(player) && (sHolder.Hand() >= 0) &&
-            (!OffHandTriggerHeld() || VrItemSelect_BlocksUse(player))) {
+            (!VrBelt::OffHandTriggerHeld() || VrItemSelect_BlocksUse(player))) {
             *should = false;
         }
     });

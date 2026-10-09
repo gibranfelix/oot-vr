@@ -184,6 +184,17 @@ bool VrCombat_BombGripConsumed(int32_t vrHand, uint16_t vrBtnMask);
 // The scale of the bomb model in VR first person: the bomb has the same real size for child Link
 // and adult Link. 1 when VR is off.
 float VrCombat_BombDrawScale(void);
+// The Deku nut belt (VrNut.cpp). NutTakesOut: the item selector puts the nut on the belt.
+bool VrCombat_NutBeltOn(void);
+bool VrCombat_NutUsesBelt(struct Player* player);
+bool VrCombat_NutTakesOut(struct Player* player);
+bool VrCombat_NutBeltUseNow(struct Player* player);
+bool VrCombat_NutBeltPos(struct Player* player, float* outXyz);
+bool VrCombat_NutHeldPos(struct Player* player, float* outXyz);
+float VrCombat_NutDrawScale(void);
+// The EnArrow timer of a nut from the hand.
+uint8_t VrCombat_NutFlightTicks(void);
+bool VrCombat_NutGripConsumed(int32_t vrHand, uint16_t vrBtnMask);
 // The physical shield's block collider in R_HAND limb model space (outXyz4 = 4 vertices x xyz,
 // vanilla zigzag order) — replaces the vanilla stance quad, whose size/offset never matched a
 // controller-held shield. Its size and position come from the mesh of the shield in the hand
@@ -220,6 +231,8 @@ bool WeaponAimOn();
 void Boomerang_OnPlayerUpdate(Player* player);
 // Call after the hand paths of the tick are read.
 void Bomb_OnPlayerUpdate(Player* player);
+// Call after the hand paths of the tick are read.
+void Nut_OnPlayerUpdate(Player* player);
 
 // Per-tick swing bookkeeping (VrSwing.cpp), driven from VrCombat's OnPlayerUpdate hook:
 // reads back last tick's quad results (hit haptics, one-hit-per-swing demotion), then resets
