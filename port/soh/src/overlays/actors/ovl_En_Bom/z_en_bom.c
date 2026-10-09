@@ -282,19 +282,23 @@ void EnBom_Update(Actor* thisx, PlayState* play2) {
 
     if (thisx->params == BOMB_BODY) {
         float timerMultiplier = CVarGetFloat(CVAR_CHEAT("BombTimerMultiplier"), 1.0f);
+        // SOH [VR] The fuse and the shadow follow the smaller VR bomb (EnBom_Draw).
+        f32 vrScale = VrCombat_BombDrawScale();
+
+        thisx->shape.shadowScale = 16.0f * vrScale;
         if (this->timer < (timerMultiplier == 1.0f ? 63 : (s32)(70 * timerMultiplier - 7))) {
             dustAccel.y = 0.2f;
 
             // spawn spark effect on even frames
             effPos = thisx->world.pos;
-            effPos.y += 17.0f;
+            effPos.y += 17.0f * vrScale; // SOH [VR]
             if ((play->gameplayFrames % 2) == 0) {
                 EffectSsGSpk_SpawnFuse(play, thisx, &effPos, &effVelocity, &effAccel);
             }
 
             Audio_PlayActorSound2(thisx, NA_SE_IT_BOMB_IGNIT - SFX_FLAG);
 
-            effPos.y += 3.0f;
+            effPos.y += 3.0f * vrScale; // SOH [VR]
             func_8002829C(play, &effPos, &effVelocity, &dustAccel, &dustColor, &dustColor, 50, 5);
         }
 

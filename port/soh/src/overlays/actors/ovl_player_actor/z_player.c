@@ -3328,34 +3328,8 @@ static s32 Player_VrReleaseBomb(Player* this, PlayState* play) {
     return true;
 }
 
-extern Gfx** sPlayerDListGroups[]; // SOH [VR] z_player_lib.c
-
-// SOH [VR] The hand that holds the bomb with the grip is closed. The other hand gets its model
-// back.
-static void Player_VrCloseBombHand(Player* this) {
-    static s32 sClosed = false;
-    bool swordHand;
-
-    if (VrCombat_BombInHand(this, &swordHand)) {
-        Player_SetModels(this, this->modelGroup);
-        if (swordHand) {
-            this->leftHandType = PLAYER_MODELTYPE_LH_CLOSED;
-            this->leftHandDLists = &sPlayerDListGroups[PLAYER_MODELTYPE_LH_CLOSED][gSaveContext.linkAge];
-        } else {
-            this->rightHandType = PLAYER_MODELTYPE_RH_CLOSED;
-            this->rightHandDLists = &sPlayerDListGroups[PLAYER_MODELTYPE_RH_CLOSED][gSaveContext.linkAge];
-        }
-        sClosed = true;
-    } else if (sClosed) {
-        Player_SetModels(this, this->modelGroup);
-        sClosed = false;
-    }
-}
-
 s32 Player_UpperAction_CarryActor(Player* this, PlayState* play) {
     Actor* heldActor = this->heldActor;
-
-    Player_VrCloseBombHand(this); // SOH [VR]
 
     if (heldActor == NULL) {
         // SOH [VR] The hands are empty, and the bomb waits on the belt.

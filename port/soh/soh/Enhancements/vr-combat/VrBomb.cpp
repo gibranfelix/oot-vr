@@ -93,10 +93,25 @@ VrBombThrow::HandInput Hand(int hand) {
     return h;
 }
 
+// The EnBom position for a bomb in the hand: the bomb center is in front of the palm.
+bool BombPosInHand(int hand, float* outXyz) {
+    float quat[4];
+    if (!VR_GetHandPose(hand, outXyz, quat)) {
+        return false;
+    }
+    const VrBombThrow::Vec3 o = VrBombThrow::PalmOffset(quat, hand == VR_HAND_LEFT, UnitsPerMeter());
+    outXyz[0] += o.x;
+    outXyz[1] += o.y - CenterHeight();
+    outXyz[2] += o.z;
+    return true;
+}
+
 void MakeRelease(Player* player, const VrBombThrow::Result& r) {
-    sRelease.pos[0] = r.pos.x;
-    sRelease.pos[1] = r.pos.y - CenterHeight();
-    sRelease.pos[2] = r.pos.z;
+    if (!BombPosInHand(r.hand, sRelease.pos)) {
+        sRelease.pos[0] = r.pos.x;
+        sRelease.pos[1] = r.pos.y - CenterHeight();
+        sRelease.pos[2] = r.pos.z;
+    }
     sRelease.thrown = (r.event == VrBombThrow::Event::Throw);
     VrBombThrow::Vec3 v = { 0.0f, 0.0f, 0.0f };
     if (sRelease.thrown) {
@@ -212,20 +227,7 @@ extern "C" bool VrCombat_BombHeldPos(Player* player, float* outXyz) {
         outXyz[2] = sRelease.pos[2];
         return true;
     }
-    float quat[4];
-    if ((sHolder.Hand() < 0) || !VR_GetHandPose(sHolder.Hand(), outXyz, quat)) {
-        return false;
-    }
-    outXyz[1] -= CenterHeight();
-    return true;
-}
-
-extern "C" bool VrCombat_BombInHand(Player* player, bool* swordHand) {
-    if ((player == NULL) || !VrCombat_BombUsesBelt(player) || !Carrying(player) || (sHolder.Hand() < 0)) {
-        return false;
-    }
-    *swordHand = (sHolder.Hand() == SwordHand());
-    return true;
+    return (sHolder.Hand() >= 0) && BombPosInHand(sHolder.Hand(), outXyz);
 }
 
 extern "C" float VrCombat_BombDrawScale(void) {

@@ -172,8 +172,11 @@ has no fuse and no ammo cost.
 | A throw is done | `Player_DetachHeldActor` keeps the bombs selected. |
 
 In VR first person, `EnBom_Draw` draws the bomb 15 cm wide in the real world,
-for child Link and adult Link. The explosion size does not change. The throw
-distance does not use the world scale.
+for child Link and adult Link. The fuse and the shadow follow this size. The
+explosion size does not change. The throw distance does not use the world
+scale.
+
+`VrGripHand.cpp` closes an empty hand of Link while the player holds the grip.
 
 The math is in `VrBombThrow.h`. The host unit tests are in
 `port/soh/tests/vr/VrBombThrowTests.cpp`.

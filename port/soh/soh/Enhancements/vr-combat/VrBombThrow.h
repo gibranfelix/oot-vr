@@ -16,7 +16,10 @@ using Sample = VrHandThrow::Sample;
 constexpr float kBeltBelowEyesM = 0.6f;
 constexpr float kBeltForwardM = 0.2f;
 // The hand takes the bomb at this distance from the belt.
-constexpr float kGrabRadiusM = 0.15f;
+constexpr float kGrabRadiusM = 0.22f;
+// A grip that is pushed this number of ticks (0.3 s) before the hand gets to the belt takes the
+// bomb.
+constexpr int kGripGraceTicks = 6;
 // Slower than kMinThrowSpeedMps: the bomb falls from the hand.
 constexpr float kMinThrowSpeedMps = 1.5f;
 // The throw does not use the world scale: child Link and adult Link throw the same distance.
@@ -42,6 +45,21 @@ inline Vec3 BeltAnchor(const Vec3& eye, float yawRad, float unitsPerMeter) {
     const float fwd = kBeltForwardM * unitsPerMeter;
     return { eye.x + std::sin(yawRad) * fwd, eye.y - kBeltBelowEyesM * unitsPerMeter,
              eye.z + std::cos(yawRad) * fwd };
+}
+
+// The bomb center is this distance out of the palm, thus the closed hand does not go into it.
+constexpr float kPalmOffsetM = 0.05f;
+
+// quat: the grip pose (x, y, z, w). +X of the OpenXR grip pose goes out of the left palm and into
+// the right palm.
+inline Vec3 PalmOffset(const float quat[4], bool leftHand, float unitsPerMeter) {
+    const float d = (leftHand ? 1.0f : -1.0f) * kPalmOffsetM * unitsPerMeter;
+    const float x = quat[0];
+    const float y = quat[1];
+    const float z = quat[2];
+    const float w = quat[3];
+    // The local +X axis of the rotation.
+    return { d * (1.0f - 2.0f * (y * y + z * z)), d * (2.0f * (x * y + w * z)), d * (2.0f * (x * z - w * y)) };
 }
 
 // The hand velocity in m/s to the bomb velocity in units for each tick.
@@ -101,6 +119,15 @@ class Holder {
     // Call one time in each game tick, after AddSample.
     Result Update(const Input& in) {
         Result r;
+        for (int hand = 0; hand < 2; hand++) {
+            if (!in.hands[hand].gripHeld) {
+                mGripAge[hand] = kNotHeld;
+            } else if (mGripAge[hand] == kNotHeld) {
+                mGripAge[hand] = 0;
+            } else if (mGripAge[hand] <= kGripGraceTicks) {
+                mGripAge[hand]++;
+            }
+        }
         if (!in.carrying) {
             // The bomb exploded, or the game did not take the grab.
             mHand = -1;
@@ -118,15 +145,17 @@ class Holder {
                 const HandInput& h = in.hands[hand];
                 const bool reach = InReach(h.pos, in.beltPos, in.grabRadius);
                 r.reachPulse[hand] = reach && !mInReach[hand];
-                if (reach && h.gripHeld && !mGripPrev[hand] && (r.event == Event::None)) {
+                if (reach && (mGripAge[hand] != kNotHeld) && (mGripAge[hand] <= kGripGraceTicks) &&
+                    (r.event == Event::None)) {
                     r.event = Event::Grab;
                     r.hand = hand;
                     mHand = hand;
+                    // One push takes one bomb.
+                    mGripAge[hand] = kGripGraceTicks + 1;
                 }
             }
         }
         for (int hand = 0; hand < 2; hand++) {
-            mGripPrev[hand] = in.hands[hand].gripHeld;
             mInReach[hand] = in.beltReady && !in.carrying && InReach(in.hands[hand].pos, in.beltPos, in.grabRadius);
             r.inReach[hand] = mInReach[hand];
         }
@@ -165,8 +194,9 @@ class Holder {
 
     VrHandThrow::History mHistory[2];
     int mHand = -1;
-    // A grip that is held at the start must be released before it takes the bomb.
-    bool mGripPrev[2] = { true, true };
+    // Ticks since the push of the grip. A grip that is held at the start is too old.
+    static constexpr int kNotHeld = -1;
+    int mGripAge[2] = { kGripGraceTicks + 1, kGripGraceTicks + 1 };
     bool mInReach[2] = { false, false };
 };
 

@@ -102,13 +102,27 @@ static void TestTheFirstHandWinsATie() {
     EXPECT(r.hand == kLeft);
 }
 
-static void TestGripAwayFromTheBeltDoesNotTakeTheBomb() {
+static void TestGripPushedJustBeforeTheBeltTakesTheBomb() {
     Holder h;
+    h.Update(WithHand(Idle(), kRight, kAway, false));
+    // The player pushes the grip while the hand moves to the belt.
     EXPECT(h.Update(WithHand(Idle(), kRight, kAway, true)).event == Event::None);
-    // The grip is still held when the hand comes to the belt: no grab.
+    for (int i = 1; i < kGripGraceTicks; i++) {
+        EXPECT(h.Update(WithHand(Idle(), kRight, kAway, true)).event == Event::None);
+    }
+    EXPECT(h.Update(WithHand(Idle(), kRight, kNearBelt, true)).event == Event::Grab);
+}
+
+static void TestGripPushedLongBeforeTheBeltDoesNotTakeTheBomb() {
+    Holder h;
+    h.Update(WithHand(Idle(), kRight, kAway, false));
+    for (int i = 0; i <= kGripGraceTicks; i++) {
+        EXPECT(h.Update(WithHand(Idle(), kRight, kAway, true)).event == Event::None);
+    }
     EXPECT(h.Update(WithHand(Idle(), kRight, kNearBelt, true)).event == Event::None);
     EXPECT(h.Hand() < 0);
     // A new push of the grip at the belt takes the bomb.
+    EXPECT(h.Update(WithHand(Idle(), kRight, kNearBelt, false)).event == Event::None);
     Grab(h);
 }
 
@@ -288,11 +302,27 @@ static void TestMaxThrowGoesFartherThanTheVanillaThrow() {
     EXPECT(best >= 2.4f * vanilla && best <= 2.6f * vanilla);
 }
 
+static void TestBombIsInFrontOfThePalm() {
+    const float s = 40.0f;
+    const float identity[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+    // OpenXR grip pose: +X goes out of the left palm, and into the right palm.
+    Vec3 o = PalmOffset(identity, true, s);
+    EXPECT(Near(o.x, kPalmOffsetM * s) && Near(o.y, 0.0f) && Near(o.z, 0.0f));
+    o = PalmOffset(identity, false, s);
+    EXPECT(Near(o.x, -kPalmOffsetM * s));
+    // The hand turns 90 degrees around y: +X goes to -z.
+    const float h = std::sqrt(0.5f);
+    const float turnY[4] = { 0.0f, h, 0.0f, h };
+    o = PalmOffset(turnY, true, s);
+    EXPECT(Near(o.x, 0.0f) && Near(o.z, -kPalmOffsetM * s));
+}
+
 int main() {
     TestGripAtTheBeltTakesTheBomb();
     TestEitherHandTakesTheBomb();
     TestTheFirstHandWinsATie();
-    TestGripAwayFromTheBeltDoesNotTakeTheBomb();
+    TestGripPushedJustBeforeTheBeltTakesTheBomb();
+    TestGripPushedLongBeforeTheBeltDoesNotTakeTheBomb();
     TestGripHeldAtTheStartDoesNotTakeTheBomb();
     TestNoGrabWhenTheBeltIsNotReady();
     TestTheHandFeelsTheBelt();
@@ -307,6 +337,7 @@ int main() {
     TestBeltIsBelowTheEyesInFrontOfLink();
     TestThrowVelocityIsInGameUnitsForEachTick();
     TestMediumThrowGoesAsFarAsTheVanillaThrow();
+    TestBombIsInFrontOfThePalm();
     TestBombIsTheSameSizeForChildAndAdult();
     TestMaxThrowGoesFartherThanTheVanillaThrow();
 
