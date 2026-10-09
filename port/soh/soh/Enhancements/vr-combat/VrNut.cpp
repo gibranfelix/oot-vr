@@ -39,7 +39,7 @@ bool BeltReady(Player* player) {
 // The nut flies as an EnArrow nut. It flashes when it touches a wall or the floor.
 void SpawnNut(Player* player, const VrNutThrow::Result& r) {
     Vec3f pos;
-    if (!VrBelt::PosInHand(r.hand, VrNutThrow::kPalmOffsetM, &pos.x)) {
+    if (!VrBelt::PosInHand(r.hand, VrNutThrow::kPalmOffsetM, &pos.x, VrNutThrow::kForwardOffsetM)) {
         pos = { r.pos.x, r.pos.y, r.pos.z };
     }
     VrNutThrow::Vec3 v = { 0.0f, 0.0f, 0.0f };
@@ -123,7 +123,7 @@ extern "C" bool VrCombat_NutHeldPos(Player* player, float* outXyz) {
     if ((player == NULL) || !VrCombat_NutUsesBelt(player) || (sHolder.Hand() < 0)) {
         return false;
     }
-    return VrBelt::PosInHand(sHolder.Hand(), VrNutThrow::kPalmOffsetM, outXyz);
+    return VrBelt::PosInHand(sHolder.Hand(), VrNutThrow::kPalmOffsetM, outXyz, VrNutThrow::kForwardOffsetM);
 }
 
 extern "C" float VrCombat_NutDrawScale(void) {
