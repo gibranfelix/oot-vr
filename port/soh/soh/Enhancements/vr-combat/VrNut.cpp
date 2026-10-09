@@ -84,7 +84,7 @@ void VrCombat::Nut_OnPlayerUpdate(Player* player) {
         sRefillTicks--;
     }
 
-    const VrNutThrow::Result r = sHolder.Update(VrBelt::MakeInput(player, BeltReady(player), carrying));
+    const VrNutThrow::Result r = sHolder.Update(VrBelt::MakeInput(player, BeltReady(player), carrying, VrNutThrow::kBeltRaiseM));
     VrBelt::Haptics(r, sInReach);
     if ((r.event == VrNutThrow::Event::Throw) || (r.event == VrNutThrow::Event::Drop)) {
         SpawnNut(player, r);
@@ -112,7 +112,7 @@ extern "C" bool VrCombat_NutBeltPos(Player* player, float* outXyz) {
     if ((player == NULL) || !BeltReady(player)) {
         return false;
     }
-    const VrNutThrow::Vec3 p = VrBelt::BeltPos(player);
+    const VrNutThrow::Vec3 p = VrBelt::BeltPos(player, VrNutThrow::kBeltRaiseM);
     outXyz[0] = p.x;
     outXyz[1] = p.y;
     outXyz[2] = p.z;

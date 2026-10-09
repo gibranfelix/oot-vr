@@ -20,7 +20,9 @@ constexpr int kFlightTicks = 60;
 // The nut model of the item drop (GID_NUTS) is approximately kNutModelDiameter units wide. In VR it
 // is kNutDiameterM wide in the real world.
 constexpr float kNutModelDiameter = 100.0f;
-constexpr float kNutDiameterM = 0.06f;
+constexpr float kNutDiameterM = 0.08f;
+// The nut is above the bomb on the belt: the small nut is easier to see.
+constexpr float kBeltRaiseM = 0.1f;
 // The nut center is this distance out of the palm, thus the closed hand does not go into it.
 constexpr float kPalmOffsetM = 0.03f;
 

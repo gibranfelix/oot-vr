@@ -1590,7 +1590,10 @@ void Play_Draw(PlayState* play) {
                 play->transitionCtx.draw(&play->transitionCtx.data, &gfxP);
             }
 
-            TransitionFade_Draw(&play->transitionFade, &gfxP);
+            // SOH [VR] The Deku nut flash is a 2D fill. In stereo it shows as a small gray rectangle.
+            if (!VR_IsInitialized() || VR_IsFlatScreen()) {
+                TransitionFade_Draw(&play->transitionFade, &gfxP);
+            }
 
             if (gVisMonoColor.a > 0) {
                 gPlayVisMono.vis.primColor.rgba = gVisMonoColor.rgba;

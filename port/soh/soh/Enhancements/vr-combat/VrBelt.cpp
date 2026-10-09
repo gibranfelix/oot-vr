@@ -65,26 +65,28 @@ void VrBelt::Feed(VrBeltThrow::Holder& holder) {
     }
 }
 
-VrBeltThrow::Input VrBelt::MakeInput(Player* player, bool beltReady, bool carrying) {
+VrBeltThrow::Input VrBelt::MakeInput(Player* player, bool beltReady, bool carrying, float raiseM) {
     VrBeltThrow::Input in;
     in.beltReady = beltReady;
     in.carrying = carrying;
     in.swapChord = VrItemSelect_SwapChordHeld();
     in.hands[VR_HAND_LEFT] = Hand(VR_HAND_LEFT);
     in.hands[VR_HAND_RIGHT] = Hand(VR_HAND_RIGHT);
-    in.beltPos = BeltPos(player);
+    in.beltPos = BeltPos(player, raiseM);
     in.grabRadius = VrBeltThrow::kGrabRadiusM * UnitsPerMeter();
     in.firstHand = SwordHand();
     return in;
 }
 
-VrBeltThrow::Vec3 VrBelt::BeltPos(Player* player) {
+VrBeltThrow::Vec3 VrBelt::BeltPos(Player* player, float raiseM) {
     float eye[3];
     float fwd[3];
     float up[3];
     VR_GetCameraPose(eye, fwd, up);
     const float yaw = player->actor.shape.rot.y * (M_PI / 0x8000);
-    return VrBeltThrow::BeltAnchor({ eye[0], eye[1], eye[2] }, yaw, UnitsPerMeter());
+    VrBeltThrow::Vec3 p = VrBeltThrow::BeltAnchor({ eye[0], eye[1], eye[2] }, yaw, UnitsPerMeter());
+    p.y += raiseM * UnitsPerMeter();
+    return p;
 }
 
 bool VrBelt::PosInHand(int hand, float palmOffsetM, float* outXyz) {

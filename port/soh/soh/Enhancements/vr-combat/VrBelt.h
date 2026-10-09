@@ -15,9 +15,10 @@ float UnitsPerMeter();
 bool Blocked(Player* player);
 // Adds the hand samples of this tick to the holder.
 void Feed(VrBeltThrow::Holder& holder);
-// The hands, the belt position, and the grab radius of this tick.
-VrBeltThrow::Input MakeInput(Player* player, bool beltReady, bool carrying);
-VrBeltThrow::Vec3 BeltPos(Player* player);
+// The hands, the belt position, and the grab radius of this tick. raiseM: the item is this
+// distance above the belt.
+VrBeltThrow::Input MakeInput(Player* player, bool beltReady, bool carrying, float raiseM = 0.0f);
+VrBeltThrow::Vec3 BeltPos(Player* player, float raiseM = 0.0f);
 // The item center, palmOffsetM in front of the palm. False when the hand is not tracked.
 bool PosInHand(int hand, float palmOffsetM, float* outXyz);
 // The haptics of the reach and the grab. Updates inReach.
