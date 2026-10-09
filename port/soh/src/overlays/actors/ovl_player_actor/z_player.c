@@ -1647,7 +1647,8 @@ void Player_DetachHeldActor(PlayState* play, Player* this) {
         this->stateFlags1 &= ~PLAYER_STATE1_CARRYING_ACTOR;
     }
 
-    if (Player_GetExplosiveHeld(this) >= 0) {
+    // SOH [VR] With the bomb belt, the bombs stay selected after a throw.
+    if ((Player_GetExplosiveHeld(this) >= 0) && !VrCombat_BombUsesBelt(this)) {
         Player_InitItemAction(play, this, PLAYER_IA_NONE);
         this->heldItemId = ITEM_NONE_FE;
     }
@@ -2329,14 +2330,30 @@ void Player_InitBowOrSlingshotIA(PlayState* play, Player* this) {
     }
 }
 
+// SOH [VR] The bomb belt (VrBomb.cpp). sVrBeltGrab: the grip takes the bomb from the belt.
+// sVrBeltUseNow: the off-hand trigger took the bomb from the belt. Player_ActionHandler_9 throws it
+// or puts it down without a second press.
+static s32 sVrBeltGrab = false;
+static s32 sVrBeltUseNow = false;
+
 void Player_InitExplosiveIA(PlayState* play, Player* this) {
     s32 explosiveType;
     ExplosiveInfo* explosiveInfo;
     Actor* spawnedActor;
+    s32 vrBeltUseNow = false; // SOH [VR]
 
     if (this->stateFlags1 & PLAYER_STATE1_CARRYING_ACTOR) {
         Player_PutAwayHeldItem(play, this);
         return;
+    }
+
+    // SOH [VR] The bomb waits on the belt, without an actor. Only the grip or the off-hand trigger
+    // takes it.
+    if (VrCombat_BombUsesBelt(this) && !sVrBeltGrab) {
+        if (!VrCombat_BombBeltUseNow(this)) {
+            return;
+        }
+        vrBeltUseNow = true;
     }
 
     explosiveType = Player_GetExplosiveHeld(this);
@@ -2363,6 +2380,7 @@ void Player_InitExplosiveIA(PlayState* play, Player* this) {
         this->getItemEntry = (GetItemEntry)GET_ITEM_NONE;
         this->unk_3BC.y = spawnedActor->shape.rot.y - this->actor.shape.rot.y;
         this->stateFlags1 |= PLAYER_STATE1_CARRYING_ACTOR;
+        sVrBeltUseNow = vrBeltUseNow; // SOH [VR]
     }
 }
 
@@ -3267,10 +3285,57 @@ void func_80835688(Player* this, PlayState* play) {
     }
 }
 
+// SOH [VR] The grip takes the bomb from the belt. Returns false when there is no grab.
+static s32 Player_VrTakeBeltBomb(Player* this, PlayState* play) {
+    if (!VrCombat_BombTakeGrab()) {
+        return false;
+    }
+    sVrBeltGrab = true;
+    Player_InitExplosiveIA(play, this);
+    sVrBeltGrab = false;
+    if (this->heldActor == NULL) {
+        return false;
+    }
+    LinkAnimation_PlayLoop(play, &this->upperSkelAnime, &gPlayerAnim_link_normal_carryB_wait);
+    return true;
+}
+
+// SOH [VR] The release of the grip throws the bomb with the hand velocity, or drops it. Returns
+// false when there is no release.
+static s32 Player_VrReleaseBomb(Player* this, PlayState* play) {
+    Actor* bomb = this->heldActor;
+    VrCombatBombRelease release;
+    Vec3f zero = { 0.0f, 0.0f, 0.0f };
+    Vec3f velocity;
+
+    if ((bomb == NULL) || !VrCombat_BombTakeRelease(&release)) {
+        return false;
+    }
+    bomb->world.pos.x = release.pos[0];
+    bomb->world.pos.y = release.pos[1];
+    bomb->world.pos.z = release.pos[2];
+    velocity.x = release.velocity[0];
+    velocity.y = release.velocity[1];
+    velocity.z = release.velocity[2];
+    bomb->world.rot.y = Math_Vec3f_Yaw(&zero, &velocity);
+    bomb->speedXZ = sqrtf(SQ(velocity.x) + SQ(velocity.z));
+    bomb->velocity.y = velocity.y;
+    func_80834644(play, this);
+    if (release.thrown) {
+        Player_PlaySfx(this, NA_SE_PL_THROW);
+        Player_PlayVoiceSfx(this, NA_SE_VO_LI_SWORD_N);
+    }
+    return true;
+}
+
 s32 Player_UpperAction_CarryActor(Player* this, PlayState* play) {
     Actor* heldActor = this->heldActor;
 
     if (heldActor == NULL) {
+        // SOH [VR] The hands are empty, and the bomb waits on the belt.
+        if (VrCombat_BombUsesBelt(this)) {
+            return Player_VrTakeBeltBomb(this, play) || func_8083485C(this, play);
+        }
         func_80834644(play, this);
     }
 
@@ -3279,6 +3344,10 @@ s32 Player_UpperAction_CarryActor(Player* this, PlayState* play) {
     }
 
     if (this->stateFlags1 & PLAYER_STATE1_CARRYING_ACTOR) {
+        // SOH [VR] The grip throw or drop of a bomb from the belt.
+        if (Player_VrReleaseBomb(this, play)) {
+            return true;
+        }
         if (LinkAnimation_Update(play, &this->upperSkelAnime)) {
             LinkAnimation_PlayLoop(play, &this->upperSkelAnime, &gPlayerAnim_link_normal_carryB_wait);
         }
@@ -7701,10 +7770,16 @@ s32 Player_ActionHandler_9(Player* this, PlayState* play) {
     if (CVarGetInteger(CVAR_ENHANCEMENT("DpadEquips"), 0) != 0) {
         buttonsToCheck |= BTN_DUP | BTN_DDOWN | BTN_DLEFT | BTN_DRIGHT;
     }
+    // SOH [VR] A bomb from the belt with the off-hand trigger: no second press.
+    if (!(this->stateFlags1 & PLAYER_STATE1_CARRYING_ACTOR) || (this->heldActor == NULL)) {
+        sVrBeltUseNow = false;
+    }
     if (GameInteractor_Should(VB_THROW_OR_PUT_DOWN_HELD_ITEM,
                               ((this->stateFlags1 & PLAYER_STATE1_CARRYING_ACTOR) && (this->heldActor != NULL) &&
                                CHECK_BTN_ANY(sControlInput->press.button, buttonsToCheck)),
-                              sControlInput)) {
+                              sControlInput) ||
+        sVrBeltUseNow) { // SOH [VR]
+        sVrBeltUseNow = false;
         if (!func_80835644(play, this, this->heldActor)) {
             if (!func_8083EAF0(this, this->heldActor)) {
                 Player_SetupAction(play, this, Player_Action_808464B0, 1);
@@ -12769,6 +12844,34 @@ void Player_DrawGameplay(PlayState* play, Player* this, s32 lod, Gfx* cullDList,
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
+// SOH [VR] The bomb on the belt: the EnBom model without the fuse flash.
+static void Player_VrDrawBeltBomb(PlayState* play, Player* this) {
+    Vec3f pos;
+
+    if (!VrCombat_BombBeltPos(this, &pos.x)) {
+        return;
+    }
+
+    OPEN_DISPS(play->state.gfxCtx);
+
+    Gfx_SetupDL_25Opa(play->state.gfxCtx);
+    Matrix_Push();
+    Matrix_Translate(pos.x, pos.y, pos.z, MTXMODE_NEW);
+    Matrix_RotateY(BINANG_TO_RAD(this->actor.shape.rot.y), MTXMODE_APPLY);
+    Matrix_Scale(0.01f, 0.01f, 0.01f, MTXMODE_APPLY);
+    gSPMatrix(POLY_OPA_DISP++, MATRIX_NEWMTX(play->state.gfxCtx), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    gSPDisplayList(POLY_OPA_DISP++, gBombCapDL);
+    Matrix_RotateZYX(0x4000, 0, 0, MTXMODE_APPLY);
+    gSPMatrix(POLY_OPA_DISP++, MATRIX_NEWMTX(play->state.gfxCtx), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    gDPPipeSync(POLY_OPA_DISP++);
+    gDPSetEnvColor(POLY_OPA_DISP++, 0, 0, 40, 255);
+    gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 0, 0, 40, 255);
+    gSPDisplayList(POLY_OPA_DISP++, gBombBodyDL);
+    Matrix_Pop();
+
+    CLOSE_DISPS(play->state.gfxCtx);
+}
+
 void Player_Draw(Actor* thisx, PlayState* play2) {
     PlayState* play = play2;
     Player* this = (Player*)thisx;
@@ -12895,6 +12998,9 @@ void Player_Draw(Actor* thisx, PlayState* play2) {
             Player_DrawGetItem(play, this);
         }
     }
+
+    // SOH [VR] The bomb on the belt.
+    Player_VrDrawBeltBomb(play, this);
 
     // SOH [VR]
     VrCombat_MeshMaskPop(play->state.gfxCtx);
