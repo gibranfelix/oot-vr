@@ -15,7 +15,8 @@ extern Gfx** sPlayerDListGroups[]; // z_player_lib.c
 #include <vr_interface.h>
 
 // In VR first person, the grip closes an empty hand of Link. The hand holds the bomb with the grip
-// (VrBomb.cpp). A hand with an item keeps its model.
+// (VrBomb.cpp). A hand with an item keeps its model. The hand with a Deku nut stays open: the nut is
+// on the palm (VrNut.cpp).
 
 namespace {
 
@@ -59,8 +60,10 @@ void OnPlayerUpdateGripHand() {
     const bool on = VR_IsInitialized() && VR_GetFirstPerson() && CVarGetInteger("gVrMotionHands", 1) &&
                     VrCombat_InPlay();
     const int swordHand = SwordHand();
-    const bool swordGrip = on && (VR_GetControllerButton(swordHand) & VR_BTN_GRIP);
-    const bool offGrip = on && (VR_GetControllerButton(swordHand ^ 1) & VR_BTN_GRIP);
+    const int nutHand = VrCombat_NutHand();
+    const int offHand = swordHand ^ 1;
+    const bool swordGrip = on && (VR_GetControllerButton(swordHand) & VR_BTN_GRIP) && (nutHand != swordHand);
+    const bool offGrip = on && (VR_GetControllerButton(offHand) & VR_BTN_GRIP) && (nutHand != offHand);
     UpdateHand(player, &sHands[0], &player->leftHandType, &player->leftHandDLists, PLAYER_MODELTYPE_LH_OPEN,
                PLAYER_MODELTYPE_LH_CLOSED, swordGrip);
     UpdateHand(player, &sHands[1], &player->rightHandType, &player->rightHandDLists, PLAYER_MODELTYPE_RH_OPEN,

@@ -76,10 +76,11 @@ Vec3f sHeadRight; // camera right captured at open: stable targets, "left is lef
 // the block below has to let its own press through by more than a same-frame stamp.
 int sEquipGrace = 0;
 
-// Rule 3. #98 and #99 add the other throwable items.
+// Rule 3. #98 adds the bombchu.
 bool SelectorOnlyTakesOut(Player* player) {
     return (player != NULL) &&
-           ((player->heldItemAction == PLAYER_IA_BOOMERANG) || (player->heldItemAction == PLAYER_IA_BOMB));
+           ((player->heldItemAction == PLAYER_IA_BOOMERANG) || (player->heldItemAction == PLAYER_IA_BOMB) ||
+            (player->heldItemAction == PLAYER_IA_DEKU_NUT));
 }
 
 int SwordHand() {

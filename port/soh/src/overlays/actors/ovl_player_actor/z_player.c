@@ -3680,10 +3680,14 @@ void Player_UseItem(PlayState* play, Player* this, s32 item) {
                 } else {
                     Sfx_PlaySfxCentered(NA_SE_SY_ERROR);
                 }
-            } else if (itemAction == PLAYER_IA_DEKU_NUT) {
+            } else if ((itemAction == PLAYER_IA_DEKU_NUT) && !VrCombat_NutTakesOut(this)) {
+                // SOH [VR] With the belt (VrNut.cpp), the item selector puts the nut on the belt.
                 // Handle Deku Nuts
                 if (AMMO(ITEM_NUT) != 0) {
-                    func_8083C61C(play, this);
+                    // SOH [VR] With the belt, only the off-hand trigger throws.
+                    if (!VrCombat_NutUsesBelt(this) || VrCombat_NutBeltUseNow(this)) {
+                        func_8083C61C(play, this);
+                    }
                 } else {
                     Sfx_PlaySfxCentered(NA_SE_SY_ERROR);
                 }
@@ -12878,6 +12882,23 @@ static void Player_VrDrawBeltBomb(PlayState* play, Player* this) {
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
+// SOH [VR] The Deku nut on the belt or in the hand (VrNut.cpp).
+static void Player_VrDrawNut(PlayState* play, Player* this) {
+    Vec3f pos;
+    f32 scale = VrCombat_NutDrawScale();
+
+    if (!VrCombat_NutBeltPos(this, &pos.x) && !VrCombat_NutHeldPos(this, &pos.x)) {
+        return;
+    }
+
+    Matrix_Push();
+    Matrix_Translate(pos.x, pos.y, pos.z, MTXMODE_NEW);
+    Matrix_RotateY(BINANG_TO_RAD(this->actor.shape.rot.y), MTXMODE_APPLY);
+    Matrix_Scale(scale, scale, scale, MTXMODE_APPLY);
+    GetItem_Draw(play, GID_NUTS);
+    Matrix_Pop();
+}
+
 void Player_Draw(Actor* thisx, PlayState* play2) {
     PlayState* play = play2;
     Player* this = (Player*)thisx;
@@ -13007,6 +13028,8 @@ void Player_Draw(Actor* thisx, PlayState* play2) {
 
     // SOH [VR] The bomb on the belt.
     Player_VrDrawBeltBomb(play, this);
+    // SOH [VR] The Deku nut on the belt or in the hand.
+    Player_VrDrawNut(play, this);
 
     // SOH [VR]
     VrCombat_MeshMaskPop(play->state.gfxCtx);

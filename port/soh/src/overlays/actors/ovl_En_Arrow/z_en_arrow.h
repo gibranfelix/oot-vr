@@ -25,6 +25,8 @@ typedef struct EnArrow {
     /* 0x025C */ EnArrowActionFunc actionFunc;
     // SOH [VR] Extra flight frames of the VR bow aim.
     u8 vrExtraFrames;
+    // SOH [VR] A Deku nut from the hand (VrNut.cpp): the hand gives the speed and the gravity.
+    u8 vrFromHand;
 } EnArrow;
 
 typedef enum {
