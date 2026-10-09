@@ -76,8 +76,7 @@ Vec3f sHeadRight; // camera right captured at open: stable targets, "left is lef
 // the block below has to let its own press through by more than a same-frame stamp.
 int sEquipGrace = 0;
 
-// Throwable items (#96): the selector takes them out, and does not use them. #97 to #99 add the
-// bomb, the bombchu, and the Deku nut.
+// Rule 3. #97 to #99 add the other throwable items.
 bool SelectorOnlyTakesOut(Player* player) {
     return (player != NULL) && (player->heldItemAction == PLAYER_IA_BOOMERANG);
 }
@@ -656,13 +655,13 @@ static void RegisterVrItemSelect() {
             (Player_ItemToItemAction(item) != player->heldItemAction)) {
             *should = false;
         }
-        // Rule 3: selecting a throwable item that is already in the hand does not use it.
+        // Rule 3: the selector does not use a throwable item that is already in the hand.
         if (VrItemSelect_BlocksUse(player) && (Player_ItemToItemAction(item) == player->heldItemAction)) {
             *should = false;
         }
     });
 
-    // Rule 3: a throwable item does not get used at the end of the change animation.
+    // Rule 3: the selector does not use a throwable item after the change animation.
     COND_VB_SHOULD(VB_USE_HELD_ITEM_AFTER_CHANGE, CVarGetInteger("gVrItemSelect", 1), {
         Player* player = va_arg(args, Player*);
         if (SelectorModeInPlay() && SelectorOnlyTakesOut(player)) {

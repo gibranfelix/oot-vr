@@ -123,8 +123,7 @@ bool VrItemSelect_TriggerConsumed(int32_t vrHand, uint16_t vrBtnMask);
 // their bindings untouched.
 bool VrItemSelect_SwapConsumed(int32_t vrHand, uint16_t vrBtnMask);
 
-// Throwable items (#96): the selector takes the item out, and does not use it. True while the
-// press of the selector can still use the held item.
+// True while the selector press must not use the held item (rule 3 in VrItemSelect.cpp).
 bool VrItemSelect_BlocksUse(struct Player* player);
 
 // True while the ocarina interface is up (free play, song playback, scarecrow recording, the
