@@ -40,8 +40,8 @@ Tested only on the Meta Quest 3S.
 ## Controls
 
 The right hand holds the sword, the boomerang, and the items that you swing.
-Either hand takes a bomb or a Deku nut from the belt. The left hand holds the
-shield, the bow, the slingshot, the hookshot, and the ocarina.
+Either hand takes a bomb, a bombchu, or a Deku nut from the belt. The left hand
+holds the shield, the bow, the slingshot, the hookshot, and the ocarina.
 
 | Control                       | Action                                                                  |
 | ----------------------------- | ----------------------------------------------------------------------- |
@@ -71,7 +71,8 @@ to block.
 | Boomerang                                                    | Hold the right grip, throw with the arm, release the grip. |
 | Bombs                                                        | Push a grip at the belt, throw with the arm, release the grip. A slow release drops the bomb. The left trigger also throws. |
 | Deku nuts                                                    | The same as the bombs. The nut flashes when it touches a wall or the floor. |
-| Bombchus, empty bottle                                       | Left trigger.                                              |
+| Bombchus                                                     | Push a grip at the belt, then release it. The bombchu runs where the controller points, or along a fast hand. The left trigger also puts it down. |
+| Empty bottle                                                 | Left trigger.                                              |
 | Ocarina, spells, masks, full bottles, other items            | The item selector uses the item immediately.               |
 
 ### Control schemes

@@ -1,6 +1,7 @@
 #pragma once
 
-// The bomb on the belt (VrBomb.cpp). The belt and the grab are in VrBeltThrow.h. No game types.
+// The bomb or the bombchu on the belt (VrBomb.cpp). The belt and the grab are in VrBeltThrow.h.
+// No game types.
 // Tests: port/soh/tests/vr/VrBombThrowTests.cpp.
 
 #include "VrBeltThrow.h"
@@ -35,6 +36,35 @@ inline Vec3 PalmOffset(const float quat[4], bool leftHand, float unitsPerMeter) 
 // The hand velocity in m/s to the bomb velocity in units for each tick.
 inline Vec3 ThrowVelocity(const Vec3& velMps, float ticksPerSecond) {
     return VrBeltThrow::ThrowVelocity(velMps, ticksPerSecond, kThrowGain, kMaxThrowSpeed);
+}
+
+// The bombchu (#98) does not fly. It starts on the floor below the hand.
+// A hand that moves this fast on the floor plane sends the bombchu along the hand.
+constexpr float kBombchuSendSpeedMps = 1.0f;
+// The controller must point this much along the floor plane to give a run direction.
+constexpr float kBombchuMinAimXZ = 0.1f;
+// The maximum height difference between the floor below the hand and the floor of Link (game units).
+constexpr float kBombchuMaxStep = 30.0f;
+// The height of the bombchu center above its floor point, at the vanilla scale.
+constexpr float kBombchuCenterHeight = 4.0f;
+
+// The run direction of the bombchu as a yaw (0 is +z). velMps: the hand velocity at the release.
+// aimDir: where the controller points. False when neither gives a direction on the floor plane.
+inline bool BombchuRunYaw(const Vec3& velMps, const Vec3& aimDir, float* outYawRad) {
+    if (std::sqrt(velMps.x * velMps.x + velMps.z * velMps.z) >= kBombchuSendSpeedMps) {
+        *outYawRad = std::atan2(velMps.x, velMps.z);
+        return true;
+    }
+    if (std::sqrt(aimDir.x * aimDir.x + aimDir.z * aimDir.z) < kBombchuMinAimXZ) {
+        return false;
+    }
+    *outYawRad = std::atan2(aimDir.x, aimDir.z);
+    return true;
+}
+
+// True when the floor below the hand is the floor of Link.
+inline bool BombchuFloorOk(float floorY, float linkY) {
+    return std::fabs(floorY - linkY) <= kBombchuMaxStep;
 }
 
 } // namespace VrBombThrow

@@ -1,6 +1,7 @@
 #include "z_en_bom_chu.h"
 #include "overlays/actors/ovl_En_Bom/z_en_bom.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
+#include "soh/Enhancements/vr-combat/VrCombat.h" // SOH [VR]
 
 #define FLAGS ACTOR_FLAG_UPDATE_CULLING_DISABLED
 
@@ -216,9 +217,15 @@ void EnBomChu_WaitForRelease(EnBomChu* this, PlayState* play) {
     }
 
     if (Actor_HasNoParent(&this->actor, play)) {
-        this->actor.world.pos = player->actor.world.pos;
+        // SOH [VR] A bombchu from the belt starts below the hand. On a flat floor, EnBomChu_Move
+        // runs along world.rot.y.
+        if (VrCombat_BombchuTakeStart(&this->actor, &this->actor.world.pos.x, &this->actor.shape.rot.y)) {
+            this->actor.world.rot.y = this->actor.shape.rot.y;
+        } else {
+            this->actor.world.pos = player->actor.world.pos;
+            this->actor.shape.rot.y = player->actor.shape.rot.y;
+        }
         Actor_UpdateBgCheckInfo(play, &this->actor, 0.0f, 0.0f, 0.0f, 4);
-        this->actor.shape.rot.y = player->actor.shape.rot.y;
 
         // rot.y = 0 -> +z (forwards in model space)
         this->axisForwards.x = Math_SinS(this->actor.shape.rot.y);
@@ -365,14 +372,15 @@ void EnBomChu_WaitForKill(EnBomChu* this, PlayState* play) {
  * `posModel` is expected to already be at world scale (1/100 compared to model scale)
  */
 void EnBomChu_ModelToWorld(EnBomChu* this, Vec3f* posModel, Vec3f* dest) {
-    f32 x = posModel->x + this->visualJitter;
+    // SOH [VR] The trail follows the smaller VR bombchu (EnBomChu_Draw).
+    f32 vrScale = VrCombat_BombDrawScale();
+    f32 x = (posModel->x + this->visualJitter) * vrScale;
+    f32 y = posModel->y * vrScale;
+    f32 z = posModel->z * vrScale;
 
-    dest->x = this->actor.world.pos.x + (this->axisLeft.x * x) + (this->axisUp.x * posModel->y) +
-              (this->axisForwards.x * posModel->z);
-    dest->y = this->actor.world.pos.y + (this->axisLeft.y * x) + (this->axisUp.y * posModel->y) +
-              (this->axisForwards.y * posModel->z);
-    dest->z = this->actor.world.pos.z + (this->axisLeft.z * x) + (this->axisUp.z * posModel->y) +
-              (this->axisForwards.z * posModel->z);
+    dest->x = this->actor.world.pos.x + (this->axisLeft.x * x) + (this->axisUp.x * y) + (this->axisForwards.x * z);
+    dest->y = this->actor.world.pos.y + (this->axisLeft.y * x) + (this->axisUp.y * y) + (this->axisForwards.y * z);
+    dest->z = this->actor.world.pos.z + (this->axisLeft.z * x) + (this->axisUp.z * y) + (this->axisForwards.z * z);
 }
 
 void EnBomChu_SpawnRipples(EnBomChu* this, PlayState* play, f32 y) {
@@ -489,6 +497,7 @@ void EnBomChu_Draw(Actor* thisx, PlayState* play) {
     f32 colorIntensity;
     s32 blinkHalfPeriod;
     s32 blinkTime;
+    f32 vrScale; // SOH [VR]
     Color_RGB8 BombchuCol = CVarGetColor24(CVAR_COSMETIC("Trails.Bombchu.Value"), BombchuColorOriginal);
 
     OPEN_DISPS(play->state.gfxCtx);
@@ -523,6 +532,10 @@ void EnBomChu_Draw(Actor* thisx, PlayState* play) {
                        35.0f + (colorIntensity * -35.0f), 255);
     }
 
+    // SOH [VR] In VR first person, the bombchu has the same real size for child and adult Link.
+    // The explosion size does not change.
+    vrScale = VrCombat_BombDrawScale();
+    Matrix_Scale(vrScale, vrScale, vrScale, MTXMODE_APPLY);
     Matrix_Translate(this->visualJitter * (1.0f / BOMBCHU_SCALE), 0.0f, 0.0f, MTXMODE_APPLY);
     gSPMatrix(POLY_OPA_DISP++, MATRIX_NEWMTX(play->state.gfxCtx), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     gSPDisplayList(POLY_OPA_DISP++, gBombchuDL);

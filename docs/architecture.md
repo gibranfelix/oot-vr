@@ -176,6 +176,20 @@ for child Link and adult Link. The fuse and the shadow follow this size. The
 explosion size does not change. The throw distance does not use the world
 scale.
 
+The belt also holds the bombchu. The bombchu does not fly. At the release,
+`VrCombat_BombchuTakeStart` gives `EnBomChu_WaitForRelease` two values:
+
+| Value | Result |
+|---|---|
+| Start point | The floor below the hand. With a wall or a different floor, the position of Link. |
+| Run direction | Along a fast hand. Else, where the controller points. |
+
+`EnBomChu_Move` runs along `world.rot.y` on a flat floor. Thus
+`EnBomChu_WaitForRelease` sets `world.rot.y` and `shape.rot.y`. The bombchu
+updates after the player in the same tick.
+
+In VR first person, `EnBomChu_Draw` uses the draw scale of the bomb.
+
 `VrGripHand.cpp` closes an empty hand of Link while the player holds the grip.
 
 The math is in `VrBombThrow.h`. The host unit tests are in

@@ -26,6 +26,7 @@ static bool Near(float a, float b, float eps = 0.01f) {
 }
 
 constexpr uint64_t kMs = 1000000ull;
+constexpr float kPi = 3.14159265f;
 constexpr int kRight = 1;
 constexpr int kLeft = 0;
 constexpr Vec3 kBelt = { 0.0f, 50.0f, 10.0f };
@@ -317,6 +318,37 @@ static void TestBombIsInFrontOfThePalm() {
     EXPECT(Near(o.x, 0.0f) && Near(o.z, -kPalmOffsetM * s));
 }
 
+static void TestBombchuRunsAlongAFastHand() {
+    float yaw = 0.0f;
+    // The hand moves to +x, and the controller points to +z.
+    EXPECT(BombchuRunYaw({ 2.0f, -1.0f, 0.0f }, { 0.0f, 0.0f, 1.0f }, &yaw));
+    EXPECT(Near(yaw, 0.5f * kPi));
+}
+
+static void TestBombchuRunsWhereTheControllerPointsAfterASlowHand() {
+    float yaw = 0.0f;
+    EXPECT(BombchuRunYaw({ 0.5f, 0.0f, 0.0f }, { 0.0f, -0.5f, -0.8f }, &yaw));
+    EXPECT(Near(std::fabs(yaw), kPi));
+    // A fast hand that only goes down does not send the bombchu.
+    EXPECT(BombchuRunYaw({ 0.2f, -3.0f, 0.0f }, { -1.0f, 0.0f, 0.0f }, &yaw));
+    EXPECT(Near(yaw, -0.5f * kPi));
+}
+
+static void TestBombchuHasNoDirectionWhenTheControllerPointsDown() {
+    float yaw = 1.0f;
+    EXPECT(!BombchuRunYaw({ 0.0f, 0.0f, 0.0f }, { 0.01f, -1.0f, 0.0f }, &yaw));
+    EXPECT(Near(yaw, 1.0f));
+}
+
+static void TestBombchuStartsOnlyOnTheFloorOfLink() {
+    EXPECT(BombchuFloorOk(100.0f, 100.0f));
+    EXPECT(BombchuFloorOk(100.0f - kBombchuMaxStep, 100.0f));
+    EXPECT(BombchuFloorOk(100.0f + kBombchuMaxStep, 100.0f));
+    // A ledge or a table below the hand.
+    EXPECT(!BombchuFloorOk(100.0f - kBombchuMaxStep - 1.0f, 100.0f));
+    EXPECT(!BombchuFloorOk(100.0f + kBombchuMaxStep + 1.0f, 100.0f));
+}
+
 int main() {
     TestGripAtTheBeltTakesTheBomb();
     TestEitherHandTakesTheBomb();
@@ -340,6 +372,10 @@ int main() {
     TestBombIsInFrontOfThePalm();
     TestBombIsTheSameSizeForChildAndAdult();
     TestMaxThrowGoesFartherThanTheVanillaThrow();
+    TestBombchuRunsAlongAFastHand();
+    TestBombchuRunsWhereTheControllerPointsAfterASlowHand();
+    TestBombchuHasNoDirectionWhenTheControllerPointsDown();
+    TestBombchuStartsOnlyOnTheFloorOfLink();
 
     if (sFailures == 0) {
         std::printf("VrBombThrow: all tests passed\n");
