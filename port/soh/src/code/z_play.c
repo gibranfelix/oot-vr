@@ -1633,7 +1633,11 @@ void Play_Draw(PlayState* play) {
 
             // SOH [Port] Draw game framebuffer using our custom handling
             // func_800C24BC(&play->pauseBgPreRender, &gfxP);
-            FB_DrawFromFramebuffer(&gfxP, gPauseFrameBuffer, 255);
+            // SOH [VR] In VR, the pause capture has no world image (gfx_copy_framebuffer). The draw
+            // showed moving noise behind the menu.
+            if (!VR_IsInitialized()) {
+                FB_DrawFromFramebuffer(&gfxP, gPauseFrameBuffer, 255);
+            }
             POLY_OPA_DISP = gfxP;
 
             goto Play_Draw_DrawOverlayElements;

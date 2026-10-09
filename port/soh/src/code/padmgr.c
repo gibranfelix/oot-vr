@@ -365,8 +365,8 @@ void PadMgr_HandleRetraceMsg(PadMgr* padMgr) {
             // here (ocarina notes live in the dedicated set below). A and B are on the face
             // buttons. The sword-hand grip is unbound: both grips together draw the sword
             // (VrItemSelect.cpp QuickSwapTick), and a Z on it would blip when one grip lands
-            // first. The off-hand grip keeps R, which physical combat retires in play, so it only
-            // pages the pause menu. Start is on the left menu button only: a stick click is too
+            // first. The off-hand grip keeps R, which physical combat retires in play. Start is
+            // on the left menu button only: a stick click is too
             // easy to press while running. Y is unbound: it opens the SoH menu. Keep in sync with
             // sVrInputDefsSelector in SohMenuVRSettings.cpp.
             static const char* sVrBindSelCvars[2][6] = {
@@ -422,10 +422,21 @@ void PadMgr_HandleRetraceMsg(PadMgr* padMgr) {
                                                 VR_BTN_SECONDARY, VR_BTN_THUMBCLICK, VR_BTN_MENU };
             s32 vrSelProfile = CVarGetInteger("gVrItemSelect", 1);
             s32 vrOcarina = VrOcarina_InPlay();
+            // SOH [VR] In the pause menu, the left grip turns to the left page and the right grip
+            // to the right page. This replaces the grip bindings.
+            extern PlayState* gPlayState;
+            s32 vrPausePaging = (gPlayState != NULL) && (gPlayState->pauseCtx.state != 0);
+            u16 vrPageLeftBtn = CVarGetInteger(CVAR_ENHANCEMENT("NGCKaleidoSwitcher"), 0) ? BTN_L : BTN_Z;
             s32 vrHandIdx, vrBtnIdx;
             for (vrHandIdx = 0; vrHandIdx < 2; vrHandIdx++) {
                 uint16_t vrState = (vrHandIdx == 0) ? vrL : vrR;
                 for (vrBtnIdx = 0; vrBtnIdx < 6; vrBtnIdx++) {
+                    if (vrPausePaging && sVrBtnMasks[vrBtnIdx] == VR_BTN_GRIP) {
+                        if (vrState & VR_BTN_GRIP) {
+                            vrPad->button |= (vrHandIdx == VR_HAND_LEFT) ? vrPageLeftBtn : BTN_R;
+                        }
+                        continue;
+                    }
                     // SOH [VR] The Alyx-style item selector owns its configured input outright:
                     // its normal binding never fires (the opening click must not leak). In
                     // selector mode both triggers belong to item use, and the two-hand quick-swap

@@ -57,7 +57,7 @@ holds the shield, the bow, the slingshot, the hookshot, and the ocarina.
 | B button                      | N64 B.                                                                  |
 | Y button                      | Open or close the SoH menu.                                             |
 | Left Menu button              | Start: open the pause screen.                                           |
-| Left grip                     | Next page of the pause screen.                                          |
+| Left grip / right grip        | Previous page / next page of the pause screen.                          |
 
 Swing the sword with your right hand to attack. Hold the shield in front of you
 to block.
