@@ -138,12 +138,15 @@ bool VrOcarina_InPlay(void);
 bool VrCombat_ProjectileFirePressed(struct Player* player);
 bool VrCombat_AimTriggerConsumed(int32_t vrHand, uint16_t vrBtnMask);
 
-// Bow aim (VrBowAim.cpp). ArrowOnBow: the arrow position and direction from the bow hand matrix
-// (MtxF) and the draw (Player.unk_858). PredictArrowHit: the first surface on the arrow flight.
+// Bow and slingshot aim (VrBowAim.cpp). ArrowOnBow, SeedOnSlingshot: the start and direction of
+// the shot from the bow hand matrix (MtxF) and the draw (Player.unk_858). PredictShotHit: the
+// first surface on the flight.
 // ArrowExtraFrames: the extra flight frames of a bow arrow, 0 when the VR bow aim is off.
 void VrCombat_ArrowOnBow(const float* handMf16, float draw, float* outPosXyz, float* outDirXyz);
+void VrCombat_SeedOnSlingshot(const float* handMf16, float draw, bool childTilt, float* outPosXyz, float* outDirXyz);
 int32_t VrCombat_ArrowExtraFrames(void);
-bool VrCombat_PredictArrowHit(struct PlayState* play, const float* posXyz, const float* dirXyz, float* outHitXyz);
+bool VrCombat_PredictShotHit(struct PlayState* play, const float* posXyz, const float* dirXyz, bool seed,
+                             float* outHitXyz);
 // The physical shield's block collider in R_HAND limb model space (outXyz4 = 4 vertices x xyz,
 // vanilla zigzag order) — replaces the vanilla stance quad, whose size/offset never matched a
 // controller-held shield. Its size and position come from the mesh of the shield in the hand

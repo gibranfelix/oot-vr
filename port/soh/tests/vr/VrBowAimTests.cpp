@@ -205,6 +205,57 @@ static void TestUpwardShotKeepsItsPitch() {
     EXPECT(Near(hit.y, 300.0f, 0.5f));
 }
 
+static void TestSeedLiesAlongTheSlingshotHandY() {
+    float mf[4][4];
+    BowHand(mf, false);
+    Vec3 pos;
+    Vec3 dir;
+    SeedOnSlingshot(mf, 0.0f, true, &pos, &dir);
+
+    EXPECT(NearVec(dir, { 0.0f, 0.0f, -1.0f }));
+    // Pouch at rest: string (-9.5, 0, 55) -> hand (596.5, 236, 55).
+    EXPECT(NearVec(pos, { 105.965f, 50.55f, -22.36f }));
+}
+
+static void TestDrawPullsThePouchBack() {
+    float mf[4][4];
+    BowHand(mf, false);
+    Vec3 full;
+    Vec3 dir;
+    SeedOnSlingshot(mf, 1.0f, false, &full, &dir);
+
+    // Full draw, no tilt: string (-9.5, -1324.5, 55) -> hand (596.5, -1088.5, 55).
+    EXPECT(NearVec(full, { 105.965f, 50.55f, -9.115f }));
+    EXPECT(NearVec(dir, { 0.0f, 0.0f, -1.0f }));
+}
+
+static void TestChildStringTiltMovesThePouchNotTheDirection() {
+    float mf[4][4];
+    BowHand(mf, false);
+    Vec3 straight;
+    Vec3 tilted;
+    Vec3 d0;
+    Vec3 d1;
+    SeedOnSlingshot(mf, 1.0f, false, &straight, &d0);
+    SeedOnSlingshot(mf, 1.0f, true, &tilted, &d1);
+
+    // The tilt moves the pouch toward hand -X. The direction does not change.
+    EXPECT(tilted.x < straight.x - 2.0f);
+    EXPECT(NearVec(d0, d1));
+}
+
+static void TestSeedFlightIsTheVanillaSeedFlight() {
+    std::vector<Vec3> starts;
+    Vec3 hit;
+    PredictHit({ 0, 0, 0 }, { 0, 0, -1 }, 1.0f, kSeedFlight, WallZ{ -100000.0f, &starts }, &hit);
+    // EnArrow_Shoot: speed 80, timer 15, thus 14 moves.
+    EXPECT(starts.size() == 14);
+    EXPECT(Near(starts[1].z, -80.0f));
+    // Gravity starts when the timer is less than 7.2: the move with timer 7.
+    EXPECT(Near(starts[7].y, 0.0f));
+    EXPECT(Near(starts[8].y, -0.4f));
+}
+
 int main() {
     TestArrowLiesAlongTheBowHandY();
     TestDrawPullsTheNockBack();
@@ -217,6 +268,10 @@ int main() {
     TestVrFlightIsLongerWithTheSameArc();
     TestDropFollowsTheVanillaFlight();
     TestUpwardShotKeepsItsPitch();
+    TestSeedLiesAlongTheSlingshotHandY();
+    TestDrawPullsThePouchBack();
+    TestChildStringTiltMovesThePouchNotTheDirection();
+    TestSeedFlightIsTheVanillaSeedFlight();
 
     if (sFailures == 0) {
         std::printf("VrBowAim: all tests passed\n");

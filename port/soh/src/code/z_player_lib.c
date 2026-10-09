@@ -13,6 +13,8 @@
 
 #include <vr_interface.h>
 #include "soh/Enhancements/vr-combat/VrCombat.h"
+// SOH [VR] ARROW_SEED.
+#include "overlays/actors/ovl_En_Arrow/z_en_arrow.h"
 
 #include <stdlib.h>
 
@@ -1959,56 +1961,39 @@ static s32 Player_VrMotionAimOn(void) {
            CVarGetInteger("gVrWeaponAim", 1);
 }
 
-// SOH [VR] Motion aim: the seed starts on the aim ray of the weapon hand and goes along it.
-// EnArrow_Shoot reads world.pos and world.rot. This runs after Z-targeting, thus the hand controls
-// the shot. The bow uses Player_VrAimArrowOnBow. The hookshot does not use this function.
-static void Player_VrAimHeldProjectile(Player* this, Actor* heldActor) {
-    if (!Player_VrMotionAimOn() || Player_HoldsBow(this)) {
-        return;
-    }
-    s32 vrWeaponHand = CVarGetInteger("gVrLeftHanded", 0) ? VR_HAND_RIGHT : VR_HAND_LEFT;
-    float vrRayPos[3];
-    float vrRayDir[3];
-    if (!VR_GetAimRay(vrWeaponHand, vrRayPos, vrRayDir)) {
-        return;
-    }
-    Vec3f vrOrigin = { vrRayPos[0], vrRayPos[1], vrRayPos[2] };
-    Vec3f vrTarget = { vrRayPos[0] + vrRayDir[0] * 100.0f, vrRayPos[1] + vrRayDir[1] * 100.0f,
-                       vrRayPos[2] + vrRayDir[2] * 100.0f };
-    heldActor->world.pos = vrOrigin;
-    heldActor->world.rot.x = Math_Vec3f_Pitch(&vrOrigin, &vrTarget);
-    heldActor->world.rot.y = Math_Vec3f_Yaw(&vrOrigin, &vrTarget);
-    heldActor->world.rot.z = 0;
-    heldActor->shape.rot = heldActor->world.rot;
-}
-
-// SOH [VR] Put the arrow on the nock and point it along the bow. EnArrow_Shoot reads this pose at
-// release. Also draw the aim mark. Needs the bow hand matrix on the stack and a current unk_858.
-static void Player_VrAimArrowOnBow(PlayState* play, Player* this) {
-    Actor* arrow = this->heldActor;
+// SOH [VR] Put the arrow on the nock, or the seed in the pouch, and point it along the weapon.
+// EnArrow_Shoot reads this pose. Also draw the aim mark. Needs the bow hand matrix on the stack.
+// slingshotModel: the string model that the hand draws. The aim mark uses the flight of the shot.
+// This runs after Z-targeting, thus the hand controls the shot.
+static void Player_VrAimHeldShot(PlayState* play, Player* this, s32 slingshotModel) {
+    Actor* shot = this->heldActor;
     MtxF handMf;
     Vec3f pos;
     Vec3f dir;
     Vec3f ahead;
     Vec3f hit;
 
-    if (!Player_VrMotionAimOn() || !Player_HoldsBow(this) || (arrow == NULL) ||
+    if (!Player_VrMotionAimOn() || !(Player_HoldsBow(this) || Player_HoldsSlingshot(this)) || (shot == NULL) ||
         !(this->stateFlags1 & PLAYER_STATE1_READY_TO_FIRE)) {
         return;
     }
     Matrix_Get(&handMf);
-    VrCombat_ArrowOnBow(&handMf.mf[0][0], this->unk_858, &pos.x, &dir.x);
+    if (slingshotModel) {
+        VrCombat_SeedOnSlingshot(&handMf.mf[0][0], this->unk_858, !LINK_IS_ADULT, &pos.x, &dir.x);
+    } else {
+        VrCombat_ArrowOnBow(&handMf.mf[0][0], this->unk_858, &pos.x, &dir.x);
+    }
     ahead.x = pos.x + dir.x * 100.0f;
     ahead.y = pos.y + dir.y * 100.0f;
     ahead.z = pos.z + dir.z * 100.0f;
-    arrow->world.pos = pos;
-    arrow->world.rot.x = Math_Vec3f_Pitch(&pos, &ahead);
-    arrow->world.rot.y = Math_Vec3f_Yaw(&pos, &ahead);
-    arrow->world.rot.z = 0;
-    arrow->shape.rot = arrow->world.rot;
+    shot->world.pos = pos;
+    shot->world.rot.x = Math_Vec3f_Pitch(&pos, &ahead);
+    shot->world.rot.y = Math_Vec3f_Yaw(&pos, &ahead);
+    shot->world.rot.z = 0;
+    shot->shape.rot = shot->world.rot;
 
-    // The aim mark has the default reticle color: the hook colors are not for arrows.
-    if (VrCombat_PredictArrowHit(play, &pos.x, &dir.x, &hit.x)) {
+    // Default reticle color: the hook colors are only for the hookshot.
+    if (VrCombat_PredictShotHit(play, &pos.x, &dir.x, shot->params == ARROW_SEED, &hit.x)) {
         Matrix_Push();
         Player_DrawReticleAt(play, this, &hit, NULL, 0, false);
         Matrix_Pop();
@@ -2108,9 +2093,6 @@ void Player_PostLimbDrawGameplay(PlayState* play, s32 limbIndex, Gfx** dList, Ve
                     Matrix_Get(&sp14C);
                     Matrix_MtxFToYXZRotS(&sp14C, &hookedActor->world.rot, 0);
                     hookedActor->shape.rot = hookedActor->world.rot;
-                    // SOH [VR] Motion aim: the projectile spawns at and flies along the weapon
-                    // hand's aim ray (overrides the animation-driven transform just computed).
-                    Player_VrAimHeldProjectile(this, hookedActor);
                 } else if (this->stateFlags1 & PLAYER_STATE1_CARRYING_ACTOR) {
                     Vec3s spB8;
 
@@ -2199,8 +2181,8 @@ void Player_PostLimbDrawGameplay(PlayState* play, s32 limbIndex, Gfx** dList, Ve
 
             CLOSE_DISPS(play->state.gfxCtx);
 
-            // SOH [VR] Bow aim.
-            Player_VrAimArrowOnBow(play, this);
+            // SOH [VR] Bow and slingshot aim.
+            Player_VrAimHeldShot(play, this, stringModelToUse);
         } else if ((this->actor.scale.y >= 0.0f) && (this->rightHandType == PLAYER_MODELTYPE_RH_SHIELD)) {
             Matrix_Get(&this->shieldMf);
             Player_UpdateShieldCollider(play, this, &this->shieldQuad, sRightHandLimbModelShieldQuadVertices);
