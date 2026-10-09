@@ -39,6 +39,29 @@ not work in VR, the project did not fail.
 The player must not feel sick. VR comfort is part of the destination. The
 target is sessions of one hour without discomfort.
 
+## Item kinds
+
+How the player uses an item in VR first person.
+
+| Kind | Items | Use |
+|---|---|---|
+| Melee weapon | Swords, Deku stick, Megaton Hammer | Swing the hand. |
+| Aimed weapon | Bow, slingshot, hookshot, longshot | The shot goes along the weapon model. |
+| Throwable item | Boomerang, bombs, bombchus, Deku nuts | Throw with the arm. The off-hand trigger is a second way. Only the boomerang does this now ([#96](https://github.com/gibranfelix/oot-vr/issues/96)). |
+| Instant item | Bottles with contents, ocarinas, spells, Lens of Truth, masks, magic beans, trade items | The item selector uses the item immediately. |
+
+The empty bottle comes to the hand. The off-hand trigger swings it.
+
+## Item selector
+
+The VR menu that puts an item in the hand. The player selects an item with the
+hand or with the right thumbstick. The item selector does not use a throwable
+item.
+
+## Aim mark
+
+A point on the surface where a shot will hit. It shows while the player aims.
+
 ## Port assets and game assets
 
 Two different sets of files. They go to the headset in different ways.

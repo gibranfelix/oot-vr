@@ -143,6 +143,21 @@ The pure geometry is in `VrShieldGeometry.h`. The host unit tests are in
 `port/soh/tests/vr/VrShieldGeometryTests.cpp`. The first lines of the file
 show how to run them.
 
+## Item selector
+
+`VrItemSelect.cpp` is the item selector. It presses the C button of the item
+(`EmulateButtonPress`), thus each item uses the vanilla path. Three rules
+change the vanilla path:
+
+1. No button changes the held item (`VB_CHANGE_HELD_ITEM_AND_USE_ITEM`).
+2. The off-hand trigger is the button of the held item. The sword-hand trigger
+   is Z-target (`VrItemSelect_TriggerItemMask`).
+3. The item selector takes a throwable item out and does not use it
+   (`SelectorOnlyTakesOut`, `VrItemSelect_BlocksUse`).
+
+`Player_UseItem` in `z_player.c` uses an instant item immediately.
+`HeldItemVrHand` tells which hand holds the item.
+
 ## Ranged weapons
 
 `Player_PostLimbDrawGameplay` in `port/soh/src/code/z_player_lib.c` sets the

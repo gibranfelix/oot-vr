@@ -39,7 +39,8 @@ Tested only on the Meta Quest 3S.
 
 ## Controls
 
-The right hand holds the sword. The left hand holds the shield and the items.
+The right hand holds the sword and the items that you swing or throw. The left
+hand holds the shield, the bow, the slingshot, the hookshot, and the ocarina.
 
 | Control                       | Action                                                                  |
 | ----------------------------- | ----------------------------------------------------------------------- |
@@ -59,6 +60,16 @@ The right hand holds the sword. The left hand holds the shield and the items.
 
 Swing the sword with your right hand to attack. Hold the shield in front of you
 to block.
+
+### Items
+
+| Item                                                         | Use                                                        |
+| ------------------------------------------------------------ | ---------------------------------------------------------- |
+| Sword, Deku stick, Megaton Hammer                            | Swing your hand.                                           |
+| Bow, slingshot, hookshot                                     | Point the weapon. The aim mark shows where the shot hits.  |
+| Boomerang                                                    | Hold the right grip, throw with the arm, release the grip. |
+| Bombs, bombchus, empty bottle                                | Left trigger.                                              |
+| Deku nuts, ocarina, spells, masks, full bottles, other items | The item selector uses the item immediately.               |
 
 ### Control schemes
 
