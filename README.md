@@ -39,8 +39,9 @@ Tested only on the Meta Quest 3S.
 
 ## Controls
 
-The right hand holds the sword and the items that you swing or throw. The left
-hand holds the shield, the bow, the slingshot, the hookshot, and the ocarina.
+The right hand holds the sword, the boomerang, and the items that you swing.
+Either hand takes a bomb from the belt. The left hand holds the shield, the bow,
+the slingshot, the hookshot, and the ocarina.
 
 | Control                       | Action                                                                  |
 | ----------------------------- | ----------------------------------------------------------------------- |

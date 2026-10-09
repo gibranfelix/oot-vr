@@ -54,8 +54,8 @@ The empty bottle comes to the hand. The off-hand trigger swings it.
 
 ## Item selector
 
-The VR menu that puts an item in the hand. The player selects an item with the
-hand or with the right thumbstick. The item selector does not use a throwable
+The VR menu that puts an item in the hand, or a bomb on the belt. The player
+selects an item with the hand or with the right thumbstick. The item selector does not use a throwable
 item.
 
 ## Belt
