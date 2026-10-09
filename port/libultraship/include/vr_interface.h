@@ -107,8 +107,8 @@ bool     VR_GetHandPose(int hand, float pos[3], float quat[4]);
 // reads as centered at the SOURCE — movement, artificial turning and stick C-buttons all
 // inherit it, so holding a stick-click gesture can't steer, turn or fire items.
 void     VR_SetStickSuppressed(int hand, int32_t suppressed);
-// Controller aim ray (runtime-calibrated pointing pose) in game-world coords: origin + unit
-// forward direction. This is the ray for weapon aiming (slingshot/bow/hookshot).
+// Controller aim ray (the OpenXR aim pose) in game-world coords: origin + unit forward
+// direction. The boomerang trigger throw uses it.
 bool     VR_GetAimRay(int hand, float pos[3], float dir[3]);
 bool     VR_IsHandActive(int hand);
 // Controller state as the GAME sees it. While the SoH menu is open, the controllers operate the menu

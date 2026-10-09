@@ -3294,26 +3294,11 @@ bool vr_get_aim_ray(int hand, float out_pos[3], float out_dir[3]) {
     const glm::vec3 anchor = (xr.first_person && xr.anchor_initialized)
                                  ? glm::mix(xr.anchor_prev, xr.anchor, xr.interp_alpha)
                                  : glm::vec3(0.0f);
-    glm::quat q(p.orientation.w, p.orientation.x, p.orientation.y, p.orientation.z);
+    const glm::quat q(p.orientation.w, p.orientation.x, p.orientation.y, p.orientation.z);
 
-    // Player-tunable calibration: angle offsets (degrees, applied in the aim frame — pitch about
-    // the ray's own X, yaw about its Y) and a positional offset (meters in the aim frame, scaled
-    // to game units) so the launch point can sit exactly where the weapon's muzzle/pouch looks.
-    const float kDeg = 3.14159265358979323846f / 180.0f;
-    const float calPitch = CVarGetFloat("gVrAimCalPitch", 0.0f);
-    const float calYaw = CVarGetFloat("gVrAimCalYaw", 0.0f);
-    if (calPitch != 0.0f || calYaw != 0.0f) {
-        q = q * glm::angleAxis(calYaw * kDeg, glm::vec3(0.0f, 1.0f, 0.0f)) *
-            glm::angleAxis(calPitch * kDeg, glm::vec3(1.0f, 0.0f, 0.0f));
-    }
-    // Z negated: the CVar is "meters forward along the ray", and OpenXR aim forward is -Z.
-    const glm::vec3 off(CVarGetFloat("gVrAimOffX", 0.0f), CVarGetFloat("gVrAimOffY", 0.0f),
-                        -CVarGetFloat("gVrAimOffZ", 0.0f));
-    const glm::vec3 posOff = q * (off * xr.world_scale);
-
-    out_pos[0] = anchor.x + p.position.x * xr.world_scale + posOff.x;
-    out_pos[1] = anchor.y + p.position.y * xr.world_scale + posOff.y;
-    out_pos[2] = anchor.z + p.position.z * xr.world_scale + posOff.z;
+    out_pos[0] = anchor.x + p.position.x * xr.world_scale;
+    out_pos[1] = anchor.y + p.position.y * xr.world_scale;
+    out_pos[2] = anchor.z + p.position.z * xr.world_scale;
     const glm::vec3 d = q * glm::vec3(0.0f, 0.0f, -1.0f); // OpenXR aim forward is -Z
     out_dir[0] = d.x;
     out_dir[1] = d.y;

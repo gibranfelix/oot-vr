@@ -1993,51 +1993,6 @@ void SohMenu::AddMenuVRSettings() {
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrHandLOverride", 1); })
         .Options(FloatSliderOptions().Min(-30.0f).Max(30.0f).DefaultValue(0.0f).Step(0.5f).Format("%.1f"));
 
-    AddWidget(calPath, "Weapon Aim Trim", WIDGET_SEPARATOR_TEXT);
-    AddWidget(calPath, "Aim Pitch: %.1f deg", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrAimCalPitch")
-        .Options(FloatSliderOptions()
-                     .Min(-45.0f)
-                     .Max(45.0f)
-                     .DefaultValue(0.0f)
-                     .Step(0.5f)
-                     .Format("%.1f")
-                     .Tooltip("Tilt the aim ray up/down relative to the controller. If shots "
-                              "consistently land high or low of where you point, trim it here."));
-    AddWidget(calPath, "Aim Yaw: %.1f deg", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrAimCalYaw")
-        .Options(FloatSliderOptions()
-                     .Min(-45.0f)
-                     .Max(45.0f)
-                     .DefaultValue(0.0f)
-                     .Step(0.5f)
-                     .Format("%.1f")
-                     .Tooltip("Skew the aim ray left/right relative to the controller."));
-    AddWidget(calPath, "Aim Origin Right: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrAimOffX")
-        .Options(FloatSliderOptions()
-                     .Min(-0.3f)
-                     .Max(0.3f)
-                     .DefaultValue(0.0f)
-                     .Step(0.01f)
-                     .Format("%.2f")
-                     .Tooltip("Slide the projectile's launch point sideways along the aim frame "
-                              "(meters), e.g. to sit in the slingshot pouch."));
-    AddWidget(calPath, "Aim Origin Up: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrAimOffY")
-        .Options(FloatSliderOptions().Min(-0.3f).Max(0.3f).DefaultValue(0.0f).Step(0.01f).Format("%.2f"));
-    AddWidget(calPath, "Aim Origin Forward: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrAimOffZ")
-        .Options(FloatSliderOptions()
-                     .Min(-0.3f)
-                     .Max(0.3f)
-                     .DefaultValue(0.0f)
-                     .Step(0.01f)
-                     .Format("%.2f")
-                     .Tooltip("Push the launch point forward along the ray (negative = toward "
-                              "you). Note OpenXR aim forward is -Z, so forward here is negative Z "
-                              "in the raw frame - this slider already accounts for that."));
-
     AddWidget(calPath, "Head Position (relative to Link's body)", WIDGET_SEPARATOR_TEXT);
     AddWidget(calPath, "Forward Offset: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrHeadOffsetForward")
@@ -2085,11 +2040,6 @@ void SohMenu::AddMenuVRSettings() {
                      "gVrHandLOffX=%.1f\n"
                      "gVrHandLOffY=%.1f\n"
                      "gVrHandLOffZ=%.1f\n"
-                     "gVrAimCalPitch=%.1f\n"
-                     "gVrAimCalYaw=%.1f\n"
-                     "gVrAimOffX=%.2f\n"
-                     "gVrAimOffY=%.2f\n"
-                     "gVrAimOffZ=%.2f\n"
                      "gVrHeadHeightOffset=%.1f\n"
                      "gVrHeadOffsetForward=%.1f\n"
                      "gVrHeadOffsetSide=%.1f\n"
@@ -2121,9 +2071,6 @@ void SohMenu::AddMenuVRSettings() {
                      CVarGetFloat("gVrHandLCalYaw", 76.0f), CVarGetFloat("gVrHandLCalRoll", 30.0f),
                      CVarGetFloat("gVrHandLOffX", 0.0f), CVarGetFloat("gVrHandLOffY", 0.0f),
                      CVarGetFloat("gVrHandLOffZ", 0.0f),
-                     CVarGetFloat("gVrAimCalPitch", 0.0f), CVarGetFloat("gVrAimCalYaw", 0.0f),
-                     CVarGetFloat("gVrAimOffX", 0.0f), CVarGetFloat("gVrAimOffY", 0.0f),
-                     CVarGetFloat("gVrAimOffZ", 0.0f),
                      CVarGetFloat("gVrHeadHeightOffset", -9.0f), CVarGetFloat("gVrHeadOffsetForward", 6.0f),
                      CVarGetFloat("gVrHeadOffsetSide", 0.0f), CVarGetFloat("gVrWorldScale", 35.0f),
                      CVarGetFloat("gVrScreenDistance", 2.2f), CVarGetFloat("gVrScreenSize", 2.4f),
