@@ -76,9 +76,10 @@ Vec3f sHeadRight; // camera right captured at open: stable targets, "left is lef
 // the block below has to let its own press through by more than a same-frame stamp.
 int sEquipGrace = 0;
 
-// Rule 3. #97 to #99 add the other throwable items.
+// Rule 3. #98 and #99 add the other throwable items.
 bool SelectorOnlyTakesOut(Player* player) {
-    return (player != NULL) && (player->heldItemAction == PLAYER_IA_BOOMERANG);
+    return (player != NULL) &&
+           ((player->heldItemAction == PLAYER_IA_BOOMERANG) || (player->heldItemAction == PLAYER_IA_BOMB));
 }
 
 int SwordHand() {
@@ -266,6 +267,19 @@ void QuickSwapTick() {
         }
     }
 
+    // A bomb in the grip drops on the chord (VrBomb.cpp). B draws the sword after the drop.
+    static int sDrawRetryTicks = 0;
+    if (sDrawRetryTicks > 0) {
+        sDrawRetryTicks--;
+        if (!chord) {
+            sDrawRetryTicks = 0;
+        } else if (!(player->stateFlags1 & PLAYER_STATE1_CARRYING_ACTOR)) {
+            sDrawRetryTicks = 0;
+            sEquipGrace = 3;
+            GameInteractor::RawAction::EmulateButtonPress(BTN_B);
+        }
+    }
+
     if (!rising || sOpen || !SelectorAvailable()) {
         return;
     }
@@ -274,10 +288,14 @@ void QuickSwapTick() {
     if (Player_GetMeleeWeaponHeld(player) != 0) {
         return;
     }
-    sEquipGrace = 3;
-    GameInteractor::RawAction::EmulateButtonPress(BTN_B);
     VR_TriggerHaptic(VR_HAND_LEFT, 0.4f, 0.0f, 25.0f);
     VR_TriggerHaptic(VR_HAND_RIGHT, 0.4f, 0.0f, 25.0f);
+    if (VrCombat_BombUsesBelt(player) && (player->stateFlags1 & PLAYER_STATE1_CARRYING_ACTOR)) {
+        sDrawRetryTicks = 5;
+        return;
+    }
+    sEquipGrace = 3;
+    GameInteractor::RawAction::EmulateButtonPress(BTN_B);
 }
 
 // Right stick as the C-stick in selector-mode first person (only while artificial turning is off,
@@ -599,6 +617,10 @@ extern "C" bool VrItemSelect_ModeActive(void) {
 
 extern "C" bool VrItemSelect_BlocksUse(Player* player) {
     return SelectorModeInPlay() && (sEquipGrace > 0) && SelectorOnlyTakesOut(player);
+}
+
+extern "C" bool VrItemSelect_SwapChordHeld(void) {
+    return SwapChordHeld();
 }
 
 extern "C" uint16_t VrItemSelect_TriggerItemMask(int32_t vrHand) {

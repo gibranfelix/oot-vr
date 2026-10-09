@@ -47,16 +47,22 @@ How the player uses an item in VR first person.
 |---|---|---|
 | Melee weapon | Swords, Deku stick, Megaton Hammer | Swing the hand. |
 | Aimed weapon | Bow, slingshot, hookshot, longshot | The shot goes along the weapon model. |
-| Throwable item | Boomerang, bombs, bombchus, Deku nuts | Throw with the arm. The off-hand trigger is a second way. Only the boomerang does this now ([#96](https://github.com/gibranfelix/oot-vr/issues/96)). |
+| Throwable item | Boomerang, bombs, bombchus, Deku nuts | Throw with the arm. The off-hand trigger is a second way. Only the boomerang and the bombs do this now ([#96](https://github.com/gibranfelix/oot-vr/issues/96)). |
 | Instant item | Bottles with contents, ocarinas, spells, Lens of Truth, masks, magic beans, trade items | The item selector uses the item immediately. |
 
 The empty bottle comes to the hand. The off-hand trigger swings it.
 
 ## Item selector
 
-The VR menu that puts an item in the hand. The player selects an item with the
-hand or with the right thumbstick. The item selector does not use a throwable
-item.
+The VR menu that puts an item in the hand, or a bomb on the belt. The player
+selects an item with the hand or with the right thumbstick. The item selector
+does not use a throwable item.
+
+## Belt
+
+The place at the front of Link's waist where a bomb waits. The item selector
+puts the bomb on the belt. The player takes it from the belt with either hand.
+The fuse starts when the bomb leaves the belt.
 
 ## Aim mark
 

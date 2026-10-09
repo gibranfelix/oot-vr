@@ -2245,7 +2245,8 @@ void Player_PostLimbDrawGameplay(PlayState* play, s32 limbIndex, Gfx** dList, Ve
                     sGetItemRefPos.z = (this->bodyPartsPos[15].z + this->leftHandPos.z) * 0.5f;
                 }
 
-                if (this->unk_862 == 0) {
+                // SOH [VR] A bomb from the belt is in one hand, not between the two hands.
+                if ((this->unk_862 == 0) && !VrCombat_BombHeldPos(this, &heldActor->world.pos.x)) {
                     Math_Vec3f_Copy(&heldActor->world.pos, &sGetItemRefPos);
                 }
             }

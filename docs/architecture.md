@@ -48,7 +48,7 @@ The VR code that is new has its own files:
 | `port/libultraship/include/vr_interface.h` | The declarations of the `VR_*` functions, with comments |
 | `port/libultraship/src/fast/vr_physics.cpp` | The collision mesh for the physical hands |
 | `port/libultraship/src/fast/vr_menu_input.cpp` | The SoH menu with the Touch controllers: the Y toggle, the menu navigation, and the input filter for the game |
-| `port/soh/soh/Enhancements/vr-combat/` | Sword and hammer swing, shield, bow and boomerang aim, and item selection |
+| `port/soh/soh/Enhancements/vr-combat/` | Sword and hammer swing, shield, bow and boomerang aim, bomb belt, and item selection |
 | `port/soh/soh/SohGui/SohMenuVRSettings.cpp` | The VR settings menu |
 
 ## Render path
@@ -157,6 +157,29 @@ change the vanilla path:
 
 `Player_UseItem` in `z_player.c` uses an instant item immediately.
 `HeldItemVrHand` tells which hand holds the item.
+
+## Bomb belt
+
+In selector mode, the bomb waits on the belt (`VrBomb.cpp`). Link keeps
+`PLAYER_IA_BOMB` with empty hands, and there is no `EnBom` actor. Thus the belt
+has no fuse and no ammo cost.
+
+| Step | Code in `z_player.c` |
+|---|---|
+| The grip takes the bomb | `Player_VrTakeBeltBomb` spawns the `EnBom`. |
+| The grip is released | `Player_VrReleaseBomb` throws the bomb, or drops it. |
+| The off-hand trigger | `Player_InitExplosiveIA` spawns the bomb, and `Player_ActionHandler_9` throws it. |
+| A throw is done | `Player_DetachHeldActor` keeps the bombs selected. |
+
+In VR first person, `EnBom_Draw` draws the bomb 15 cm wide in the real world,
+for child Link and adult Link. The fuse and the shadow follow this size. The
+explosion size does not change. The throw distance does not use the world
+scale.
+
+`VrGripHand.cpp` closes an empty hand of Link while the player holds the grip.
+
+The math is in `VrBombThrow.h`. The host unit tests are in
+`port/soh/tests/vr/VrBombThrowTests.cpp`.
 
 ## Ranged weapons
 

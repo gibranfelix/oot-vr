@@ -125,6 +125,8 @@ bool VrItemSelect_SwapConsumed(int32_t vrHand, uint16_t vrBtnMask);
 
 // True while the selector press must not use the held item (rule 3 in VrItemSelect.cpp).
 bool VrItemSelect_BlocksUse(struct Player* player);
+// The two inputs that draw the sword are held (VrItemSelect.cpp QuickSwapTick).
+bool VrItemSelect_SwapChordHeld(void);
 
 // True while the ocarina interface is up (free play, song playback, scarecrow recording, the
 // frog and Skull Kid minigames — every msgMode from OCARINA_STARTING through FROGS_WAITING).
@@ -165,6 +167,23 @@ bool VrCombat_BoomerangTriggerThrow(const float* targetXyz, VrCombatBoomerangThr
 bool VrCombat_BoomerangTakeGripThrow(const float* targetXyz, VrCombatBoomerangThrow* out);
 bool VrCombat_BoomerangAimMark(struct PlayState* play, float* outHitXyz);
 bool VrCombat_BoomerangGripConsumed(int32_t vrHand, uint16_t vrBtnMask);
+// The bomb belt (VrBomb.cpp). velocity: units for each tick. The Take functions return the event
+// of the last tick one time.
+typedef struct VrCombatBombRelease {
+    float pos[3];
+    float velocity[3];
+    bool thrown;
+} VrCombatBombRelease;
+bool VrCombat_BombUsesBelt(struct Player* player);
+bool VrCombat_BombBeltUseNow(struct Player* player);
+bool VrCombat_BombBeltPos(struct Player* player, float* outXyz);
+bool VrCombat_BombTakeGrab(void);
+bool VrCombat_BombHeldPos(struct Player* player, float* outXyz);
+bool VrCombat_BombTakeRelease(VrCombatBombRelease* out);
+bool VrCombat_BombGripConsumed(int32_t vrHand, uint16_t vrBtnMask);
+// The scale of the bomb model in VR first person: the bomb has the same real size for child Link
+// and adult Link. 1 when VR is off.
+float VrCombat_BombDrawScale(void);
 // The physical shield's block collider in R_HAND limb model space (outXyz4 = 4 vertices x xyz,
 // vanilla zigzag order) — replaces the vanilla stance quad, whose size/offset never matched a
 // controller-held shield. Its size and position come from the mesh of the shield in the hand
@@ -199,6 +218,8 @@ const TickPath& GetTickPath(int hand);
 bool WeaponAimOn();
 // The boomerang grip throw (VrBoomerang.cpp). Call after the hand paths of the tick are read.
 void Boomerang_OnPlayerUpdate(Player* player);
+// Call after the hand paths of the tick are read.
+void Bomb_OnPlayerUpdate(Player* player);
 
 // Per-tick swing bookkeeping (VrSwing.cpp), driven from VrCombat's OnPlayerUpdate hook:
 // reads back last tick's quad results (hit haptics, one-hit-per-swing demotion), then resets
