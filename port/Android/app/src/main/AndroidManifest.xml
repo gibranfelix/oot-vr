@@ -54,11 +54,14 @@
         <meta-data android:name="SDL_ENV.SDL_ANDROID_BLOCK_ON_PAUSE" android:value="0"/>
         <meta-data android:name="SDL_ENV.SDL_ANDROID_BLOCK_ON_PAUSE_PAUSEAUDIO" android:value="0"/>
 
+        <!-- SOH [Quest] configChanges lists all the changes that the activity can get. A change
+             that is not in the list creates the activity again in the same process, and SDL_main
+             cannot run two times in one process (read GameProcess.java). -->
         <activity android:name="org.oot.vr.MainActivity"
             android:label="@string/app_name"
             android:alwaysRetainTaskState="true"
             android:launchMode="singleTask"
-            android:configChanges="density|keyboard|keyboardHidden|navigation|orientation|screenLayout|screenSize|uiMode"
+            android:configChanges="colorMode|density|fontScale|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
             android:excludeFromRecents="false"
             android:exported="true"
             android:screenOrientation="landscape">
