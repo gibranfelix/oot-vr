@@ -75,22 +75,31 @@ to block.
 | Empty bottle                                                 | Left trigger.                                              |
 | Ocarina, spells, masks, full bottles, other items            | The item selector uses the item immediately.               |
 
-### Control schemes
+### Quick Setup
 
-At the first start, the game asks how you want to turn. To change it, go to VR
-Settings > VR Inputs > **Control Scheme**.
+The first start asks how you want to turn. To change it, go to VR Settings >
+**Quick Setup**:
 
-| Scheme        | Turn                                | Right thumbstick                                                     |
-| ------------- | ----------------------------------- | -------------------------------------------------------------------- |
-| Default       | Turn your body.                     | ← → ↓ put the C-Left, C-Right, or C-Down item in your hand.          |
-| Shipwright-VR | Push the right thumbstick (smooth). | ← → turn the view. ↓ has no action. Use the item selector for items. |
+| Setting                | Choices                                       |
+| ---------------------- | --------------------------------------------- |
+| View                   | First Person, Third Person                    |
+| Sword Hand             | Right, Left                                   |
+| Right Stick            | Items, Snap Turn, Smooth Turn                 |
+| Use Items              | Item Selector, C Buttons                      |
+| Hearts and Items (HUD) | In Front, On the Wrist, Left Hand, Right Hand |
 
-In the two schemes, right thumbstick ↑ talks to Navi and does not turn the
-view. The two schemes use the same buttons. The Shipwright-VR scheme comes from
-[Shipwright-VR](https://github.com/ShinyWindow/Shipwright-VR) for PC.
+The right thumbstick takes items or turns. It does not do the two:
 
-A change to a binding or to turning shows **Custom**. Select **Reset to
-Scheme** to go back.
+| Right Stick | Use Items     | Take an item                                                            |
+| ----------- | ------------- | ----------------------------------------------------------------------- |
+| Items       | Item Selector | Flick the right thumbstick, or hold its click and move your hand.       |
+| Turn        | Item Selector | Hold the right thumbstick click and move your hand.                     |
+| Items       | C Buttons     | Flick the right thumbstick, or push X, B, or the left Menu button.      |
+| Turn        | C Buttons     | Push X (C-Left), B (C-Down), or the left Menu button (C-Right).         |
+
+With C Buttons, the right trigger is N64 B, and the left thumbstick click is
+Start. The belt works only with the item selector. To change a button, go to VR
+Settings > **Controls**.
 
 ### SoH menu
 
@@ -108,8 +117,8 @@ the menu, not Link.
 | B button                        | Go back.                                |
 | Left grip / right grip          | Previous tab / next tab.                |
 
-The game does not stop while the menu is open. In the classic control scheme,
-C-Right is on the left Menu button.
+The game does not stop while the menu is open. With C Buttons, C-Right is on
+the left Menu button.
 
 ### Ocarina
 

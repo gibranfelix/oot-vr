@@ -216,6 +216,10 @@ uint32_t Menu::DrawSearchResults(std::string& menuSearchText) {
             auto& menuEntry = menuEntries.at(menuLabel);
             for (auto& sidebarLabel : menuEntry.sidebarOrder) {
                 auto& sidebar = menuEntry.sidebars[sidebarLabel];
+                // SOH [VR] A hidden sidebar entry also hides its widgets from search.
+                if (sidebar.isHidden && sidebar.isHidden()) {
+                    continue;
+                }
                 for (size_t i = 0; i < sidebar.columnWidgets.size(); i++) {
                     auto& column = sidebar.columnWidgets.at(i);
                     for (auto& info : column) {
@@ -295,7 +299,7 @@ std::unordered_map<uint32_t, disabledInfo>& Menu::GetDisabledMap() {
 
 #ifdef __ANDROID__
 // SOH [Quest] Settings for a PC window and its system APIs. On the Quest they do nothing, or a wrong
-// API stops the game from starting. The frame rate follows the headset: VR Settings > Performance >
+// API stops the game from starting. The frame rate follows the headset: VR Settings > Display >
 // Headset Refresh Rate is the only place to change it.
 static bool QuestHidesWidget(const WidgetInfo& widget) {
     static const char* const sPcOnlyWidgets[] = {
@@ -897,7 +901,9 @@ void Menu::DrawElement() {
     const char* sidebarCvar = menuEntries.at(headerIndex).sidebarCvar;
 
     std::string sectionIndex = CVarGetString(sidebarCvar, "");
-    if (!sidebar->contains(sectionIndex)) {
+    // SOH [VR] A hidden sidebar entry cannot be the current one.
+    if (!sidebar->contains(sectionIndex) ||
+        (sidebar->at(sectionIndex).isHidden && sidebar->at(sectionIndex).isHidden())) {
         sectionIndex = menuEntries.at(headerIndex).sidebarOrder.at(0);
     }
     float sectionCenterX = pos.x + (sidebarWidth / 2);
@@ -906,6 +912,10 @@ void Menu::DrawElement() {
     ImGui::BeginChild((menuEntries.at(headerIndex).label + " Section").c_str(), { sidebarWidth, columnHeight * 3 },
                       ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AlwaysAutoResize, ImGuiWindowFlags_NoTitleBar);
     for (auto& sidebarLabel : menuEntries.at(headerIndex).sidebarOrder) {
+        // SOH [VR] Skip the hidden sidebar entries.
+        if (sidebar->at(sidebarLabel).isHidden && sidebar->at(sidebarLabel).isHidden()) {
+            continue;
+        }
         std::string nextIndex = "";
         UIWidgets::PushStyleButton(menuThemeIndex);
         if (sectionIndex != sidebarLabel) {

@@ -13,10 +13,9 @@ We tested these on a Quest 3S. We did not test on a Quest 3.
   GameCube version.
 - Stereo render, first-person camera, and head tracking.
 - Automatic world scale for child Link and adult Link.
-- Two control schemes. The player selects one at the first start:
-  - Default: the player turns the body, and the right stick selects items.
-  - Shipwright-VR: the right stick turns the view smoothly.
-  - In the two schemes, the right trigger does Z-targeting.
+- Quick Setup in VR Settings: view, sword hand, right stick (items or turn),
+  item selector or C buttons, and HUD position. The first start asks how the
+  player wants to turn.
 - The physical sword and shield with the Touch controllers. The shield blocks
   with its full size, and the Mirror Shield reflects the Twinrova beams.
 - Menus and the pause screen on a floating panel.

@@ -122,7 +122,8 @@ extern "C" bool VrCombat_InPlay(void) {
 }
 
 extern "C" bool VrCombat_Active(void) {
-    if (!CVarGetInteger("gVrPhysCombat", 1) || !InterfaceOk()) {
+    // Always on in VR first person (#104).
+    if (!InterfaceOk()) {
         return false;
     }
     if (!VR_IsInitialized() || !VR_GetFirstPerson()) {

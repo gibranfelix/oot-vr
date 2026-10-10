@@ -49,7 +49,7 @@ The VR code that is new has its own files:
 | `port/libultraship/src/fast/vr_physics.cpp` | The collision mesh for the physical hands |
 | `port/libultraship/src/fast/vr_menu_input.cpp` | The SoH menu with the Touch controllers: the Y toggle, the menu navigation, and the input filter for the game |
 | `port/soh/soh/Enhancements/vr-combat/` | Sword and hammer swing, shield, bow and boomerang aim, belt, and item selection |
-| `port/soh/soh/SohGui/SohMenuVRSettings.cpp` | The VR settings menu |
+| `port/soh/soh/SohGui/SohMenuVRSettings.cpp` | The VR settings menu. The Developer tab shows only with Dev Tools > Debug Mode on |
 
 ## Render path
 
@@ -131,7 +131,7 @@ does the block.
 
 - **Block collider.** The collider has the size of the shield mesh in the hand.
   `VrShield.cpp` reads the vertices of the display list of the hand. The tilt
-  sliders in VR Settings set the plane of the collider.
+  sliders in VR Settings > Developer set the plane of the collider.
 - **Facing cone.** The shield blocks an attack only when the attack comes from
   the front of the shield. The default cone is 90 degrees.
 - **Actors that read the shield stance.** Twinrova and Dark Link read

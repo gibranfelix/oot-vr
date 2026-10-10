@@ -2,8 +2,10 @@
 #include "soh/Enhancements/game-interactor/GameInteractor.h"
 #include "soh/OTRGlobals.h"
 #include "soh/ShipInit.hpp"
+#include "SohGui.hpp"
 #include <libultraship/bridge/consolevariablebridge.h>
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -85,7 +87,7 @@ static const std::map<int32_t, const char*> vrItemSelSwapOptions = {
     { VR_BTN_MENU, "Both Menu Buttons" },
 };
 
-// --- VR Inputs: N64-button-first binding editor (styled after the base game's bindings window:
+// --- Controls: N64-button-first binding editor (styled after the base game's bindings window:
 // colored N64 chip per row, removable chips for each bound VR input, "+" to add). All state lives
 // in the gVrBind* mask CVars that padmgr.c reads.
 //
@@ -234,7 +236,7 @@ static void VrInputBindingRow(const VrN64RowDef& row) {
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.26f, 0.55f, 0.88f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.12f, 0.30f, 0.55f, 1.0f));
         char listenLabel[64];
-        snprintf(listenLabel, sizeof(listenLabel), "Press a VR input... (wait %.0f s, click, or Esc to cancel)",
+        snprintf(listenLabel, sizeof(listenLabel), "Push a controller button (%.0f s). Select to cancel.",
                  kVrListenTimeout);
         if (ImGui::SmallButton(listenLabel)) {
             sVrListenRowMask = 0;
@@ -304,8 +306,8 @@ static void VrInputBindingRow(const VrN64RowDef& row) {
         }
         ImGui::PopStyleColor(3);
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(VR_IsInitialized() ? "Then press the VR controller input to bind"
-                                                 : "Pick a VR input to bind (VR not active)");
+            ImGui::SetTooltip(VR_IsInitialized() ? "Then push the controller button to add"
+                                                 : "Select the controller button to add");
         }
         if (ImGui::BeginPopup("VrAddBinding")) {
             for (int i = 0; i < VrInputCount(); i++) {
@@ -326,6 +328,18 @@ static void VrInputBindingRow(const VrN64RowDef& row) {
     }
 
     ImGui::PopID();
+}
+
+// Resets the binding set that the editor shows.
+static void VrResetBindingsButton() {
+    ImGui::Spacing();
+    if (ImGui::Button("Reset to Default##VrInputs")) {
+        for (int i = 0; i < VrInputCount(); i++) {
+            CVarClear(VrInputDefs()[i].cvar);
+        }
+        CVarSave();
+        sVrListenRowMask = 0;
+    }
 }
 
 static void VrInputBindings(WidgetInfo& info) {
@@ -365,7 +379,7 @@ static void VrInputBindings(WidgetInfo& info) {
     // Which binding set is being edited. The gameplay tab follows the active scheme
     // (gVrItemSelect), so flipping the selector toggle swaps schemes with bindings intact; the
     // ocarina set is its own thing, in force whenever the ocarina interface is up.
-    if (ImGui::RadioButton(VrSelectorProfile() ? "Gameplay (Item Selector)" : "Gameplay (Classic)", !sVrEditOcarina)) {
+    if (ImGui::RadioButton(VrSelectorProfile() ? "Game (Item Selector)" : "Game (C Buttons)", !sVrEditOcarina)) {
         sVrEditOcarina = false;
         sVrListenRowMask = 0;
     }
@@ -377,29 +391,21 @@ static void VrInputBindings(WidgetInfo& info) {
     ImGui::Separator();
 
     if (sVrEditOcarina) {
-        ImGui::TextWrapped("Editing the OCARINA binding set, used whenever the ocarina is out — in "
-                           "either control scheme. Notes run low to high: D4, F4, A4, B4, D5. The "
-                           "left thumbstick bends pitch, as the analog stick always did. Triggers "
-                           "are NOT reserved here: while playing, every input except Y belongs to "
-                           "the ocarina. Y opens this menu. Thumbstick DIRECTIONS are bindable too (flick the stick while "
-                           "a row is listening); binding any direction on a stick gives that whole "
-                           "stick to notes while playing — left stick loses pitch bend, right "
-                           "stick loses its C-stick role.");
+        ImGui::TextWrapped("These buttons apply while you play the ocarina. The notes go from low to "
+                           "high: D4, F4, A4, B4, D5. The left stick bends the pitch. You can also add a "
+                           "stick direction. Then that stick plays notes only.");
         ImGui::Separator();
         for (const VrN64RowDef& row : sOcarinaRows) {
             VrInputBindingRow(row);
         }
+        VrResetBindingsButton();
         return;
     }
     if (VrSelectorProfile()) {
-        ImGui::TextWrapped("Editing the ITEM SELECTOR binding set. Both triggers are reserved: the "
-                           "sword-hand trigger is Z-target, and the other trigger uses the held "
-                           "item. C buttons no longer pull items out — the selector and the right "
-                           "stick do that — so they are free. Y is reserved: it opens this menu.");
+        ImGui::TextWrapped("The sword-hand trigger is Z-target. The other trigger uses the item in the "
+                           "hand. Y opens this menu.");
     } else {
-        ImGui::TextWrapped("Editing the CLASSIC binding set: items are used by pressing the C "
-                           "button you assigned them to in the inventory. Y is reserved: it opens "
-                           "this menu.");
+        ImGui::TextWrapped("Push the C button of an item to use it. Y opens this menu.");
     }
     ImGui::Separator();
 
@@ -413,13 +419,11 @@ static void VrInputBindings(WidgetInfo& info) {
             VrInputBindingRow(row);
         }
     }
+    VrResetBindingsButton();
 }
 
-// --- Control schemes (top of VR Inputs). A scheme is a value for the turning CVars, with the item
-// selector on and every selector and ocarina binding at its default: both schemes share the
-// bindings, they differ in what the right stick does in first person. Selecting a scheme writes
-// all of it; any later change to those CVars shows "Custom" until Reset to Scheme. gVrControlScheme
-// keeps the last selected scheme, gVrControlSchemeAsked records the first-start question.
+// --- Control schemes: the turning CVars, the item selector on, and the default bindings. The first
+// start in VR asks for one. gVrControlSchemeAsked records the answer.
 struct VrControlScheme {
     const char* name;
     const char* summary;
@@ -430,32 +434,6 @@ static const VrControlScheme sVrControlSchemes[] = {
     { "Default", "Turn with your body. Flick the right stick to take a C item into your hand.", 0, 0 },
     { "Shipwright-VR", "Turn smoothly with the right stick. Use the item selector to take items.", 1, 1 },
 };
-static const int kVrControlSchemeCount = sizeof(sVrControlSchemes) / sizeof(sVrControlSchemes[0]);
-
-static bool VrBindingsAtDefault(const VrInputDef* defs, int count) {
-    for (int i = 0; i < count; i++) {
-        if (CVarGetInteger(defs[i].cvar, defs[i].defaultMask) != defs[i].defaultMask) {
-            return false;
-        }
-    }
-    return true;
-}
-
-// The scheme that the current settings match, or -1 (Custom).
-static int VrCurrentControlScheme() {
-    if (!VrSelectorProfile() || !VrBindingsAtDefault(sVrInputDefsSelector, kVrButtonInputCount) ||
-        !VrBindingsAtDefault(sVrInputDefsOcarina, kVrOcarinaInputCount)) {
-        return -1;
-    }
-    const int32_t turnOn = CVarGetInteger("gVrSnapTurnOn", 0) != 0;
-    for (int i = 0; i < kVrControlSchemeCount; i++) {
-        const VrControlScheme& scheme = sVrControlSchemes[i];
-        if (turnOn == scheme.turnOn && (!turnOn || CVarGetInteger("gVrTurnStyle", 0) == scheme.turnStyle)) {
-            return i;
-        }
-    }
-    return -1;
-}
 
 static void VrApplyControlScheme(int idx) {
     const VrControlScheme& scheme = sVrControlSchemes[idx];
@@ -475,7 +453,7 @@ static void VrApplyControlScheme(int idx) {
     sVrListenRowMask = 0;
 }
 
-// First start in VR: the question replaces the scheme selection until the player answers it.
+// Shows in place of Quick Setup until the player answers.
 static void VrControlSchemeQuestion() {
     ImGui::PushFont(OTRGlobals::Instance->fontStandardLargest);
     ImGui::TextUnformatted("How do you want to turn?");
@@ -504,44 +482,12 @@ static void VrControlSchemeQuestion() {
         ImGui::EndGroup();
     }
     ImGui::Spacing();
-    ImGui::TextWrapped("You can change this later in VR Settings > VR Inputs.");
+    ImGui::TextWrapped("You can change this later in VR Settings > Quick Setup.");
     ImGui::Separator();
 }
 
-static void VrControlSchemeSelector(WidgetInfo& info) {
-    if (!CVarGetInteger("gVrControlSchemeAsked", 0)) {
-        VrControlSchemeQuestion();
-        return;
-    }
-    const int current = VrCurrentControlScheme();
-    const char* preview = (current >= 0) ? sVrControlSchemes[current].name : "Custom";
-    ImGui::AlignTextToFramePadding();
-    ImGui::TextUnformatted("Control Scheme");
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(260.0f);
-    if (ImGui::BeginCombo("##VrControlScheme", preview)) {
-        for (int i = 0; i < kVrControlSchemeCount; i++) {
-            if (ImGui::Selectable(sVrControlSchemes[i].name, i == current)) {
-                VrApplyControlScheme(i);
-            }
-        }
-        ImGui::EndCombo();
-    }
-    if (current >= 0) {
-        ImGui::TextWrapped("%s", sVrControlSchemes[current].summary);
-    } else {
-        const int last = std::clamp(CVarGetInteger("gVrControlScheme", 0), 0, kVrControlSchemeCount - 1);
-        ImGui::TextWrapped("You changed the settings of %s.", sVrControlSchemes[last].name);
-        if (ImGui::Button("Reset to Scheme")) {
-            VrApplyControlScheme(last);
-        }
-    }
-    ImGui::Separator();
-}
-
-// Opens the SoH menu on VR Inputs at the first start in VR, for the control scheme question. Waits a
-// few game frames, so that the headset shows the game before the menu opens. Until the player
-// answers, the question comes back at each start.
+// Opens Quick Setup at each start in VR until the player answers the question. Waits 60 game
+// frames, so that the headset shows the game first.
 static void VrControlSchemeFirstStartTick() {
     static bool sAskedThisSession = false;
     static int sFramesInVr = 0;
@@ -554,7 +500,7 @@ static void VrControlSchemeFirstStartTick() {
     }
     sAskedThisSession = true;
     CVarSetString(CVAR_SETTING("Menu.ActiveHeader"), "VR Settings");
-    CVarSetString(CVAR_SETTING("Menu.VRSettingsSidebarSection"), "VR Inputs");
+    CVarSetString(CVAR_SETTING("Menu.VRSettingsSidebarSection"), "Quick Setup");
     mSohMenu->Show();
 }
 
@@ -564,6 +510,181 @@ static void RegisterVrControlSchemeFirstStart() {
 
 static RegisterShipInitFunc initVrControlSchemeFirstStart(RegisterVrControlSchemeFirstStart,
                                                           { "gVrControlSchemeAsked" });
+
+// --- Quick Setup (#104): rows of large buttons for the main choices. They write the same CVars as
+// the old widgets.
+struct VrChoice {
+    const char* label;
+    const char* detail; // second line, or nullptr
+};
+
+static void VrSetCVar(const char* cvar, int32_t value) {
+    CVarSetInteger(cvar, value);
+    CVarSave();
+    ShipInit::Init(cvar);
+}
+
+// Returns the index of the pushed button, or -1.
+static int VrChoiceRow(const char* id, const VrChoice* choices, int count, int selected, float width) {
+    const ImGuiStyle& style = ImGui::GetStyle();
+    bool hasDetail = false;
+    for (int i = 0; i < count; i++) {
+        hasDetail |= (choices[i].detail != nullptr);
+    }
+    const float lineHeight = ImGui::GetTextLineHeight();
+    const float height = lineHeight * (hasDetail ? 2.0f : 1.0f) + style.FramePadding.y * 4.0f;
+    const float buttonWidth = (width - style.ItemSpacing.x * (float)(count - 1)) / (float)count;
+    const ImU32 selectedFill = ImGui::GetColorU32(UIWidgets::ColorValues.at(THEME_COLOR));
+    const ImU32 fill = ImGui::GetColorU32(ImVec4(0.18f, 0.18f, 0.20f, 1.0f));
+    const ImU32 hoveredFill = ImGui::GetColorU32(ImVec4(0.28f, 0.28f, 0.31f, 1.0f));
+    const ImU32 text = ImGui::GetColorU32(ImGuiCol_Text);
+    const ImU32 detailText = ImGui::GetColorU32(ImVec4(0.75f, 0.75f, 0.78f, 1.0f));
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+    int pressed = -1;
+    ImGui::PushID(id);
+    for (int i = 0; i < count; i++) {
+        if (i > 0) {
+            ImGui::SameLine();
+        }
+        ImGui::PushID(i);
+        const ImVec2 min = ImGui::GetCursorScreenPos();
+        const ImVec2 max(min.x + buttonWidth, min.y + height);
+        if (ImGui::InvisibleButton("##choice", ImVec2(buttonWidth, height))) {
+            pressed = i;
+        }
+        const bool on = (i == selected);
+        drawList->AddRectFilled(min, max, on ? selectedFill : ImGui::IsItemHovered() ? hoveredFill : fill, 6.0f);
+        if (on) {
+            drawList->AddRect(min, max, IM_COL32(255, 255, 255, 220), 6.0f, 0, 2.0f);
+        }
+        ImGui::RenderNavCursor(ImRect(min, max), ImGui::GetItemID());
+
+        drawList->PushClipRect(min, max, true);
+        const char* detail = choices[i].detail;
+        float y = min.y + (height - lineHeight * (detail != nullptr ? 2.0f : 1.0f)) * 0.5f;
+        const ImVec2 labelSize = ImGui::CalcTextSize(choices[i].label);
+        drawList->AddText(ImVec2(min.x + (buttonWidth - labelSize.x) * 0.5f, y), text, choices[i].label);
+        if (detail != nullptr) {
+            const ImVec2 detailSize = ImGui::CalcTextSize(detail);
+            drawList->AddText(ImVec2(min.x + (buttonWidth - detailSize.x) * 0.5f, y + lineHeight),
+                              on ? text : detailText, detail);
+        }
+        drawList->PopClipRect();
+        ImGui::PopID();
+    }
+    ImGui::PopID();
+    return pressed;
+}
+
+// A title and a row of large buttons.
+static int VrChoiceCard(const char* title, const VrChoice* choices, int count, int selected, float width) {
+    ImGui::BeginGroup();
+    ImGui::TextUnformatted(title);
+    const int pressed = VrChoiceRow(title, choices, count, selected, width);
+    ImGui::EndGroup();
+    return pressed;
+}
+
+static void VrViewCard(float width) {
+    static const VrChoice sChoices[] = { { "First Person", "You are Link" }, { "Third Person", "Camera behind Link" } };
+    const int pressed = VrChoiceCard("View", sChoices, 2, CVarGetInteger("gVrFirstPerson", 1) ? 0 : 1, width);
+    if (pressed >= 0) {
+        VrSetCVar("gVrFirstPerson", pressed == 0 ? 1 : 0);
+    }
+}
+
+static void VrSwordHandCard(float width) {
+    static const VrChoice sChoices[] = { { "Right", nullptr }, { "Left", nullptr } };
+    const int pressed = VrChoiceCard("Sword Hand", sChoices, 2, CVarGetInteger("gVrLeftHanded", 0) ? 1 : 0, width);
+    if (pressed >= 0) {
+        VrSetCVar("gVrLeftHanded", pressed);
+    }
+}
+
+// In first person, the right stick takes C items or turns. It does not do the two.
+static void VrRightStickCard(float width) {
+    static const VrChoice sChoices[] = { { "Items", "Turn with your body" },
+                                         { "Snap Turn", "Turn in steps" },
+                                         { "Smooth Turn", "Turn without steps" } };
+    const int current = !CVarGetInteger("gVrSnapTurnOn", 0) ? 0 : (CVarGetInteger("gVrTurnStyle", 0) == 0 ? 1 : 2);
+    const int pressed = VrChoiceCard("Right Stick", sChoices, 3, current, width);
+    if (pressed >= 0) {
+        VrSetCVar("gVrSnapTurnOn", pressed != 0);
+        if (pressed != 0) {
+            VrSetCVar("gVrTurnStyle", pressed - 1);
+        }
+    }
+}
+
+// The text under each button follows the right stick choice.
+static void VrUseItemsCard(float width) {
+    const bool stickTakesItems = !CVarGetInteger("gVrSnapTurnOn", 0);
+    const int32_t selectorInput = CVarGetInteger("gVrItemSelInput", VR_BTN_THUMBCLICK);
+    const auto inputName = vrItemSelInputOptions.find(selectorInput);
+    char selectorDetail[64];
+    snprintf(selectorDetail, sizeof(selectorDetail), stickTakesItems ? "Flick the stick, or hold %s" : "Hold %s",
+             inputName != vrItemSelInputOptions.end() ? inputName->second : "the selector input");
+    const VrChoice choices[] = {
+        { "Item Selector", selectorDetail },
+        { "C Buttons", stickTakesItems ? "Flick the stick, or push a C button" : "Push a C button" },
+    };
+    const int pressed = VrChoiceCard("Use Items", choices, 2, CVarGetInteger("gVrItemSelect", 1) ? 0 : 1, width);
+    if (pressed >= 0) {
+        VrSetCVar("gVrItemSelect", pressed == 0 ? 1 : 0);
+        sVrListenRowMask = 0;
+    }
+}
+
+static void VrHudCard(float width) {
+    // gVrHudAttach values in the order of the buttons: head, wrist, left hand, right hand.
+    static const int32_t sValues[] = { 0, 3, 1, 2 };
+    static const VrChoice sChoices[] = {
+        { "In Front", nullptr }, { "On the Wrist", nullptr }, { "Left Hand", nullptr }, { "Right Hand", nullptr }
+    };
+    const int32_t attach = CVarGetInteger("gVrHudAttach", 0);
+    int current = 0;
+    for (int i = 0; i < 4; i++) {
+        if (sValues[i] == attach) {
+            current = i;
+        }
+    }
+    const int pressed = VrChoiceCard("Hearts and Items (HUD)", sChoices, 4, current, width);
+    if (pressed >= 0) {
+        VrSetCVar("gVrHudAttach", sValues[pressed]);
+    }
+}
+
+static void VrQuickSetup(WidgetInfo& info) {
+    if (!CVarGetInteger("gVrControlSchemeAsked", 0)) {
+        VrControlSchemeQuestion();
+        return;
+    }
+    const ImGuiStyle& style = ImGui::GetStyle();
+    const float width = ImGui::GetContentRegionAvail().x;
+    const float half = (width - style.ItemSpacing.x) * 0.5f;
+    VrViewCard(half);
+    ImGui::SameLine();
+    VrSwordHandCard(half);
+    ImGui::Dummy(ImVec2(0.0f, style.ItemSpacing.y * 2.0f));
+    VrRightStickCard(width);
+    ImGui::Dummy(ImVec2(0.0f, style.ItemSpacing.y * 2.0f));
+    VrUseItemsCard(width);
+    ImGui::Dummy(ImVec2(0.0f, style.ItemSpacing.y * 2.0f));
+    VrHudCard(width);
+}
+
+static void VrRightStickCardWidget(WidgetInfo& info) {
+    VrRightStickCard(ImGui::GetContentRegionAvail().x);
+}
+
+static void VrUseItemsCardWidget(WidgetInfo& info) {
+    VrUseItemsCard(ImGui::GetContentRegionAvail().x);
+}
+
+static void VrHudCardWidget(WidgetInfo& info) {
+    VrHudCard(ImGui::GetContentRegionAvail().x);
+}
 
 // Live frame-cost breakdown. The interesting number is "XR wait": that is time spent blocked in
 // xrWaitFrame, i.e. spare headroom. When it trends toward zero the frame no longer fits and the
@@ -667,410 +788,595 @@ static void VrPhysLogControl(WidgetInfo& info) {
 void SohMenu::AddMenuVRSettings() {
     AddMenuEntry("VR Settings", CVAR_SETTING("Menu.VRSettingsSidebarSection"));
 
-    // ------------------------------------------------------------------ General
-    AddSidebarEntry("VR Settings", "General", 1);
-    WidgetPath generalPath = { "VR Settings", "General", SECTION_COLUMN_1 };
+    // --------------------------------------------------------------- Quick Setup
+    AddSidebarEntry("VR Settings", "Quick Setup", 1);
+    WidgetPath quickPath = { "VR Settings", "Quick Setup", SECTION_COLUMN_1 };
+    AddWidget(quickPath, "VrQuickSetup", WIDGET_CUSTOM).CustomFunction(VrQuickSetup).HideInSearch(true);
 
-    AddWidget(generalPath, "VR Mode", WIDGET_CVAR_CHECKBOX)
+    // ------------------------------------------------------------------ Movement
+    AddSidebarEntry("VR Settings", "Movement", 1);
+    WidgetPath movePath = { "VR Settings", "Movement", SECTION_COLUMN_1 };
+
+    AddWidget(movePath, "VrRightStickCard", WIDGET_CUSTOM).CustomFunction(VrRightStickCardWidget).HideInSearch(true);
+    AddWidget(movePath, "Turning", WIDGET_SEPARATOR_TEXT).PreFunc([](WidgetInfo& info) {
+        info.isHidden = !CVarGetInteger("gVrSnapTurnOn", 0);
+    });
+    AddWidget(movePath, "Snap Turn Angle: %.0f deg", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrSnapTurnDegrees")
+        .PreFunc([](WidgetInfo& info) {
+            info.isHidden = !CVarGetInteger("gVrSnapTurnOn", 0) || CVarGetInteger("gVrTurnStyle", 0) != 0;
+        })
+        .Options(FloatSliderOptions().Min(10.0f).Max(180.0f).DefaultValue(45.0f).Step(5.0f).Format("%.0f").Tooltip(
+            "The angle of one turn step."));
+    AddWidget(movePath, "Smooth Turn Speed: %.0f deg/s", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrSmoothTurnSpeed")
+        .PreFunc([](WidgetInfo& info) {
+            info.isHidden = !CVarGetInteger("gVrSnapTurnOn", 0) || CVarGetInteger("gVrTurnStyle", 0) != 1;
+        })
+        .Options(FloatSliderOptions().Min(30.0f).Max(360.0f).DefaultValue(120.0f).Step(5.0f).Format("%.0f").Tooltip(
+            "The turn speed when you push the stick fully."));
+    AddWidget(movePath, "Stick Dead Zone: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrSmoothTurnDeadzone")
+        .PreFunc([](WidgetInfo& info) {
+            info.isHidden = !CVarGetInteger("gVrSnapTurnOn", 0) || CVarGetInteger("gVrTurnStyle", 0) != 1;
+        })
+        .Options(FloatSliderOptions().Min(0.05f).Max(0.80f).DefaultValue(0.25f).Step(0.05f).Format("%.2f").Tooltip(
+            "How far you push the stick before the turn starts. Increase it if the view turns when "
+            "your thumb is on the stick."));
+    AddWidget(movePath, "Turn Speed Follows the Stick", WIDGET_CVAR_CHECKBOX)
+        .CVar("gVrSmoothTurnAnalog")
+        .PreFunc([](WidgetInfo& info) {
+            info.isHidden = !CVarGetInteger("gVrSnapTurnOn", 0) || CVarGetInteger("gVrTurnStyle", 0) != 1;
+        })
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
+            "On: a small push turns slowly. Off: each push turns at full speed."));
+
+    AddWidget(movePath, "Body", WIDGET_SEPARATOR_TEXT);
+    AddWidget(movePath, "Link Walks Where You Look", WIDGET_CVAR_CHECKBOX)
+        .CVar("gVrBodyFollowsHead")
+        .PreFunc([](WidgetInfo& info) {
+            info.isHidden = !CVarGetInteger("gVrEnabled", 1) || !CVarGetInteger("gVrFirstPerson", 1);
+        })
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
+            "On: Link faces where you look and moves as the stick moves, with no delay. This is "
+            "better for VR comfort. Off: Link moves as in the original game."));
+    AddWidget(movePath, "Make Me the Size of Link", WIDGET_CVAR_CHECKBOX)
+        .CVar("gVrAutoWorldScale")
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
+            "The game measures your eye height and makes the world match it. Stand normally when you "
+            "recenter the view. Off: World Scale sets the size of the world."));
+    AddWidget(movePath, "World Scale: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrWorldScale")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = CVarGetInteger("gVrAutoWorldScale", 1); })
+        .Options(FloatSliderOptions().Min(10.0f).Max(100.0f).DefaultValue(35.0f).Step(0.5f).Format("%.1f").Tooltip(
+            "Game units for each meter. A higher value makes the world smaller."));
+    AddWidget(movePath, "Eye Height: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrHeadHeightOffset")
+        .Options(FloatSliderOptions().Min(-100.0f).Max(100.0f).DefaultValue(-9.0f).Step(1.0f).Format("%.1f").Tooltip(
+            "Moves your eyes up or down from the eyes of Link, in game units."));
+
+    AddWidget(movePath, "Z-Targeting", WIDGET_SEPARATOR_TEXT).PreFunc([](WidgetInfo& info) {
+        info.isHidden = !CVarGetInteger("gVrEnabled", 1) || !CVarGetInteger("gVrFirstPerson", 1);
+    });
+    // The lock-on mode of Legaiaflame.
+    AddWidget(movePath, "Turn the View to the Target", WIDGET_CVAR_CHECKBOX)
+        .CVar("gVrLegaiaLockOn")
+        .PreFunc([](WidgetInfo& info) {
+            info.isHidden = !CVarGetInteger("gVrEnabled", 1) || !CVarGetInteger("gVrFirstPerson", 1);
+        })
+        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
+            "On: while you Z-target, the view turns to keep the target in front of you. This can make "
+            "some players feel sick. Off: the view never turns for you."));
+    AddWidget(movePath, "Free Look Angle: %.0f deg", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrLockOnDeadzone")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrLegaiaLockOn", 0); })
+        .Options(FloatSliderOptions().Min(0.0f).Max(80.0f).DefaultValue(0.0f).Step(5.0f).Format("%.0f").Tooltip(
+            "The target can move this far from the center before the view turns. 0 keeps the target "
+            "in the center."));
+    AddWidget(movePath, "View Turn Speed: %.0f deg/s", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrLockOnTurnSpeed")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrLegaiaLockOn", 0); })
+        .Options(FloatSliderOptions().Min(30.0f).Max(360.0f).DefaultValue(120.0f).Step(10.0f).Format("%.0f").Tooltip(
+            "The maximum speed of the view turn. A lower value is more comfortable."));
+
+    AddWidget(movePath, "Camera", WIDGET_SEPARATOR_TEXT).PreFunc([](WidgetInfo& info) {
+        info.isHidden = !CVarGetInteger("gVrEnabled", 1) || !CVarGetInteger("gVrFirstPerson", 1);
+    });
+    AddWidget(movePath, "Use the Game Camera Far From Link", WIDGET_CVAR_CHECKBOX)
+        .CVar("gVrFpAutoDirectorCam")
+        .PreFunc([](WidgetInfo& info) {
+            info.isHidden = !CVarGetInteger("gVrEnabled", 1) || !CVarGetInteger("gVrFirstPerson", 1);
+        })
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
+            "On: when a cutscene shows a place far from Link, you see it from the game camera. Off: "
+            "you always see from the eyes of Link."));
+
+    // ------------------------------------------------------------------ Controls
+    AddSidebarEntry("VR Settings", "Controls", 1);
+    WidgetPath controlsPath = { "VR Settings", "Controls", SECTION_COLUMN_1 };
+
+    AddWidget(controlsPath, "VrUseItemsCard", WIDGET_CUSTOM).CustomFunction(VrUseItemsCardWidget).HideInSearch(true);
+    AddWidget(controlsPath, "Item Selector", WIDGET_SEPARATOR_TEXT).PreFunc([](WidgetInfo& info) {
+        info.isHidden = !CVarGetInteger("gVrItemSelect", 1);
+    });
+    AddWidget(controlsPath, "Selector Hand", WIDGET_CVAR_COMBOBOX)
+        .CVar("gVrItemSelHand")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrItemSelect", 1); })
+        .Options(ComboboxOptions()
+                     .DefaultIndex(0)
+                     .ComboMap(vrItemSelHandOptions)
+                     .Tooltip("The hand that opens the item selector."));
+    AddWidget(controlsPath, "Hold to Open", WIDGET_CVAR_COMBOBOX)
+        .CVar("gVrItemSelInput")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrItemSelect", 1); })
+        .Options(ComboboxOptions()
+                     .DefaultIndex(VR_BTN_THUMBCLICK)
+                     .ComboMap(vrItemSelInputOptions)
+                     .Tooltip("Hold this button to open the item selector. This button does not do its usual job."));
+    AddWidget(controlsPath, "Sword and Shield (Both Hands)", WIDGET_CVAR_COMBOBOX)
+        .CVar("gVrItemSelSwapInput")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrItemSelect", 1); })
+        .Options(ComboboxOptions()
+                     .DefaultIndex(VR_BTN_GRIP)
+                     .ComboMap(vrItemSelSwapOptions)
+                     .Tooltip("Push this button on the two controllers at the same time. Link puts away the item and "
+                              "takes the sword and the shield."));
+    AddWidget(controlsPath, "Selector Hand Distance: %.0f cm", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrItemSelDistance")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrItemSelect", 1); })
+        .Options(FloatSliderOptions().Min(3.0f).Max(30.0f).DefaultValue(5.0f).Step(1.0f).Format("%.0f").Tooltip(
+            "How far your hand must move to select an item."));
+
+    AddWidget(controlsPath, "Buttons", WIDGET_SEPARATOR_TEXT);
+    AddWidget(controlsPath, "VrInputBindings", WIDGET_CUSTOM).CustomFunction(VrInputBindings).HideInSearch(true);
+    AddWidget(controlsPath, "Select a button to remove it. Select + to add one.", WIDGET_TEXT);
+
+    // ----------------------------------------------------------------------- HUD
+    AddSidebarEntry("VR Settings", "HUD", 1);
+    WidgetPath hudPath = { "VR Settings", "HUD", SECTION_COLUMN_1 };
+
+    AddWidget(hudPath, "VrHudCard", WIDGET_CUSTOM).CustomFunction(VrHudCardWidget).HideInSearch(true);
+    AddWidget(hudPath, "Size and Position", WIDGET_SEPARATOR_TEXT);
+    AddWidget(hudPath, "HUD Distance: %.1f m", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrHudDistance")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudHasHeadPanel(); })
+        .Options(FloatSliderOptions().Min(0.5f).Max(5.0f).DefaultValue(2.0f).Step(0.1f).Format("%.1f"));
+    AddWidget(hudPath, "HUD Size: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrHudSize")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudHasHeadPanel(); })
+        .Options(FloatSliderOptions().Min(0.2f).Max(3.0f).DefaultValue(1.5f).Step(0.05f).Format("%.2f"));
+    AddWidget(hudPath, "HUD Horizontal: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrHudOffX")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudHasHeadPanel(); })
+        .Options(FloatSliderOptions().Min(-1.5f).Max(1.5f).DefaultValue(0.0f).Step(0.02f).Format("%.2f"));
+    AddWidget(hudPath, "HUD Vertical: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrHudOffY")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudHasHeadPanel(); })
+        .Options(FloatSliderOptions().Min(-1.5f).Max(1.5f).DefaultValue(0.0f).Step(0.02f).Format("%.2f"));
+    AddWidget(hudPath, "Hand HUD Size: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrHudHandSize")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsOnHand(); })
+        .Options(FloatSliderOptions().Min(0.1f).Max(1.0f).DefaultValue(0.35f).Step(0.01f).Format("%.2f"));
+    AddWidget(hudPath, "Hand HUD Sideways: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrHudHandOffX")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsOnHand(); })
+        .Options(FloatSliderOptions().Min(-0.5f).Max(0.5f).DefaultValue(0.0f).Step(0.01f).Format("%.2f").Tooltip(
+            "Moves the HUD to the side. The other hand uses the mirror value."));
+    AddWidget(hudPath, "Hand HUD Up: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrHudHandOffY")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsOnHand(); })
+        .Options(FloatSliderOptions().Min(-0.5f).Max(0.5f).DefaultValue(0.10f).Step(0.01f).Format("%.2f"));
+    AddWidget(hudPath, "Hand HUD Forward: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrHudHandOffZ")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsOnHand(); })
+        .Options(FloatSliderOptions().Min(-0.5f).Max(0.5f).DefaultValue(-0.08f).Step(0.01f).Format("%.2f"));
+    AddWidget(hudPath, "Hand HUD Tilt: %.0f deg", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrHudHandPitch")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsOnHand(); })
+        .Options(FloatSliderOptions().Min(-90.0f).Max(90.0f).DefaultValue(-40.0f).Step(1.0f).Format("%.0f").Tooltip(
+            "Tilts the HUD toward your eyes."));
+    AddWidget(hudPath, "Show Wrist HUD Only When Looking", WIDGET_CVAR_CHECKBOX)
+        .CVar("gVrWristHudGlance")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsWrist(); })
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
+            "On: hearts, rupees, and the map show only when you look at the back of your wrist. Off: "
+            "they always show."));
+    AddWidget(hudPath, "Wrist HUD Size: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrWristHudSize")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsWrist(); })
+        .Options(FloatSliderOptions().Min(0.08f).Max(0.5f).DefaultValue(0.20f).Step(0.01f).Format("%.2f").Tooltip(
+            "The width of the wrist HUD. The item buttons above the controller use the same scale."));
+    AddWidget(hudPath, "Wrist HUD Sideways: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrWristHudOffX")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsWrist(); })
+        .Options(FloatSliderOptions().Min(-0.3f).Max(0.3f).DefaultValue(-0.04f).Step(0.01f).Format("%.2f").Tooltip(
+            "A negative value moves the HUD to the back of the hand. The other hand uses the mirror "
+            "value."));
+    AddWidget(hudPath, "Wrist HUD Up: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrWristHudOffY")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsWrist(); })
+        .Options(FloatSliderOptions().Min(-0.3f).Max(0.3f).DefaultValue(0.02f).Step(0.01f).Format("%.2f"));
+    AddWidget(hudPath, "Wrist HUD Along Forearm: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrWristHudOffZ")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsWrist(); })
+        .Options(FloatSliderOptions().Min(-0.3f).Max(0.4f).DefaultValue(0.10f).Step(0.01f).Format("%.2f").Tooltip(
+            "A positive value moves the HUD toward the elbow."));
+    AddWidget(hudPath, "Z-Target Mark Size: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrReticleScale")
+        .Options(FloatSliderOptions().Min(0.3f).Max(3.0f).DefaultValue(1.0f).Step(0.05f).Format("%.2f").Tooltip(
+            "The size of the triangles around the target."));
+
+    AddWidget(hudPath, "Menu Panel", WIDGET_SEPARATOR_TEXT);
+    AddWidget(hudPath, "Menu Panel Distance: %.1f m", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrScreenDistance")
+        .Options(FloatSliderOptions().Min(0.5f).Max(5.0f).DefaultValue(2.2f).Step(0.1f).Format("%.1f").Tooltip(
+            "The distance to this menu, the file select, and the pause screen. It changes the next "
+            "time a menu opens."));
+    AddWidget(hudPath, "Menu Panel Size: %.1f m", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrScreenSize")
+        .Options(FloatSliderOptions().Min(0.5f).Max(5.0f).DefaultValue(2.4f).Step(0.1f).Format("%.1f").Tooltip(
+            "The width of the menu panel."));
+
+    // ------------------------------------------------------------------- Display
+    AddSidebarEntry("VR Settings", "Display", 1);
+    WidgetPath displayPath = { "VR Settings", "Display", SECTION_COLUMN_1 };
+
+    AddWidget(displayPath, "VR Mode", WIDGET_CVAR_CHECKBOX)
         .CVar("gVrEnabled")
 #ifdef __ANDROID__
         // On the Quest there is no flat-screen play: with VR off the headset shows nothing, the
         // Touch controllers cannot open this menu again, and the next start stays out of VR.
         .PreFunc([](WidgetInfo& info) { info.isHidden = true; })
 #endif
-        .Options(CheckboxOptions()
-                     .DefaultValue(true)
-                     .Tooltip("Switch between VR and regular flat-screen play at any time - F9 does "
-                              "the same thing. The switch takes effect on the next game tick (up to "
-                              "50 ms). Turning VR off leaves the headset idle and ready to resume "
-                              "instantly; if the game was started with VR off, turning it on "
-                              "connects to the headset on the spot."));
-    AddWidget(generalPath, "Stay In VR When Headset Is Removed", WIDGET_CVAR_CHECKBOX)
+        .Options(
+            CheckboxOptions().DefaultValue(true).Tooltip("Changes between VR and the flat screen. F9 does the same."));
+    AddWidget(displayPath, "Stay in VR When the Headset Is Off", WIDGET_CVAR_CHECKBOX)
         .CVar("gVrStayOnDoff")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrEnabled", 1); })
         .Options(CheckboxOptions().Tooltip(
-            "By default, taking the headset off automatically drops the game to flat-screen play, "
-            "and putting it back on resumes VR right where you left it. Enable this to keep "
-            "rendering in VR while the headset is off (useful if removal is being detected when "
-            "you don't want it to). Needs a runtime that reports headset presence; if yours "
-            "doesn't, doffing never switches regardless."));
-    AddWidget(generalPath, "VR View", WIDGET_CVAR_COMBOBOX)
-        .CVar("gVrFirstPerson")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrEnabled", 1); })
-        .Options(ComboboxOptions()
-                     .DefaultIndex(1)
-                     .ComboMap(vrViewModeOptions)
-                     .Tooltip("First Person: you are Link - the camera sits at his head, movement "
-                              "follows your gaze, motion-control hands, snap turning. Third "
-                              "Person: the stock game in stereo 3D - the view rides the game "
-                              "camera exactly (position and facing, cutscenes included), you add "
-                              "head-look and lean on top, and the right stick is normal C-buttons "
-                              "(no snap turn; the game owns all camera movement). The camera's "
-                              "up/down tilt is not applied - the horizon stays level with the real "
-                              "world and you tilt your own head instead. Switch any time."));
-    AddWidget(generalPath, "Auto Director Camera When Far From Link", WIDGET_CVAR_CHECKBOX)
-        .CVar("gVrFpAutoDirectorCam")
-        .PreFunc([](WidgetInfo& info) {
-            info.isHidden = !CVarGetInteger("gVrEnabled", 1) || !CVarGetInteger("gVrFirstPerson", 1);
-        })
-        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
-            "Cutscenes stay first-person (you experience them from Link's eyes) - but when the "
-            "game's camera goes far away from Link (a cutscene showing a distant place, or a "
-            "scene still loading), first person would leave you staring at nothing, so the view "
-            "automatically rides the game's camera until it comes back to Link. Disable to stay "
-            "strictly in Link's head no matter what."));
-
-    // ------------------------------------------------------- Comfort & Movement
-    AddSidebarEntry("VR Settings", "Comfort & Movement", 1);
-    WidgetPath comfortPath = { "VR Settings", "Comfort & Movement", SECTION_COLUMN_1 };
-
-    AddWidget(comfortPath, "Locomotion", WIDGET_SEPARATOR_TEXT);
-    AddWidget(comfortPath, "Body Follows Head (VR Movement)", WIDGET_CVAR_CHECKBOX)
-        .CVar("gVrBodyFollowsHead")
-        .PreFunc([](WidgetInfo& info) {
-            info.isHidden = !CVarGetInteger("gVrEnabled", 1) || !CVarGetInteger("gVrFirstPerson", 1);
-        })
-        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
-            "Standard VR locomotion: Link's body always faces where you're looking, and on the "
-            "ground your velocity IS the stick - exact direction, speed proportional to "
-            "deflection, applied the same frame. Push a little to creep, release to stop dead; no "
-            "acceleration ramp, no start-step or turn-around animations gating movement (motion-"
-            "sickness comfort: what your hand does is exactly what your body feels). Rolls, "
-            "jumps, attacks and knockbacks keep their normal motion, and the game still "
-            "choreographs Link in cutscenes, on Epona and while climbing. Off = classic OoT "
-            "movement."));
-    AddWidget(comfortPath, "Legaiaflame's Lock On", WIDGET_CVAR_CHECKBOX)
-        .CVar("gVrLegaiaLockOn")
-        .PreFunc([](WidgetInfo& info) {
-            info.isHidden = !CVarGetInteger("gVrEnabled", 1) || !CVarGetInteger("gVrFirstPerson", 1);
-        })
-        .Options(CheckboxOptions().DefaultValue(false).Tooltip(
-            "Z-targeting the way the original game plays it. While you're locked onto something, "
-            "the world rotates to keep the target in front of you: circle it and it stays dead "
-            "ahead, with no turning and no walking yourself around to keep it in view. Link's body "
-            "turns to face it too, and the control stick is read in that direction - forward closes "
-            "in, back retreats, left and right circle the target.\n\n"
-            "COMFORT WARNING: this rotates your view for you, which is the classic VR motion "
-            "sickness trigger. The two sliders below exist to soften it - raise the framing cone to "
-            "get free head movement back, lower the turn speed to make the rotation gentler. Off: "
-            "your body keeps following your head, and the view is never moved for you."));
-    AddWidget(comfortPath, "Lock-On Framing Cone: %.0f deg", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrLockOnDeadzone")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrLegaiaLockOn", 0); })
-        .Options(FloatSliderOptions()
-                     .Min(0.0f)
-                     .Max(80.0f)
-                     .DefaultValue(0.0f)
-                     .Step(5.0f)
-                     .Format("%.0f")
-                     .Tooltip("How far off-center the target is allowed to sit before the view "
-                              "rotates to re-frame it. 0 (default) holds it dead ahead at all "
-                              "times - the enemy is always in front of you and you cannot look "
-                              "away for long. Raise it to carve out a cone where your head is "
-                              "completely free and the world never moves: at 30 you can glance "
-                              "around normally and the view only steps in when the target starts "
-                              "leaving your vision."));
-    AddWidget(comfortPath, "Lock-On Turn Speed: %.0f deg/s", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrLockOnTurnSpeed")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrLegaiaLockOn", 0); })
-        .Options(FloatSliderOptions()
-                     .Min(30.0f)
-                     .Max(360.0f)
-                     .DefaultValue(120.0f)
-                     .Step(10.0f)
-                     .Format("%.0f")
-                     .Tooltip("Ceiling on how fast the view is allowed to swing around while "
-                              "re-framing the target. Lower is gentler on motion sickness but "
-                              "will lag behind a fast enemy you are circling closely."));
-    AddWidget(comfortPath, "Artificial Turning (Right Stick)", WIDGET_CVAR_CHECKBOX)
-        .CVar("gVrSnapTurnOn")
-        .Options(CheckboxOptions()
-                     .DefaultValue(false)
-                     .Tooltip("Turn the world with the right thumbstick, snap or smooth. Off "
-                              "(default): turn with your body, and the right stick is the "
-                              "C-stick - flick it to take a C item into your hand. On: in first "
-                              "person the stick only turns (menus and third person keep the "
-                              "stock C-stick)."));
-    AddWidget(comfortPath, "Turning Style", WIDGET_CVAR_COMBOBOX)
-        .CVar("gVrTurnStyle")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrSnapTurnOn", 0); })
+            "On: the game stays in VR when you take off the headset. Off: the game changes to the "
+            "flat screen."));
+    AddWidget(displayPath, "Headset Refresh Rate", WIDGET_CVAR_COMBOBOX)
+        .CVar("gVrRefreshRate")
         .Options(ComboboxOptions()
                      .DefaultIndex(0)
-                     .ComboMap(vrTurnStyleOptions)
-                     .Tooltip("Snap: flick the stick to rotate in discrete steps - the most "
-                              "comfortable option. Smooth: hold the stick to rotate "
-                              "continuously, like turning in a flat game."));
-    AddWidget(comfortPath, "Snap Turn Angle: %.0f deg", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrSnapTurnDegrees")
-        .PreFunc([](WidgetInfo& info) {
-            info.isHidden = !CVarGetInteger("gVrSnapTurnOn", 0) || CVarGetInteger("gVrTurnStyle", 0) != 0;
-        })
-        .Options(FloatSliderOptions()
-                     .Min(10.0f)
-                     .Max(180.0f)
-                     .DefaultValue(45.0f)
-                     .Step(5.0f)
-                     .Format("%.0f")
-                     .Tooltip("Degrees rotated per flick of the stick."));
-    AddWidget(comfortPath, "Smooth Turn Speed: %.0f deg/s", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrSmoothTurnSpeed")
-        .PreFunc([](WidgetInfo& info) {
-            info.isHidden = !CVarGetInteger("gVrSnapTurnOn", 0) || CVarGetInteger("gVrTurnStyle", 0) != 1;
-        })
-        .Options(FloatSliderOptions()
-                     .Min(30.0f)
-                     .Max(360.0f)
-                     .DefaultValue(120.0f)
-                     .Step(5.0f)
-                     .Format("%.0f")
-                     .Tooltip("How fast the world rotates at full stick tilt."));
-    AddWidget(comfortPath, "Smooth Turn Deadzone: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrSmoothTurnDeadzone")
-        .PreFunc([](WidgetInfo& info) {
-            info.isHidden = !CVarGetInteger("gVrSnapTurnOn", 0) || CVarGetInteger("gVrTurnStyle", 0) != 1;
-        })
-        .Options(FloatSliderOptions()
-                     .Min(0.05f)
-                     .Max(0.80f)
-                     .DefaultValue(0.25f)
-                     .Step(0.05f)
-                     .Format("%.2f")
-                     .Tooltip("How far the stick must tilt before turning starts. Raise it if "
-                              "the view drifts when your thumb rests on the stick."));
-    AddWidget(comfortPath, "Analog Turn Speed", WIDGET_CVAR_CHECKBOX)
-        .CVar("gVrSmoothTurnAnalog")
-        .PreFunc([](WidgetInfo& info) {
-            info.isHidden = !CVarGetInteger("gVrSnapTurnOn", 0) || CVarGetInteger("gVrTurnStyle", 0) != 1;
-        })
-        .Options(CheckboxOptions()
-                     .DefaultValue(true)
-                     .Tooltip("Stick tilt controls how fast you turn (gentle tilt = slow pan, "
-                              "full tilt = full speed). Off: any tilt past the deadzone turns "
-                              "at the full configured speed."));
-
-    AddWidget(comfortPath, "World Scale", WIDGET_SEPARATOR_TEXT);
-    AddWidget(comfortPath, "Match Scale To My Height (Be Link-Sized)", WIDGET_CVAR_CHECKBOX)
-        .CVar("gVrAutoWorldScale")
+                     .ComboMap(vrRefreshRateOptions)
+                     .Tooltip("How many images per second the headset shows. Automatic (default) "
+                              "uses 90 Hz, and 72 Hz when frames are late, for example in Hyrule "
+                              "Field. A fixed rate does not change."));
+    AddWidget(displayPath, "Resolution: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrResolutionScale")
+        .Options(FloatSliderOptions().Min(0.5f).Max(1.5f).DefaultValue(1.0f).Step(0.05f).Format("%.2f").Tooltip(
+            "The image resolution in the headset. A higher value is sharper but slower. The change "
+            "applies after you start the game again."));
+    AddWidget(displayPath, "Hide Link's Body", WIDGET_CVAR_CHECKBOX)
+        .CVar("gVrHideBody")
         .Options(CheckboxOptions().DefaultValue(true).Tooltip(
-            "Derive world scale from your real standing eye height so you are exactly Link-sized: "
-            "the ground meets your physical floor and age swaps rescale automatically. "
-            "Re-measured when you recenter or re-enter first person - stand normally when you do. "
-            "Disable to use the fixed World Scale slider instead (one true world size regardless "
-            "of who is playing). Needs a runtime with floor calibration; without one the slider "
-            "applies either way."));
-    AddWidget(comfortPath, "World Scale: %.1f units/m", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrWorldScale")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = CVarGetInteger("gVrAutoWorldScale", 1); })
-        .Options(FloatSliderOptions()
-                     .Min(10.0f)
-                     .Max(100.0f)
-                     .DefaultValue(35.0f)
-                     .Step(0.5f)
-                     .Format("%.1f")
-                     .Tooltip("Game units per real-world meter. Higher makes the world feel smaller "
-                              "(and physical movements cover more in-game distance); lower makes "
-                              "everything tower over you. Applies live."));
-    AddWidget(comfortPath, "Eye Height Offset: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrHeadHeightOffset")
-        .Options(FloatSliderOptions()
-                     .Min(-100.0f)
-                     .Max(100.0f)
-                     .DefaultValue(-9.0f)
-                     .Step(1.0f)
-                     .Format("%.1f")
-                     .Tooltip("Raise/lower the eye anchor relative to Link's eye height, in game "
-                              "units. Lowering it brings the ground closer by exactly offset / world "
-                              "scale meters."));
+            "First person only. On: you see only the hands of Link. Off: you also see his body."));
+    AddWidget(displayPath, "Black Bars in Cutscenes", WIDGET_CVAR_CHECKBOX)
+        .CVar("gVrLetterbox")
+        .Options(
+            CheckboxOptions().Tooltip("Shows the black bars of the original game during Z-targeting and cutscenes."));
 
-    // ------------------------------------------------------------------ Gameplay
-    AddSidebarEntry("VR Settings", "Gameplay", 1);
-    WidgetPath gameplayPath = { "VR Settings", "Gameplay", SECTION_COLUMN_1 };
+    // ----------------------------------------------------------------- Developer
+    // Tuning and tests. Shows only with Dev Tools > Debug Mode on.
+    AddSidebarEntry("VR Settings", "Developer", 2);
+    SetSidebarHidden("VR Settings", "Developer",
+                     []() { return !CVarGetInteger(CVAR_DEVELOPER_TOOLS("DebugEnabled"), 0); });
+    WidgetPath devPath = { "VR Settings", "Developer", SECTION_COLUMN_1 };
 
-    AddWidget(gameplayPath, "Motion-Control Hands", WIDGET_CVAR_CHECKBOX)
+    AddWidget(devPath, "Hands and Aim", WIDGET_SEPARATOR_TEXT);
+    AddWidget(devPath, "Motion-Control Hands", WIDGET_CVAR_CHECKBOX)
         .CVar("gVrMotionHands")
-        .Options(CheckboxOptions()
-                     .DefaultValue(true)
-                     .Tooltip("Detach Link's hands from his body and pin them to the VR controllers."));
-    AddWidget(gameplayPath, "Motion Weapon Aim", WIDGET_CVAR_CHECKBOX)
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
+            "Detach Link's hands from his body and pin them to the VR controllers."));
+    AddWidget(devPath, "Motion Weapon Aim", WIDGET_CVAR_CHECKBOX)
         .CVar("gVrWeaponAim")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrMotionHands", 1); })
         .Options(CheckboxOptions().DefaultValue(true).Tooltip(
             "Seeds and arrows fly where the hand with the bow or the slingshot points. The hookshot "
             "shoots along its barrel. When you lock on to a target, your hand still aims the shot. "
             "Off: the thumbstick aims, as in the original game."));
-    AddWidget(gameplayPath, "Left-Handed Mode", WIDGET_CVAR_CHECKBOX)
-        .CVar("gVrLeftHanded")
-        .Options(CheckboxOptions().Tooltip(
-            "Swap which controller drives the sword hand: the LEFT controller holds the sword (matching "
-            "Link's own left-handedness) instead of the right."));
-    AddWidget(gameplayPath, "Hide Link's Body", WIDGET_CVAR_CHECKBOX)
-        .CVar("gVrHideBody")
-        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
-            "First person only: don't draw Link's body - just the floating hands and whatever "
-            "they hold (the classic VR style). Some players prefer it because the body can block "
-            "the view when looking down, and its animations don't always match what you're "
-            "doing. Third person and cutscenes always show the full body."));
-    AddWidget(gameplayPath, "Lock-On Reticle Size: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrReticleScale")
-        .Options(FloatSliderOptions()
-                     .Min(0.3f)
-                     .Max(3.0f)
-                     .DefaultValue(1.0f)
-                     .Step(0.05f)
-                     .Format("%.2f")
-                     .Tooltip("Size of the in-world Z-target reticle (the converging triangles "
-                              "that wrap whatever you lock onto). In VR the reticle is drawn in "
-                              "the 3D scene at the target, not on the flat HUD."));
-    AddWidget(gameplayPath, "Show Letterbox Bars", WIDGET_CVAR_CHECKBOX)
-        .CVar("gVrLetterbox")
-        .Options(CheckboxOptions().Tooltip(
-            "Show the cinematic black bars during Z-targeting and cutscenes, like the original "
-            "game. Off by default in VR: the bars just float on the head-locked overlay and "
-            "shrink your view. Flat-screen play is unaffected by this setting (see Enhancements "
-            "> Graphics for the flat equivalent)."));
 
-    // ----------------------------------------------------------- Physical Combat
-    AddSidebarEntry("VR Settings", "Physical Combat", 1);
-    WidgetPath physPath = { "VR Settings", "Physical Combat", SECTION_COLUMN_1 };
-
-    AddWidget(physPath, "Physical Combat (Experimental)", WIDGET_CVAR_CHECKBOX)
-        .CVar("gVrPhysCombat")
+    AddWidget(devPath, "Render Cost", WIDGET_SEPARATOR_TEXT);
+    AddWidget(devPath, "Stereo Render Divisor: %d", WIDGET_CVAR_SLIDER_INT)
+        .CVar("gVrStereoDivisor")
+        .Options(IntSliderOptions()
+                     .Min(1)
+                     .Max(4)
+                     .DefaultValue(2) // SOH [VR] issue #83
+                     .Format("%d")
+                     .Tooltip("Redraw the stereo pair every Nth frame; in between, the previous "
+                              "images are resubmitted with the pose they were drawn from and the "
+                              "compositor reprojects them onto your live head pose. 2 roughly "
+                              "halves render cost. The source animation is 20 fps, so the drop "
+                              "from 120 to 60 world updates is hard to see; head tracking is "
+                              "unaffected."));
+    AddWidget(devPath, "Draw HUD Once Per Game Tick", WIDGET_CVAR_CHECKBOX)
+        .CVar("gVrHudPerTick")
         .Options(CheckboxOptions().DefaultValue(true).Tooltip(
-            "Physics-driven combat: swing the sword yourself (swing speed decides the hit), "
-            "block by physically holding the shield up, grab pots with both hands, draw the bow "
-            "for real. Replaces button combat only in VR first person; cutscenes, minigames and "
-            "flat-screen play stay stock. Currently a foundations preview: this enables the "
-            "underlying motion tracking - the combat changes themselves arrive milestone by "
-            "milestone."));
-    AddWidget(physPath, "Debug Overlay", WIDGET_CVAR_CHECKBOX)
+            "The overlay display list is rebuilt once per 20 Hz game tick, so "
+            "redrawing it on every interpolated sub-frame renders identical "
+            "content up to six times. Off = redraw every frame (only useful if "
+            "something in the HUD looks like it is updating too slowly)."));
+    AddWidget(devPath, "Companion Window Divisor: %d", WIDGET_CVAR_SLIDER_INT)
+        .CVar("gVrDesktopViewDivisor")
+        .Options(IntSliderOptions().Min(1).Max(16).DefaultValue(4).Format("%d").Tooltip(
+            "How often the desktop window is updated, in frames. Each update "
+            "costs an ImGui frame, a full-eye-resolution mirror copy and a "
+            "Present, all on the critical path. 4 gives roughly 30 fps on the "
+            "monitor at a 120 Hz headset. This menu updates at that rate too."));
+
+    AddWidget(devPath, "Live Frame Cost", WIDGET_SEPARATOR_TEXT);
+    AddWidget(devPath, "VRPerformanceReadout", WIDGET_CUSTOM).CustomFunction(VrPerformanceReadout).HideInSearch(true);
+
+    AddWidget(devPath, "Diagnostics", WIDGET_SEPARATOR_TEXT);
+    AddWidget(devPath, "Debug Overlay", WIDGET_CVAR_CHECKBOX)
         .CVar("gVrPhysCombatDebug")
         .Options(CheckboxOptions().Tooltip(
             "Draw hand velocity arrows and the per-tick motion path in the world, plus the live "
             "speed readout below. Arrow color previews the swing tiers: green = too slow to "
             "count, yellow = normal hit, red = strong hit."));
+    AddWidget(devPath, "Pacify Enemies (Testing)", WIDGET_CVAR_CHECKBOX)
+        .CVar("gVrPhysPacifist")
+        .Options(
+            CheckboxOptions().Tooltip("Freezes all enemies solid: no AI, no detection, no attacks, animation paused - "
+                                      "living statues for testing blade physics and limb manipulation. Damage still "
+                                      "lands. Uncheck to thaw."));
+    AddWidget(devPath, "Record Physics Log", WIDGET_CVAR_CHECKBOX)
+        .CVar("gVrPhysLog")
+        .Options(CheckboxOptions().Tooltip(
+            "Capture every physics step of the held weapon (hand target, the pose the spring "
+            "produced, the pose after collision, every contact point/normal/depth, and a "
+            "fingerprint of the collision geometry in play). Keeps the most recent ~20 seconds. "
+            "Turn it ON, go reproduce the problem, then turn it OFF - the capture is written to "
+            "vr_phys_log.csv next to the game executable."));
+    AddWidget(devPath, "VrPhysLogControl", WIDGET_CUSTOM).CustomFunction(VrPhysLogControl).HideInSearch(true);
 
-    AddWidget(physPath, "Sword Swing Speeds", WIDGET_SEPARATOR_TEXT);
-    AddWidget(physPath, "Arm Swing At: %.1f m/s", WIDGET_CVAR_SLIDER_FLOAT)
+    AddWidget(devPath, "Haptics", WIDGET_SEPARATOR_TEXT);
+    AddWidget(devPath, "Test Left Haptic", WIDGET_BUTTON)
+        .Options(ButtonOptions().Tooltip("Buzz the left controller for 0.1 s."))
+        .Callback([](WidgetInfo& info) { VR_TriggerHaptic(0, 0.8f, 0.0f, 100.0f); });
+    AddWidget(devPath, "Test Right Haptic", WIDGET_BUTTON)
+        .Options(ButtonOptions().Tooltip("Buzz the right controller for 0.1 s."))
+        .Callback([](WidgetInfo& info) { VR_TriggerHaptic(1, 0.8f, 0.0f, 100.0f); });
+
+    AddWidget(devPath, "Live Hand Speed", WIDGET_SEPARATOR_TEXT);
+    AddWidget(devPath, "VrPhysCombatReadout", WIDGET_CUSTOM).CustomFunction(VrPhysCombatReadout).HideInSearch(true);
+
+    AddWidget(devPath, "Hand Calibration: Mirroring", WIDGET_SEPARATOR_TEXT);
+    AddWidget(devPath, "Mirror Sword Hand", WIDGET_CVAR_CHECKBOX)
+        .CVar("gVrHandMirrorSword")
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
+            "Reflect the sword hand's mesh so it reads as a right hand on the right "
+            "controller. Only applies in right-handed mode."));
+    AddWidget(devPath, "Mirror Shield Hand", WIDGET_CVAR_CHECKBOX)
+        .CVar("gVrHandMirrorShield")
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
+            "Reflect the shield hand's mesh so it reads as a left hand on the left "
+            "controller. Note the reflection also mirrors the shield's face design; "
+            "pair with the Left Hand Override values to orient it correctly."));
+    AddWidget(devPath, "Mirror Axis", WIDGET_CVAR_COMBOBOX)
+        .CVar("gVrHandMirrorAxis")
+        .Options(ComboboxOptions()
+                     .DefaultIndex(2)
+                     .ComboMap(vrMirrorAxisOptions)
+                     .Tooltip("Which model-local axis the mirror reflection negates. Should be the thumb "
+                              "axis: it must keep the finger direction and flip the thumb so the mesh reads "
+                              "as the opposite hand. Try each if the hands look inside-out."));
+
+    AddWidget(devPath, "Hand Calibration: Rotation", WIDGET_SEPARATOR_TEXT);
+    AddWidget(devPath, "Tune while looking at the SWORD hand - the other hand mirrors automatically.", WIDGET_TEXT);
+    AddWidget(devPath, "Pitch: %.1f deg", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrHandCalPitch")
+        .Options(FloatSliderOptions().Min(-180.0f).Max(180.0f).DefaultValue(88.0f).Step(1.0f).Format("%.1f").Tooltip(
+            "Rotation about the grip X axis (wrist tilt up/down)."));
+    AddWidget(devPath, "Yaw: %.1f deg", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrHandCalYaw")
+        .Options(FloatSliderOptions().Min(-180.0f).Max(180.0f).DefaultValue(-100.0f).Step(1.0f).Format("%.1f").Tooltip(
+            "Rotation about the grip Y axis. If the sword points backward or sideways "
+            "out of your fist, adjust this first."));
+    AddWidget(devPath, "Roll: %.1f deg", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrHandCalRoll")
+        .Options(FloatSliderOptions().Min(-180.0f).Max(180.0f).DefaultValue(80.0f).Step(1.0f).Format("%.1f").Tooltip(
+            "Rotation about the grip Z axis (twist around the handle - use to line up "
+            "the blade edge and palm)."));
+
+    AddWidget(devPath, "Hand Calibration: Position", WIDGET_SEPARATOR_TEXT);
+    AddWidget(devPath, "Offset X: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrHandOffX")
+        .Options(FloatSliderOptions().Min(-30.0f).Max(30.0f).DefaultValue(0.0f).Step(0.5f).Format("%.1f").Tooltip(
+            "Slide the hand along the grip X axis (game units, tuned for the left "
+            "controller; the right controller mirrors)."));
+    AddWidget(devPath, "Offset Y: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrHandOffY")
+        .Options(FloatSliderOptions().Min(-30.0f).Max(30.0f).DefaultValue(0.0f).Step(0.5f).Format("%.1f").Tooltip(
+            "Slide the hand along the grip Y axis."));
+    AddWidget(devPath, "Offset Z: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrHandOffZ")
+        .Options(FloatSliderOptions().Min(-30.0f).Max(30.0f).DefaultValue(0.0f).Step(0.5f).Format("%.1f").Tooltip(
+            "Slide the hand along the grip Z axis (roughly along the handle)."));
+
+    AddWidget(devPath, "Left Hand Override", WIDGET_SEPARATOR_TEXT);
+    AddWidget(devPath, "Tune Left Hand Separately", WIDGET_CVAR_CHECKBOX)
+        .CVar("gVrHandLOverride")
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
+            "By default the left controller's hand is derived from the values above by mirror symmetry. "
+            "If it doesn't look right, enable this and dial it in with its own values below."));
+    AddWidget(devPath, "L Pitch: %.1f deg", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrHandLCalPitch")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrHandLOverride", 1); })
+        .Options(FloatSliderOptions().Min(-180.0f).Max(180.0f).DefaultValue(-149.0f).Step(1.0f).Format("%.1f"));
+    AddWidget(devPath, "L Yaw: %.1f deg", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrHandLCalYaw")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrHandLOverride", 1); })
+        .Options(FloatSliderOptions().Min(-180.0f).Max(180.0f).DefaultValue(76.0f).Step(1.0f).Format("%.1f"));
+    AddWidget(devPath, "L Roll: %.1f deg", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrHandLCalRoll")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrHandLOverride", 1); })
+        .Options(FloatSliderOptions().Min(-180.0f).Max(180.0f).DefaultValue(30.0f).Step(1.0f).Format("%.1f"));
+    AddWidget(devPath, "L Offset X: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrHandLOffX")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrHandLOverride", 1); })
+        .Options(FloatSliderOptions().Min(-30.0f).Max(30.0f).DefaultValue(0.0f).Step(0.5f).Format("%.1f"));
+    AddWidget(devPath, "L Offset Y: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrHandLOffY")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrHandLOverride", 1); })
+        .Options(FloatSliderOptions().Min(-30.0f).Max(30.0f).DefaultValue(0.0f).Step(0.5f).Format("%.1f"));
+    AddWidget(devPath, "L Offset Z: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrHandLOffZ")
+        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrHandLOverride", 1); })
+        .Options(FloatSliderOptions().Min(-30.0f).Max(30.0f).DefaultValue(0.0f).Step(0.5f).Format("%.1f"));
+
+    AddWidget(devPath, "Head Position (relative to Link's body)", WIDGET_SEPARATOR_TEXT);
+    AddWidget(devPath, "Forward Offset: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrHeadOffsetForward")
+        .Options(FloatSliderOptions().Min(-60.0f).Max(60.0f).DefaultValue(6.0f).Step(1.0f).Format("%.1f").Tooltip(
+            "Move the eye anchor along Link's facing (game units). Positive pushes "
+            "the camera forward out of his head; negative pulls it back."));
+    AddWidget(devPath, "Side Offset: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
+        .CVar("gVrHeadOffsetSide")
+        .Options(FloatSliderOptions().Min(-60.0f).Max(60.0f).DefaultValue(0.0f).Step(1.0f).Format("%.1f").Tooltip(
+            "Move the eye anchor sideways relative to Link's facing (game units)."));
+
+    AddWidget(devPath, "Calibration Export", WIDGET_SEPARATOR_TEXT);
+    AddWidget(devPath, "Copy All Calibration Values", WIDGET_BUTTON)
+        .Options(ButtonOptions().Tooltip("Copy every VR tuning value (hands, weapon aim, camera, "
+                                         "world scale, HUD placement) so they can be handed to a "
+                                         "developer to become the defaults."))
+        .Callback([](WidgetInfo& info) {
+            char buf[2048];
+            snprintf(buf, sizeof(buf),
+                     "gVrMotionHands=%d\n"
+                     "gVrLeftHanded=%d\n"
+                     "gVrHandMirrorSword=%d\n"
+                     "gVrHandMirrorShield=%d\n"
+                     "gVrHandMirrorAxis=%d\n"
+                     "gVrHandCalPitch=%.1f\n"
+                     "gVrHandCalYaw=%.1f\n"
+                     "gVrHandCalRoll=%.1f\n"
+                     "gVrHandOffX=%.1f\n"
+                     "gVrHandOffY=%.1f\n"
+                     "gVrHandOffZ=%.1f\n"
+                     "gVrHandLOverride=%d\n"
+                     "gVrHandLCalPitch=%.1f\n"
+                     "gVrHandLCalYaw=%.1f\n"
+                     "gVrHandLCalRoll=%.1f\n"
+                     "gVrHandLOffX=%.1f\n"
+                     "gVrHandLOffY=%.1f\n"
+                     "gVrHandLOffZ=%.1f\n"
+                     "gVrHeadHeightOffset=%.1f\n"
+                     "gVrHeadOffsetForward=%.1f\n"
+                     "gVrHeadOffsetSide=%.1f\n"
+                     "gVrWorldScale=%.1f\n"
+                     "gVrScreenDistance=%.1f\n"
+                     "gVrScreenSize=%.1f\n"
+                     "gVrHudAttach=%d\n"
+                     "gVrHudDistance=%.1f\n"
+                     "gVrHudSize=%.2f\n"
+                     "gVrHudOffX=%.2f\n"
+                     "gVrHudOffY=%.2f\n"
+                     "gVrHudHandSize=%.2f\n"
+                     "gVrHudHandOffX=%.2f\n"
+                     "gVrHudHandOffY=%.2f\n"
+                     "gVrHudHandOffZ=%.2f\n"
+                     "gVrHudHandPitch=%.0f\n"
+                     "gVrWristHudGlance=%d\n"
+                     "gVrWristHudSize=%.2f\n"
+                     "gVrWristHudOffX=%.2f\n"
+                     "gVrWristHudOffY=%.2f\n"
+                     "gVrWristHudOffZ=%.2f\n",
+                     CVarGetInteger("gVrMotionHands", 1), CVarGetInteger("gVrLeftHanded", 0),
+                     CVarGetInteger("gVrHandMirrorSword", 1), CVarGetInteger("gVrHandMirrorShield", 1),
+                     CVarGetInteger("gVrHandMirrorAxis", 2), CVarGetFloat("gVrHandCalPitch", 88.0f),
+                     CVarGetFloat("gVrHandCalYaw", -100.0f), CVarGetFloat("gVrHandCalRoll", 80.0f),
+                     CVarGetFloat("gVrHandOffX", 0.0f), CVarGetFloat("gVrHandOffY", 0.0f),
+                     CVarGetFloat("gVrHandOffZ", 0.0f), CVarGetInteger("gVrHandLOverride", 1),
+                     CVarGetFloat("gVrHandLCalPitch", -149.0f), CVarGetFloat("gVrHandLCalYaw", 76.0f),
+                     CVarGetFloat("gVrHandLCalRoll", 30.0f), CVarGetFloat("gVrHandLOffX", 0.0f),
+                     CVarGetFloat("gVrHandLOffY", 0.0f), CVarGetFloat("gVrHandLOffZ", 0.0f),
+                     CVarGetFloat("gVrHeadHeightOffset", -9.0f), CVarGetFloat("gVrHeadOffsetForward", 6.0f),
+                     CVarGetFloat("gVrHeadOffsetSide", 0.0f), CVarGetFloat("gVrWorldScale", 35.0f),
+                     CVarGetFloat("gVrScreenDistance", 2.2f), CVarGetFloat("gVrScreenSize", 2.4f),
+                     CVarGetInteger("gVrHudAttach", 0), CVarGetFloat("gVrHudDistance", 2.0f),
+                     CVarGetFloat("gVrHudSize", 1.5f), CVarGetFloat("gVrHudOffX", 0.0f),
+                     CVarGetFloat("gVrHudOffY", 0.0f), CVarGetFloat("gVrHudHandSize", 0.35f),
+                     CVarGetFloat("gVrHudHandOffX", 0.0f), CVarGetFloat("gVrHudHandOffY", 0.10f),
+                     CVarGetFloat("gVrHudHandOffZ", -0.08f), CVarGetFloat("gVrHudHandPitch", -40.0f),
+                     CVarGetInteger("gVrWristHudGlance", 1), CVarGetFloat("gVrWristHudSize", 0.20f),
+                     CVarGetFloat("gVrWristHudOffX", -0.04f), CVarGetFloat("gVrWristHudOffY", 0.02f),
+                     CVarGetFloat("gVrWristHudOffZ", 0.10f));
+            ImGui::SetClipboardText(buf);
+        });
+
+    devPath.column = SECTION_COLUMN_2;
+    AddWidget(devPath, "Sword Swing Speeds", WIDGET_SEPARATOR_TEXT);
+    AddWidget(devPath, "Arm Swing At: %.1f m/s", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysArmSpeed")
-        .Options(FloatSliderOptions()
-                     .Min(0.3f)
-                     .Max(6.0f)
-                     .DefaultValue(2.0f)
-                     .Step(0.1f)
-                     .Format("%.1f")
-                     .Tooltip("Blade tip speed (real meters/second) where a swing starts counting: "
-                              "the trail appears, the swing sound plays, and enemies begin their "
-                              "guard/dodge reactions. Below this the sword is inert."));
-    AddWidget(physPath, "Hit At: %.1f m/s", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(0.3f).Max(6.0f).DefaultValue(2.0f).Step(0.1f).Format("%.1f").Tooltip(
+            "Blade tip speed (real meters/second) where a swing starts counting: "
+            "the trail appears, the swing sound plays, and enemies begin their "
+            "guard/dodge reactions. Below this the sword is inert."));
+    AddWidget(devPath, "Hit At: %.1f m/s", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysHitSpeed")
-        .Options(FloatSliderOptions()
-                     .Min(0.5f)
-                     .Max(10.0f)
-                     .DefaultValue(5.0f)
-                     .Step(0.1f)
-                     .Format("%.1f")
-                     .Tooltip("Tip speed where the blade actually damages what it sweeps through, "
-                              "at the weapon's normal slash strength."));
-    AddWidget(physPath, "Strong Hit At: %.1f m/s", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(0.5f).Max(10.0f).DefaultValue(5.0f).Step(0.1f).Format("%.1f").Tooltip(
+            "Tip speed where the blade actually damages what it sweeps through, "
+            "at the weapon's normal slash strength."));
+    AddWidget(devPath, "Strong Hit At: %.1f m/s", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysHeavySpeed")
-        .Options(FloatSliderOptions()
-                     .Min(1.0f)
-                     .Max(16.0f)
-                     .DefaultValue(8.0f)
-                     .Step(0.1f)
-                     .Format("%.1f")
-                     .Tooltip("Tip speed for a committed swing: damage steps up to the weapon's "
-                              "jump-slash class (double against most enemies)."));
-    AddWidget(physPath, "Re-Arm Below: %.1f m/s", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(1.0f).Max(16.0f).DefaultValue(8.0f).Step(0.1f).Format("%.1f").Tooltip(
+            "Tip speed for a committed swing: damage steps up to the weapon's "
+            "jump-slash class (double against most enemies)."));
+    AddWidget(devPath, "Re-Arm Below: %.1f m/s", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysReArmSpeed")
-        .Options(FloatSliderOptions()
-                     .Min(0.1f)
-                     .Max(4.0f)
-                     .DefaultValue(0.8f)
-                     .Step(0.1f)
-                     .Format("%.1f")
-                     .Tooltip("A swing ends (and the sword can strike again) once the tip slows "
-                              "below this. One strike lands per swing; follow-through and wind-up "
-                              "back up naturally re-arm you."));
-    AddWidget(physPath, "Min Hand Speed To Damage: %.1f m/s", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(0.1f).Max(4.0f).DefaultValue(0.8f).Step(0.1f).Format("%.1f").Tooltip(
+            "A swing ends (and the sword can strike again) once the tip slows "
+            "below this. One strike lands per swing; follow-through and wind-up "
+            "back up naturally re-arm you."));
+    AddWidget(devPath, "Min Hand Speed To Damage: %.1f m/s", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysMinHandSpeed")
-        .Options(FloatSliderOptions()
-                     .Min(0.0f)
-                     .Max(4.0f)
-                     .DefaultValue(1.2f)
-                     .Step(0.1f)
-                     .Format("%.1f")
-                     .Tooltip("Anti-wiggle: the hand itself must move at least this fast for a "
-                              "swing to deal damage. Pure wrist flicks spin the blade quickly but "
-                              "shouldn't cut - real swings come from the arm. 0 disables."));
+        .Options(FloatSliderOptions().Min(0.0f).Max(4.0f).DefaultValue(1.2f).Step(0.1f).Format("%.1f").Tooltip(
+            "Anti-wiggle: the hand itself must move at least this fast for a "
+            "swing to deal damage. Pure wrist flicks spin the blade quickly but "
+            "shouldn't cut - real swings come from the arm. 0 disables."));
 
-    AddWidget(physPath, "Blade Collider", WIDGET_SEPARATOR_TEXT);
-    AddWidget(physPath, "Kokiri Sword Length: %.0f", WIDGET_CVAR_SLIDER_FLOAT)
+    AddWidget(devPath, "Blade Collider", WIDGET_SEPARATOR_TEXT);
+    AddWidget(devPath, "Kokiri Sword Length: %.0f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysBladeLenKokiri")
-        .Options(FloatSliderOptions()
-                     .Min(10.0f)
-                     .Max(60.0f)
-                     .DefaultValue(18.0f)
-                     .Step(1.0f)
-                     .Format("%.0f")
-                     .Tooltip("Blade collider length for the Kokiri Sword (game units, from the "
-                              "hilt). Default matches the visible blade. Unlike the base game, the "
-                              "collider is exactly one blade line - no invisible extra reach."));
-    AddWidget(physPath, "Master Sword Length: %.0f", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(10.0f).Max(60.0f).DefaultValue(18.0f).Step(1.0f).Format("%.0f").Tooltip(
+            "Blade collider length for the Kokiri Sword (game units, from the "
+            "hilt). Default matches the visible blade. Unlike the base game, the "
+            "collider is exactly one blade line - no invisible extra reach."));
+    AddWidget(devPath, "Master Sword Length: %.0f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysBladeLenMaster")
-        .Options(FloatSliderOptions()
-                     .Min(10.0f)
-                     .Max(70.0f)
-                     .DefaultValue(35.0f)
-                     .Step(1.0f)
-                     .Format("%.0f")
-                     .Tooltip("Blade collider length for the Master Sword (game units). Default "
-                              "matches the visible blade."));
-    AddWidget(physPath, "Biggoron Sword Length: %.0f", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(10.0f).Max(70.0f).DefaultValue(35.0f).Step(1.0f).Format("%.0f").Tooltip(
+            "Blade collider length for the Master Sword (game units). Default "
+            "matches the visible blade."));
+    AddWidget(devPath, "Biggoron Sword Length: %.0f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysBladeLenBiggoron")
-        .Options(FloatSliderOptions()
-                     .Min(20.0f)
-                     .Max(90.0f)
-                     .DefaultValue(55.0f)
-                     .Step(1.0f)
-                     .Format("%.0f")
-                     .Tooltip("Blade collider length for the Biggoron Sword / Giant's Knife (game "
-                              "units). Default matches the visible blade. Swings one-handed for "
-                              "now; real two-handed weight comes in a later update."));
-    AddWidget(physPath, "Megaton Hammer Length: %.0f", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(20.0f).Max(90.0f).DefaultValue(55.0f).Step(1.0f).Format("%.0f").Tooltip(
+            "Blade collider length for the Biggoron Sword / Giant's Knife (game "
+            "units). Default matches the visible blade. Swings one-handed for "
+            "now; real two-handed weight comes in a later update."));
+    AddWidget(devPath, "Megaton Hammer Length: %.0f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysBladeLenHammer")
-        .Options(FloatSliderOptions()
-                     .Min(10.0f)
-                     .Max(45.0f)
-                     .DefaultValue(25.0f)
-                     .Step(1.0f)
-                     .Format("%.0f")
-                     .Tooltip("Collider length of the Megaton Hammer, from the grip to the head "
-                              "(game units)."));
-    AddWidget(physPath, "Hammer Ground Hit At: %.1f m/s", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(10.0f).Max(45.0f).DefaultValue(25.0f).Step(1.0f).Format("%.0f").Tooltip(
+            "Collider length of the Megaton Hammer, from the grip to the head "
+            "(game units)."));
+    AddWidget(devPath, "Hammer Ground Hit At: %.1f m/s", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysHammerSlamSpeed")
-        .Options(FloatSliderOptions()
-                     .Min(1.0f)
-                     .Max(10.0f)
-                     .DefaultValue(4.0f)
-                     .Step(0.1f)
-                     .Format("%.1f")
-                     .Tooltip("Downward speed of the hammer head (meters/second) for a ground "
-                              "hit. A ground hit shakes the screen and stuns enemies near Link."));
-    AddWidget(physPath, "Blade Width: %.0f", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(1.0f).Max(10.0f).DefaultValue(4.0f).Step(0.1f).Format("%.1f").Tooltip(
+            "Downward speed of the hammer head (meters/second) for a ground "
+            "hit. A ground hit shakes the screen and stuns enemies near Link."));
+    AddWidget(devPath, "Blade Width: %.0f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysBladeWidth")
-        .Options(FloatSliderOptions()
-                     .Min(1.0f)
-                     .Max(12.0f)
-                     .DefaultValue(4.0f)
-                     .Step(1.0f)
-                     .Format("%.0f")
-                     .Tooltip("Width of the blade's stab cross-section (game units). Only matters "
-                              "for straight thrusts - slashes get their hit area from the sweep "
-                              "itself."));
+        .Options(FloatSliderOptions().Min(1.0f).Max(12.0f).DefaultValue(4.0f).Step(1.0f).Format("%.0f").Tooltip(
+            "Width of the blade's stab cross-section (game units). Only matters "
+            "for straight thrusts - slashes get their hit area from the sweep "
+            "itself."));
 
-    AddWidget(physPath, "Blade Physics", WIDGET_SEPARATOR_TEXT);
-    AddWidget(physPath, "Blade Inertia & Collision", WIDGET_CVAR_CHECKBOX)
+    AddWidget(devPath, "Blade Physics", WIDGET_SEPARATOR_TEXT);
+    AddWidget(devPath, "Blade Inertia & Collision", WIDGET_CVAR_CHECKBOX)
         .CVar("gVrPhysBladeInertia")
         .Options(CheckboxOptions().DefaultValue(true).Tooltip(
             "The sword becomes a simulated object: it follows your hand on a stiff spring, "
@@ -1078,383 +1384,231 @@ void SohMenu::AddMenuVRSettings() {
             "while your real hand keeps going, and springs back as you pull away. Swings below "
             "damage speed also bounce off enemies instead of passing through. Off = the blade "
             "is glued to your hand and passes through everything (damage rules unchanged)."));
-    AddWidget(physPath, "Sword Snappiness: %.0f Hz", WIDGET_CVAR_SLIDER_FLOAT)
+    AddWidget(devPath, "Sword Snappiness: %.0f Hz", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysSword1HFreq")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysBladeInertia", 1); })
-        .Options(FloatSliderOptions()
-                     .Min(4.0f)
-                     .Max(30.0f)
-                     .DefaultValue(14.0f)
-                     .Step(1.0f)
-                     .Format("%.0f")
-                     .Tooltip("How stiffly the virtual blade tracks your hand. High = near-1:1 "
-                              "and responsive (light sword); low = floaty and heavy. Two-handed "
-                              "weapons get their own weight in a later update."));
-    AddWidget(physPath, "Sword Rotation Snappiness: %.0f Hz", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(4.0f).Max(30.0f).DefaultValue(14.0f).Step(1.0f).Format("%.0f").Tooltip(
+            "How stiffly the virtual blade tracks your hand. High = near-1:1 "
+            "and responsive (light sword); low = floaty and heavy. Two-handed "
+            "weapons get their own weight in a later update."));
+    AddWidget(devPath, "Sword Rotation Snappiness: %.0f Hz", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysSwordAngFreq")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysBladeInertia", 1); })
-        .Options(FloatSliderOptions()
-                     .Min(5.0f)
-                     .Max(60.0f)
-                     .DefaultValue(30.0f)
-                     .Step(1.0f)
-                     .Format("%.0f")
-                     .Tooltip("How fast the blade's ANGLE follows your wrist. Raise this if the "
-                              "sword lags behind during quick rotations; lower it for a heavier, "
-                              "slower-turning weapon."));
-    AddWidget(physPath, "Weight Wiggle: %.0f ms", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(5.0f).Max(60.0f).DefaultValue(30.0f).Step(1.0f).Format("%.0f").Tooltip(
+            "How fast the blade's ANGLE follows your wrist. Raise this if the "
+            "sword lags behind during quick rotations; lower it for a heavier, "
+            "slower-turning weapon."));
+    AddWidget(devPath, "Weight Wiggle: %.0f ms", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysWeightLagMs")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysBladeInertia", 1); })
-        .Options(FloatSliderOptions()
-                     .Min(0.0f)
-                     .Max(80.0f)
-                     .DefaultValue(0.0f)
-                     .Step(1.0f)
-                     .Format("%.0f")
-                     .Tooltip("Cosmetic weight: the visible sword trails a fast swing by this "
-                              "many milliseconds of rotation, then snaps back with a little "
-                              "overshoot. Collision, damage and aim never lag - the sword still "
-                              "moves exactly with your hand. 0 = off."));
-    AddWidget(physPath, "Weight Wiggle Snap: %.1f Hz", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(0.0f).Max(80.0f).DefaultValue(0.0f).Step(1.0f).Format("%.0f").Tooltip(
+            "Cosmetic weight: the visible sword trails a fast swing by this "
+            "many milliseconds of rotation, then snaps back with a little "
+            "overshoot. Collision, damage and aim never lag - the sword still "
+            "moves exactly with your hand. 0 = off."));
+    AddWidget(devPath, "Weight Wiggle Snap: %.1f Hz", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysWeightSnapHz")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysBladeInertia", 1); })
-        .Options(FloatSliderOptions()
-                     .Min(2.0f)
-                     .Max(12.0f)
-                     .DefaultValue(2.0f)
-                     .Step(0.5f)
-                     .Format("%.1f")
-                     .Tooltip("How quickly the trailing sword catches back up after a swing. "
-                              "Lower = heavier and floppier, higher = a tight little flick."));
-    AddWidget(physPath, "Blade Thickness: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(2.0f).Max(12.0f).DefaultValue(2.0f).Step(0.5f).Format("%.1f").Tooltip(
+            "How quickly the trailing sword catches back up after a swing. "
+            "Lower = heavier and floppier, higher = a tight little flick."));
+    AddWidget(devPath, "Blade Thickness: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysBladeThickness")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysBladeInertia", 1); })
-        .Options(FloatSliderOptions()
-                     .Min(0.0f)
-                     .Max(4.0f)
-                     .DefaultValue(0.4f)
-                     .Step(0.1f)
-                     .Format("%.1f")
-                     .Tooltip("Collision thickness of the blade (game units) - how far the steel "
-                              "rests off a surface it is pressed against. Lower = the blade "
-                              "visually touches walls more closely."));
-    AddWidget(physPath, "Collide With Visual Meshes (Experimental)", WIDGET_CVAR_CHECKBOX)
+        .Options(FloatSliderOptions().Min(0.0f).Max(4.0f).DefaultValue(0.4f).Step(0.1f).Format("%.1f").Tooltip(
+            "Collision thickness of the blade (game units) - how far the steel "
+            "rests off a surface it is pressed against. Lower = the blade "
+            "visually touches walls more closely."));
+    AddWidget(devPath, "Collide With Visual Meshes (Experimental)", WIDGET_CVAR_CHECKBOX)
         .CVar("gVrPhysVisualMesh")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysBladeInertia", 1); })
-        .Options(CheckboxOptions()
-                     .DefaultValue(true)
-                     .Tooltip("EXPERIMENTAL: the blade collides with the rendered geometry you "
-                              "actually see (harvested from the renderer, animated enemies "
-                              "included) instead of the simplified collision mesh. Turn off to "
-                              "fall back to collision-mesh physics."));
-    AddWidget(physPath, "Blade Collider Roll: %.0f deg", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
+            "EXPERIMENTAL: the blade collides with the rendered geometry you "
+            "actually see (harvested from the renderer, animated enemies "
+            "included) instead of the simplified collision mesh. Turn off to "
+            "fall back to collision-mesh physics."));
+    AddWidget(devPath, "Blade Collider Roll: %.0f deg", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysBladeRoll")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysBladeInertia", 1); })
-        .Options(FloatSliderOptions()
-                     .Min(-180.0f)
-                     .Max(180.0f)
-                     .DefaultValue(-90.0f)
-                     .Step(5.0f)
-                     .Format("%.0f")
-                     .Tooltip("Rotates the flat blade collider about the blade axis. Turn on the "
-                              "debug overlay and adjust until the cyan rectangle lies in the "
-                              "same plane as the visible blade."));
-    AddWidget(physPath, "Collider Shift Along Blade: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(-180.0f).Max(180.0f).DefaultValue(-90.0f).Step(5.0f).Format("%.0f").Tooltip(
+            "Rotates the flat blade collider about the blade axis. Turn on the "
+            "debug overlay and adjust until the cyan rectangle lies in the "
+            "same plane as the visible blade."));
+    AddWidget(devPath, "Collider Shift Along Blade: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysBladeShiftFwd")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysBladeInertia", 1); })
-        .Options(FloatSliderOptions()
-                     .Min(-10.0f)
-                     .Max(10.0f)
-                     .DefaultValue(0.0f)
-                     .Step(0.01f)
-                     .Format("%.2f")
-                     .Tooltip("Slides the physical blade rectangle lengthwise (game units). "
-                              "Align the cyan debug outline with the visible steel."));
-    AddWidget(physPath, "Collider Shift Along Edge: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(-10.0f).Max(10.0f).DefaultValue(0.0f).Step(0.01f).Format("%.2f").Tooltip(
+            "Slides the physical blade rectangle lengthwise (game units). "
+            "Align the cyan debug outline with the visible steel."));
+    AddWidget(devPath, "Collider Shift Along Edge: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysBladeShiftEdge")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysBladeInertia", 1); })
-        .Options(FloatSliderOptions()
-                     .Min(-10.0f)
-                     .Max(10.0f)
-                     .DefaultValue(1.1f)
-                     .Step(0.01f)
-                     .Format("%.2f")
-                     .Tooltip("Slides the collider across the blade's width direction."));
-    AddWidget(physPath, "Collider Shift Along Flat: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(-10.0f).Max(10.0f).DefaultValue(1.1f).Step(0.01f).Format("%.2f").Tooltip(
+            "Slides the collider across the blade's width direction."));
+    AddWidget(devPath, "Collider Shift Along Flat: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysBladeShiftFlat")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysBladeInertia", 1); })
-        .Options(FloatSliderOptions()
-                     .Min(-10.0f)
-                     .Max(10.0f)
-                     .DefaultValue(0.0f)
-                     .Step(0.01f)
-                     .Format("%.2f")
-                     .Tooltip("Slides the collider perpendicular to the blade's flat plane."));
-    AddWidget(physPath, "Limb Resistance: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(-10.0f).Max(10.0f).DefaultValue(0.0f).Step(0.01f).Format("%.2f").Tooltip(
+            "Slides the collider perpendicular to the blade's flat plane."));
+    AddWidget(devPath, "Limb Resistance: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysLimbResist")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysBladeInertia", 1); })
-        .Options(FloatSliderOptions()
-                     .Min(0.0f)
-                     .Max(1.0f)
-                     .DefaultValue(0.5f)
-                     .Step(0.05f)
-                     .Format("%.2f")
-                     .Tooltip("How much limbs fight back against the blade: 0 = ragdoll-loose, "
-                              "1 = they barely budge. Limbs lag behind your push and spring "
-                              "back firmly."));
-    AddWidget(physPath, "Body Capsule Radius: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).DefaultValue(0.5f).Step(0.05f).Format("%.2f").Tooltip(
+            "How much limbs fight back against the blade: 0 = ragdoll-loose, "
+            "1 = they barely budge. Limbs lag behind your push and spring "
+            "back firmly."));
+    AddWidget(devPath, "Body Capsule Radius: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysBodyCapsuleRadius")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysBladeInertia", 1); })
-        .Options(FloatSliderOptions()
-                     .Min(1.0f)
-                     .Max(12.0f)
-                     .DefaultValue(4.5f)
-                     .Step(0.1f)
-                     .Format("%.1f")
-                     .Tooltip("Thickness of the invisible capsules fitted to each enemy/NPC "
-                              "skeleton bone - the surfaces the sword actually rests on. Match "
-                              "to limb thickness: too big and the sword floats off bodies, too "
-                              "small and it sinks in before stopping."));
-    AddWidget(physPath, "Blade Tip Taper: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(1.0f).Max(12.0f).DefaultValue(4.5f).Step(0.1f).Format("%.1f").Tooltip(
+            "Thickness of the invisible capsules fitted to each enemy/NPC "
+            "skeleton bone - the surfaces the sword actually rests on. Match "
+            "to limb thickness: too big and the sword floats off bodies, too "
+            "small and it sinks in before stopping."));
+    AddWidget(devPath, "Blade Tip Taper: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysBladeTipTaper")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysBladeInertia", 1); })
-        .Options(FloatSliderOptions()
-                     .Min(0.0f)
-                     .Max(0.5f)
-                     .DefaultValue(0.2f)
-                     .Step(0.05f)
-                     .Format("%.2f")
-                     .Tooltip("The blade collider is a flat rectangle as wide as Blade Width, "
-                              "converging to a point over this trailing fraction of its length. "
-                              "0 = square tip, 0.2 = pointed over the last 20%."));
-    AddWidget(physPath, "Impact Tolerance: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(0.0f).Max(0.5f).DefaultValue(0.2f).Step(0.05f).Format("%.2f").Tooltip(
+            "The blade collider is a flat rectangle as wide as Blade Width, "
+            "converging to a point over this trailing fraction of its length. "
+            "0 = square tip, 0.2 = pointed over the last 20%."));
+    AddWidget(devPath, "Impact Tolerance: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysTouchTolerance")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysBladeInertia", 1); })
-        .Options(FloatSliderOptions()
-                     .Min(0.05f)
-                     .Max(3.0f)
-                     .DefaultValue(0.3f)
-                     .Step(0.05f)
-                     .Format("%.2f")
-                     .Tooltip("How close (game units) counts as a real hit for impact sounds, "
-                              "sparks and rumble. Because the blade is stopped exactly AT "
-                              "surfaces rather than inside them, a little tolerance is needed or "
-                              "impacts rarely register. Raise if hits feel like they get missed."));
-    AddWidget(physPath, "Swing-Through Speed: %.1f m/s", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(0.05f).Max(3.0f).DefaultValue(0.3f).Step(0.05f).Format("%.2f").Tooltip(
+            "How close (game units) counts as a real hit for impact sounds, "
+            "sparks and rumble. Because the blade is stopped exactly AT "
+            "surfaces rather than inside them, a little tolerance is needed or "
+            "impacts rarely register. Raise if hits feel like they get missed."));
+    AddWidget(devPath, "Swing-Through Speed: %.1f m/s", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysPassthroughSpeed")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysBladeInertia", 1); })
-        .Options(FloatSliderOptions()
-                     .Min(0.0f)
-                     .Max(8.0f)
-                     .DefaultValue(2.2f)
-                     .Step(0.1f)
-                     .Format("%.1f")
-                     .Tooltip("Swings faster than this cut THROUGH surfaces instead of stopping "
-                              "on them; gentle contact still rests on the surface. 0 = the "
-                              "blade never passes through anything."));
-    AddWidget(physPath, "Hit Flinch Amount: %.0f", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(0.0f).Max(8.0f).DefaultValue(2.2f).Step(0.1f).Format("%.1f").Tooltip(
+            "Swings faster than this cut THROUGH surfaces instead of stopping "
+            "on them; gentle contact still rests on the surface. 0 = the "
+            "blade never passes through anything."));
+    AddWidget(devPath, "Hit Flinch Amount: %.0f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysFlinchAmount")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysBladeInertia", 1); })
-        .Options(FloatSliderOptions()
-                     .Min(0.0f)
-                     .Max(60.0f)
-                     .DefaultValue(0.0f)
-                     .Step(1.0f)
-                     .Format("%.0f")
-                     .Tooltip("Punching-bag hit reaction: how far a struck body caves toward "
-                              "the swing around the impact point before springing back. Purely "
-                              "visual - hitboxes and enemy AI never move. 0 = off."));
-    AddWidget(physPath, "Knockback Strength: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(0.0f).Max(60.0f).DefaultValue(0.0f).Step(1.0f).Format("%.0f").Tooltip(
+            "Punching-bag hit reaction: how far a struck body caves toward "
+            "the swing around the impact point before springing back. Purely "
+            "visual - hitboxes and enemy AI never move. 0 = off."));
+    AddWidget(devPath, "Knockback Strength: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysKnockbackScale")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysBladeInertia", 1); })
-        .Options(FloatSliderOptions()
-                     .Min(0.0f)
-                     .Max(3.0f)
-                     .DefaultValue(0.0f)
-                     .Step(0.1f)
-                     .Format("%.1f")
-                     .Tooltip("How hard landed hits shove enemies, scaled by swing speed. "
-                              "Bosses and rooted enemies never budge. 0 = off."));
-    AddWidget(physPath, "Blade Push Strength: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(0.0f).Max(3.0f).DefaultValue(0.0f).Step(0.1f).Format("%.1f").Tooltip(
+            "How hard landed hits shove enemies, scaled by swing speed. "
+            "Bosses and rooted enemies never budge. 0 = off."));
+    AddWidget(devPath, "Blade Push Strength: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysPressPush")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysBladeInertia", 1); })
-        .Options(FloatSliderOptions()
-                     .Min(0.0f)
-                     .Max(6.0f)
-                     .DefaultValue(0.0f)
-                     .Step(0.5f)
-                     .Format("%.1f")
-                     .Tooltip("Enemies get nudged away when you press the blade against them "
-                              "(no damage - just steel insisting). Bosses and rooted enemies "
-                              "stay put. 0 = off."));
-    AddWidget(physPath, "Cut Resistance (Flesh): %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(0.0f).Max(6.0f).DefaultValue(0.0f).Step(0.5f).Format("%.1f").Tooltip(
+            "Enemies get nudged away when you press the blade against them "
+            "(no damage - just steel insisting). Bosses and rooted enemies "
+            "stay put. 0 = off."));
+    AddWidget(devPath, "Cut Resistance (Flesh): %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysCutDragFlesh")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysBladeInertia", 1); })
-        .Options(FloatSliderOptions()
-                     .Min(0.0f)
-                     .Max(0.97f)
-                     .DefaultValue(0.73f)
-                     .Step(0.01f)
-                     .Format("%.2f")
-                     .Tooltip("How much enemy bodies hold the blade back while a fast swing "
-                              "cuts through them. The blade drags in the cut (with rumble) and "
-                              "catches up to your hand on exit. 0 = clean effortless cuts."));
-    AddWidget(physPath, "Cut Resistance (World): %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(0.0f).Max(0.97f).DefaultValue(0.73f).Step(0.01f).Format("%.2f").Tooltip(
+            "How much enemy bodies hold the blade back while a fast swing "
+            "cuts through them. The blade drags in the cut (with rumble) and "
+            "catches up to your hand on exit. 0 = clean effortless cuts."));
+    AddWidget(devPath, "Cut Resistance (World): %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysCutDragWorld")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysBladeInertia", 1); })
-        .Options(FloatSliderOptions()
-                     .Min(0.0f)
-                     .Max(0.97f)
-                     .DefaultValue(0.73f)
-                     .Step(0.01f)
-                     .Format("%.2f")
-                     .Tooltip("Drag while a fast swing passes through world geometry (walls, "
-                              "fences). Light by default so committed swings stay fluid."));
-    AddWidget(physPath, "Blade Friction: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(0.0f).Max(0.97f).DefaultValue(0.73f).Step(0.01f).Format("%.2f").Tooltip(
+            "Drag while a fast swing passes through world geometry (walls, "
+            "fences). Light by default so committed swings stay fluid."));
+    AddWidget(devPath, "Blade Friction: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysBladeFriction")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysBladeInertia", 1); })
-        .Options(FloatSliderOptions()
-                     .Min(0.0f)
-                     .Max(1.0f)
-                     .DefaultValue(0.5f)
-                     .Step(0.05f)
-                     .Format("%.2f")
-                     .Tooltip("How much the blade drags while sliding along a surface. 0 = "
-                              "frictionless skating, higher = the blade angle sticks and trails "
-                              "as you drag it across walls and floors."));
+        .Options(FloatSliderOptions().Min(0.0f).Max(1.0f).DefaultValue(0.5f).Step(0.05f).Format("%.2f").Tooltip(
+            "How much the blade drags while sliding along a surface. 0 = "
+            "frictionless skating, higher = the blade angle sticks and trails "
+            "as you drag it across walls and floors."));
 
-    AddWidget(physPath, "Shield", WIDGET_SEPARATOR_TEXT);
-    AddWidget(physPath, "Physical Shield", WIDGET_CVAR_CHECKBOX)
+    AddWidget(devPath, "Shield", WIDGET_SEPARATOR_TEXT);
+    AddWidget(devPath, "Physical Shield", WIDGET_CVAR_CHECKBOX)
         .CVar("gVrPhysShield")
-        .Options(CheckboxOptions()
-                     .DefaultValue(true)
-                     .Tooltip("On: the shield is in your off hand while the sword is in your "
-                              "sword hand - no button, no stance. Hold it up and whatever "
-                              "touches the shield is blocked; whatever gets around it hits you. "
-                              "Blocks never stagger you or push you back.\n"
-                              "Off: the shield of the original game comes back - hold R for the "
-                              "shield stance, with its animation and its advanced tricks "
-                              "(megaflip and others). By default L Grip is R. If no input is R, "
-                              "set one in VR Inputs."));
-    AddWidget(physPath, "Shield Facing Leniency: %.0f deg", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
+            "On: the shield is in your off hand while the sword is in your "
+            "sword hand - no button, no stance. Hold it up and whatever "
+            "touches the shield is blocked; whatever gets around it hits you. "
+            "Blocks never stagger you or push you back.\n"
+            "Off: the shield of the original game comes back - hold R for the "
+            "shield stance, with its animation and its advanced tricks "
+            "(megaflip and others). By default L Grip is R. If no input is R, "
+            "set one in Controls."));
+    AddWidget(devPath, "Shield Facing Leniency: %.0f deg", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysShieldFacingDeg")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysShield", 1); })
-        .Options(FloatSliderOptions()
-                     .Min(30.0f)
-                     .Max(180.0f)
-                     .DefaultValue(90.0f)
-                     .Step(1.0f)
-                     .Format("%.0f")
-                     .Tooltip("How far the shield's face may be turned away from an attack "
-                              "and still block it. Outside this cone the hit doesn't count - "
-                              "no back-of-shield or corner deflections; if the attack also "
-                              "reached your body, it hurts. Lower = you must square up to the "
-                              "threat. 90 = anything in front of the shield. 180 = block from "
-                              "any angle."));
+        .Options(FloatSliderOptions().Min(30.0f).Max(180.0f).DefaultValue(90.0f).Step(1.0f).Format("%.0f").Tooltip(
+            "How far the shield's face may be turned away from an attack "
+            "and still block it. Outside this cone the hit doesn't count - "
+            "no back-of-shield or corner deflections; if the attack also "
+            "reached your body, it hurts. Lower = you must square up to the "
+            "threat. 90 = anything in front of the shield. 180 = block from "
+            "any angle."));
     // The size and shift sliders do nothing while the collider takes the shield mesh's size
     // (gVrPhysShieldFitMesh, console only: the fallback if the fit is wrong on some shield).
     auto hideWhenShieldFitted = [](WidgetInfo& info) {
         info.isHidden = !CVarGetInteger("gVrPhysShield", 1) || CVarGetInteger("gVrPhysShieldFitMesh", 1);
     };
-    AddWidget(physPath, "Shield Width Top: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
+    AddWidget(devPath, "Shield Width Top: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysShieldWidthTop")
         .PreFunc(hideWhenShieldFitted)
-        .Options(FloatSliderOptions()
-                     .Min(5.0f)
-                     .Max(90.0f)
-                     .DefaultValue(21.2f)
-                     .Step(0.5f)
-                     .Format("%.1f")
-                     .Tooltip("Width of the block collider's TOP edge (game units). Turn on "
-                              "the debug overlay - the cyan quad on the shield is exactly what "
-                              "blocks. Anything outside it doesn't count: smaller = stricter."));
-    AddWidget(physPath, "Shield Width Bottom: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(5.0f).Max(90.0f).DefaultValue(21.2f).Step(0.5f).Format("%.1f").Tooltip(
+            "Width of the block collider's TOP edge (game units). Turn on "
+            "the debug overlay - the cyan quad on the shield is exactly what "
+            "blocks. Anything outside it doesn't count: smaller = stricter."));
+    AddWidget(devPath, "Shield Width Bottom: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysShieldWidthBottom")
         .PreFunc(hideWhenShieldFitted)
-        .Options(FloatSliderOptions()
-                     .Min(5.0f)
-                     .Max(90.0f)
-                     .DefaultValue(11.9f)
-                     .Step(0.5f)
-                     .Format("%.1f")
-                     .Tooltip("Width of the block collider's BOTTOM edge. Set narrower than "
-                              "the top for a Hylian-style tapered shape."));
-    AddWidget(physPath, "Shield Height: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(5.0f).Max(90.0f).DefaultValue(11.9f).Step(0.5f).Format("%.1f").Tooltip(
+            "Width of the block collider's BOTTOM edge. Set narrower than "
+            "the top for a Hylian-style tapered shape."));
+    AddWidget(devPath, "Shield Height: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysShieldHeight")
         .PreFunc(hideWhenShieldFitted)
-        .Options(FloatSliderOptions()
-                     .Min(5.0f)
-                     .Max(90.0f)
-                     .DefaultValue(18.0f)
-                     .Step(0.5f)
-                     .Format("%.1f")
-                     .Tooltip("Height of the block collider (game units)."));
-    AddWidget(physPath, "Shield Shift Across: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(5.0f).Max(90.0f).DefaultValue(18.0f).Step(0.5f).Format("%.1f").Tooltip(
+            "Height of the block collider (game units)."));
+    AddWidget(devPath, "Shield Shift Across: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysShieldShiftX")
         .PreFunc(hideWhenShieldFitted)
-        .Options(FloatSliderOptions()
-                     .Min(-40.0f)
-                     .Max(40.0f)
-                     .DefaultValue(-1.1f)
-                     .Step(0.5f)
-                     .Format("%.1f")
-                     .Tooltip("Slides the collider along its own width axis (game units) - the "
-                              "shifts follow the tilt sliders, so they always mean what they "
-                              "say. Center the cyan quad on the visible steel."));
-    AddWidget(physPath, "Shield Shift Up/Down: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(-40.0f).Max(40.0f).DefaultValue(-1.1f).Step(0.5f).Format("%.1f").Tooltip(
+            "Slides the collider along its own width axis (game units) - the "
+            "shifts follow the tilt sliders, so they always mean what they "
+            "say. Center the cyan quad on the visible steel."));
+    AddWidget(devPath, "Shield Shift Up/Down: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysShieldShiftY")
         .PreFunc(hideWhenShieldFitted)
-        .Options(FloatSliderOptions()
-                     .Min(-40.0f)
-                     .Max(40.0f)
-                     .DefaultValue(-0.8f)
-                     .Step(0.5f)
-                     .Format("%.1f")
-                     .Tooltip("Slides the collider along the shield face's vertical axis."));
-    AddWidget(physPath, "Shield Shift Out: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(-40.0f).Max(40.0f).DefaultValue(-0.8f).Step(0.5f).Format("%.1f").Tooltip(
+            "Slides the collider along the shield face's vertical axis."));
+    AddWidget(devPath, "Shield Shift Out: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysShieldShiftZ")
         .PreFunc(hideWhenShieldFitted)
-        .Options(FloatSliderOptions()
-                     .Min(-40.0f)
-                     .Max(40.0f)
-                     .DefaultValue(-2.5f)
-                     .Step(0.5f)
-                     .Format("%.1f")
-                     .Tooltip("Slides the collider along the shield's facing direction, until "
-                              "it lies in the same plane as the steel."));
-    AddWidget(physPath, "Shield Pitch: %.0f deg", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(-40.0f).Max(40.0f).DefaultValue(-2.5f).Step(0.5f).Format("%.1f").Tooltip(
+            "Slides the collider along the shield's facing direction, until "
+            "it lies in the same plane as the steel."));
+    AddWidget(devPath, "Shield Pitch: %.0f deg", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysShieldPitch")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysShield", 1); })
-        .Options(FloatSliderOptions()
-                     .Min(-180.0f)
-                     .Max(180.0f)
-                     .DefaultValue(-4.0f)
-                     .Step(1.0f)
-                     .Format("%.0f")
-                     .Tooltip("Tilts the collider plane forward/back relative to the grip."));
-    AddWidget(physPath, "Shield Yaw: %.0f deg", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(-180.0f).Max(180.0f).DefaultValue(-4.0f).Step(1.0f).Format("%.0f").Tooltip(
+            "Tilts the collider plane forward/back relative to the grip."));
+    AddWidget(devPath, "Shield Yaw: %.0f deg", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysShieldYaw")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysShield", 1); })
-        .Options(FloatSliderOptions()
-                     .Min(-180.0f)
-                     .Max(180.0f)
-                     .DefaultValue(0.0f)
-                     .Step(1.0f)
-                     .Format("%.0f")
-                     .Tooltip("Turns the collider plane left/right relative to the grip."));
-    AddWidget(physPath, "Shield Roll: %.0f deg", WIDGET_CVAR_SLIDER_FLOAT)
+        .Options(FloatSliderOptions().Min(-180.0f).Max(180.0f).DefaultValue(0.0f).Step(1.0f).Format("%.0f").Tooltip(
+            "Turns the collider plane left/right relative to the grip."));
+    AddWidget(devPath, "Shield Roll: %.0f deg", WIDGET_CVAR_SLIDER_FLOAT)
         .CVar("gVrPhysShieldRoll")
         .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrPhysShield", 1); })
-        .Options(FloatSliderOptions()
-                     .Min(-180.0f)
-                     .Max(180.0f)
-                     .DefaultValue(-90.0f)
-                     .Step(1.0f)
-                     .Format("%.0f")
-                     .Tooltip("Spins the collider within the shield plane."));
+        .Options(FloatSliderOptions().Min(-180.0f).Max(180.0f).DefaultValue(-90.0f).Step(1.0f).Format("%.0f").Tooltip(
+            "Spins the collider within the shield plane."));
 
-    AddWidget(physPath, "Export", WIDGET_SEPARATOR_TEXT);
-    AddWidget(physPath, "Copy All Combat Tuning Values", WIDGET_BUTTON)
+    AddWidget(devPath, "Combat Export", WIDGET_SEPARATOR_TEXT);
+    AddWidget(devPath, "Copy All Combat Tuning Values", WIDGET_BUTTON)
         .Options(ButtonOptions().Tooltip("Copy every Physical Combat tuning value (speed tiers, "
                                          "blade collider, physics, hit feel — including the "
                                          "console-only knobs) so they can be handed to a "
@@ -1519,569 +1673,32 @@ void SohMenu::AddMenuVRSettings() {
                      "gVrPhysShieldFitMesh=%d\n",
                      CVarGetFloat("gVrPhysArmSpeed", 2.0f), CVarGetFloat("gVrPhysHitSpeed", 5.0f),
                      CVarGetFloat("gVrPhysHeavySpeed", 8.0f), CVarGetFloat("gVrPhysReArmSpeed", 0.8f),
-                     CVarGetFloat("gVrPhysMinHandSpeed", 1.2f),
-                     CVarGetFloat("gVrPhysBladeLenKokiri", 18.0f),
-                     CVarGetFloat("gVrPhysBladeLenMaster", 35.0f),
-                     CVarGetFloat("gVrPhysBladeLenBiggoron", 55.0f),
-                     CVarGetFloat("gVrPhysBladeLenHammer", 25.0f),
-                     CVarGetFloat("gVrPhysHammerSlamSpeed", 4.0f),
-                     CVarGetFloat("gVrPhysHammerSlamReach", 8.0f),
-                     CVarGetFloat("gVrPhysBladeWidth", 4.0f), CVarGetFloat("gVrPhysBladeThickness", 0.4f),
-                     CVarGetFloat("gVrPhysBladeRoll", -90.0f), CVarGetFloat("gVrPhysBladeShiftFwd", 0.0f),
-                     CVarGetFloat("gVrPhysBladeShiftEdge", 1.1f),
-                     CVarGetFloat("gVrPhysBladeShiftFlat", 0.0f),
-                     CVarGetFloat("gVrPhysBladeTipTaper", 0.2f), CVarGetInteger("gVrPhysBladeInertia", 1),
-                     CVarGetFloat("gVrPhysSword1HFreq", 14.0f), CVarGetFloat("gVrPhysSword1HZeta", 1.0f),
-                     CVarGetFloat("gVrPhysSwordAngFreq", 30.0f), CVarGetFloat("gVrPhysWeightLagMs", 0.0f),
-                     CVarGetFloat("gVrPhysWeightSnapHz", 2.0f), CVarGetFloat("gVrPhysMaxAccel", 400.0f),
-                     CVarGetFloat("gVrPhysMaxAngAccel", 3000.0f),
-                     CVarGetFloat("gVrPhysTouchTolerance", 0.3f),
-                     CVarGetFloat("gVrPhysBladeFriction", 0.5f), CVarGetInteger("gVrPhysPivotOnly", 1),
-                     CVarGetInteger("gVrPhysVisualMesh", 1), CVarGetFloat("gVrPhysMeshRadius", 150.0f),
-                     CVarGetFloat("gVrPhysPassthroughSpeed", 2.2f),
-                     CVarGetFloat("gVrPhysCutDragFlesh", 0.73f),
-                     CVarGetFloat("gVrPhysCutDragWorld", 0.73f),
-                     CVarGetFloat("gVrPhysKnockbackScale", 0.0f),
-                     CVarGetFloat("gVrPhysKnockbackCap", 8.0f), CVarGetFloat("gVrPhysPressPush", 0.0f),
-                     CVarGetFloat("gVrPhysFlinchAmount", 0.0f), CVarGetFloat("gVrPhysLimbResist", 0.5f),
-                     CVarGetFloat("gVrPhysLimbRadius", 9.0f), CVarGetFloat("gVrPhysLimbPushMax", 22.0f),
-                     CVarGetFloat("gVrPhysBodyCapsuleRadius", 4.5f), CVarGetInteger("gVrPhysSubQuads", 3),
-                     CVarGetInteger("gVrPhysShield", 1), CVarGetFloat("gVrPhysShieldWidthTop", 21.2f),
-                     CVarGetFloat("gVrPhysShieldWidthBottom", 11.9f), CVarGetFloat("gVrPhysShieldHeight", 18.0f),
-                     CVarGetFloat("gVrPhysShieldShiftX", -1.1f), CVarGetFloat("gVrPhysShieldShiftY", -0.8f),
-                     CVarGetFloat("gVrPhysShieldShiftZ", -2.5f), CVarGetFloat("gVrPhysShieldPitch", -4.0f),
-                     CVarGetFloat("gVrPhysShieldYaw", 0.0f), CVarGetFloat("gVrPhysShieldRoll", -90.0f),
-                     CVarGetFloat("gVrPhysShieldFacingDeg", 90.0f),
+                     CVarGetFloat("gVrPhysMinHandSpeed", 1.2f), CVarGetFloat("gVrPhysBladeLenKokiri", 18.0f),
+                     CVarGetFloat("gVrPhysBladeLenMaster", 35.0f), CVarGetFloat("gVrPhysBladeLenBiggoron", 55.0f),
+                     CVarGetFloat("gVrPhysBladeLenHammer", 25.0f), CVarGetFloat("gVrPhysHammerSlamSpeed", 4.0f),
+                     CVarGetFloat("gVrPhysHammerSlamReach", 8.0f), CVarGetFloat("gVrPhysBladeWidth", 4.0f),
+                     CVarGetFloat("gVrPhysBladeThickness", 0.4f), CVarGetFloat("gVrPhysBladeRoll", -90.0f),
+                     CVarGetFloat("gVrPhysBladeShiftFwd", 0.0f), CVarGetFloat("gVrPhysBladeShiftEdge", 1.1f),
+                     CVarGetFloat("gVrPhysBladeShiftFlat", 0.0f), CVarGetFloat("gVrPhysBladeTipTaper", 0.2f),
+                     CVarGetInteger("gVrPhysBladeInertia", 1), CVarGetFloat("gVrPhysSword1HFreq", 14.0f),
+                     CVarGetFloat("gVrPhysSword1HZeta", 1.0f), CVarGetFloat("gVrPhysSwordAngFreq", 30.0f),
+                     CVarGetFloat("gVrPhysWeightLagMs", 0.0f), CVarGetFloat("gVrPhysWeightSnapHz", 2.0f),
+                     CVarGetFloat("gVrPhysMaxAccel", 400.0f), CVarGetFloat("gVrPhysMaxAngAccel", 3000.0f),
+                     CVarGetFloat("gVrPhysTouchTolerance", 0.3f), CVarGetFloat("gVrPhysBladeFriction", 0.5f),
+                     CVarGetInteger("gVrPhysPivotOnly", 1), CVarGetInteger("gVrPhysVisualMesh", 1),
+                     CVarGetFloat("gVrPhysMeshRadius", 150.0f), CVarGetFloat("gVrPhysPassthroughSpeed", 2.2f),
+                     CVarGetFloat("gVrPhysCutDragFlesh", 0.73f), CVarGetFloat("gVrPhysCutDragWorld", 0.73f),
+                     CVarGetFloat("gVrPhysKnockbackScale", 0.0f), CVarGetFloat("gVrPhysKnockbackCap", 8.0f),
+                     CVarGetFloat("gVrPhysPressPush", 0.0f), CVarGetFloat("gVrPhysFlinchAmount", 0.0f),
+                     CVarGetFloat("gVrPhysLimbResist", 0.5f), CVarGetFloat("gVrPhysLimbRadius", 9.0f),
+                     CVarGetFloat("gVrPhysLimbPushMax", 22.0f), CVarGetFloat("gVrPhysBodyCapsuleRadius", 4.5f),
+                     CVarGetInteger("gVrPhysSubQuads", 3), CVarGetInteger("gVrPhysShield", 1),
+                     CVarGetFloat("gVrPhysShieldWidthTop", 21.2f), CVarGetFloat("gVrPhysShieldWidthBottom", 11.9f),
+                     CVarGetFloat("gVrPhysShieldHeight", 18.0f), CVarGetFloat("gVrPhysShieldShiftX", -1.1f),
+                     CVarGetFloat("gVrPhysShieldShiftY", -0.8f), CVarGetFloat("gVrPhysShieldShiftZ", -2.5f),
+                     CVarGetFloat("gVrPhysShieldPitch", -4.0f), CVarGetFloat("gVrPhysShieldYaw", 0.0f),
+                     CVarGetFloat("gVrPhysShieldRoll", -90.0f), CVarGetFloat("gVrPhysShieldFacingDeg", 90.0f),
                      CVarGetInteger("gVrPhysShieldFitMesh", 1));
-            ImGui::SetClipboardText(buf);
-        });
-
-    AddWidget(physPath, "Diagnostics", WIDGET_SEPARATOR_TEXT);
-    AddWidget(physPath, "Pacify Enemies (Testing)", WIDGET_CVAR_CHECKBOX)
-        .CVar("gVrPhysPacifist")
-        .Options(CheckboxOptions().Tooltip(
-            "Freezes all enemies solid: no AI, no detection, no attacks, animation paused - "
-            "living statues for testing blade physics and limb manipulation. Damage still "
-            "lands. Uncheck to thaw."));
-    AddWidget(physPath, "Record Physics Log", WIDGET_CVAR_CHECKBOX)
-        .CVar("gVrPhysLog")
-        .Options(CheckboxOptions().Tooltip(
-            "Capture every physics step of the held weapon (hand target, the pose the spring "
-            "produced, the pose after collision, every contact point/normal/depth, and a "
-            "fingerprint of the collision geometry in play). Keeps the most recent ~20 seconds. "
-            "Turn it ON, go reproduce the problem, then turn it OFF - the capture is written to "
-            "vr_phys_log.csv next to the game executable."));
-    AddWidget(physPath, "VrPhysLogControl", WIDGET_CUSTOM).CustomFunction(VrPhysLogControl).HideInSearch(true);
-
-    AddWidget(physPath, "Haptics", WIDGET_SEPARATOR_TEXT);
-    AddWidget(physPath, "Test Left Haptic", WIDGET_BUTTON)
-        .Options(ButtonOptions().Tooltip("Buzz the left controller for 0.1 s."))
-        .Callback([](WidgetInfo& info) { VR_TriggerHaptic(0, 0.8f, 0.0f, 100.0f); });
-    AddWidget(physPath, "Test Right Haptic", WIDGET_BUTTON)
-        .Options(ButtonOptions().Tooltip("Buzz the right controller for 0.1 s."))
-        .Callback([](WidgetInfo& info) { VR_TriggerHaptic(1, 0.8f, 0.0f, 100.0f); });
-
-    AddWidget(physPath, "Live Hand Speed", WIDGET_SEPARATOR_TEXT);
-    AddWidget(physPath, "VrPhysCombatReadout", WIDGET_CUSTOM).CustomFunction(VrPhysCombatReadout).HideInSearch(true);
-
-    // --------------------------------------------------------------- HUD & Menus
-    AddSidebarEntry("VR Settings", "HUD & Menus", 1);
-    WidgetPath hudPath = { "VR Settings", "HUD & Menus", SECTION_COLUMN_1 };
-
-    AddWidget(hudPath, "HUD", WIDGET_SEPARATOR_TEXT);
-    AddWidget(hudPath, "HUD Attachment", WIDGET_CVAR_COMBOBOX)
-        .CVar("gVrHudAttach")
-        .Options(ComboboxOptions()
-                     .DefaultIndex(0)
-                     .ComboMap(vrHudAttachOptions)
-                     .Tooltip("Where the HUD (hearts, rupees, C-button items) lives: floating in "
-                              "front of your face, or pinned to a controller like a wrist panel - "
-                              "glance at your hand to check your status. Falls back to head-locked "
-                              "while that controller isn't tracked.\n\n"
-                              "Wrist splits the HUD: hearts, magic, keys, rupees and the minimap on "
-                              "the off-hand wrist (look at the back of the wrist to show them), the "
-                              "item buttons above the sword-hand controller, and text boxes in "
-                              "front of your face."));
-    AddWidget(hudPath, "HUD Distance: %.1f m", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrHudDistance")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudHasHeadPanel(); })
-        .Options(FloatSliderOptions().Min(0.5f).Max(5.0f).DefaultValue(2.0f).Step(0.1f).Format("%.1f"));
-    AddWidget(hudPath, "HUD Size: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrHudSize")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudHasHeadPanel(); })
-        .Options(FloatSliderOptions().Min(0.2f).Max(3.0f).DefaultValue(1.5f).Step(0.05f).Format("%.2f"));
-    AddWidget(hudPath, "HUD Horizontal: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrHudOffX")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudHasHeadPanel(); })
-        .Options(FloatSliderOptions().Min(-1.5f).Max(1.5f).DefaultValue(0.0f).Step(0.02f).Format("%.2f"));
-    AddWidget(hudPath, "HUD Vertical: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrHudOffY")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudHasHeadPanel(); })
-        .Options(FloatSliderOptions().Min(-1.5f).Max(1.5f).DefaultValue(0.0f).Step(0.02f).Format("%.2f"));
-    AddWidget(hudPath, "Hand HUD Size: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrHudHandSize")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsOnHand(); })
-        .Options(FloatSliderOptions().Min(0.1f).Max(1.0f).DefaultValue(0.35f).Step(0.01f).Format("%.2f"));
-    AddWidget(hudPath, "Hand HUD Sideways: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrHudHandOffX")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsOnHand(); })
-        .Options(FloatSliderOptions()
-                     .Min(-0.5f)
-                     .Max(0.5f)
-                     .DefaultValue(0.0f)
-                     .Step(0.01f)
-                     .Format("%.2f")
-                     .Tooltip("Offset along the grip's sideways axis (mirrored automatically for "
-                              "the right hand, so one tuning fits both)."));
-    AddWidget(hudPath, "Hand HUD Up: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrHudHandOffY")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsOnHand(); })
-        .Options(FloatSliderOptions().Min(-0.5f).Max(0.5f).DefaultValue(0.10f).Step(0.01f).Format("%.2f"));
-    AddWidget(hudPath, "Hand HUD Forward: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrHudHandOffZ")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsOnHand(); })
-        .Options(FloatSliderOptions().Min(-0.5f).Max(0.5f).DefaultValue(-0.08f).Step(0.01f).Format("%.2f"));
-    AddWidget(hudPath, "Hand HUD Tilt: %.0f deg", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrHudHandPitch")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsOnHand(); })
-        .Options(FloatSliderOptions()
-                     .Min(-90.0f)
-                     .Max(90.0f)
-                     .DefaultValue(-40.0f)
-                     .Step(1.0f)
-                     .Format("%.0f")
-                     .Tooltip("Tilt about the grip so the panel faces your eyes at a natural "
-                              "wrist-watch angle."));
-    AddWidget(hudPath, "Show Wrist HUD Only When Looking", WIDGET_CVAR_CHECKBOX)
-        .CVar("gVrWristHudGlance")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsWrist(); })
-        .Options(CheckboxOptions()
-                     .DefaultValue(true)
-                     .Tooltip("Show hearts, rupees and the minimap only while you turn the back of "
-                              "your wrist toward your eyes and look at it. Off: always show them."));
-    AddWidget(hudPath, "Wrist HUD Size: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrWristHudSize")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsWrist(); })
-        .Options(FloatSliderOptions()
-                     .Min(0.08f)
-                     .Max(0.5f)
-                     .DefaultValue(0.20f)
-                     .Step(0.01f)
-                     .Format("%.2f")
-                     .Tooltip("Width of the wrist panel (hearts and minimap). The item buttons "
-                              "above the controller use the same scale."));
-    AddWidget(hudPath, "Wrist HUD Sideways: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrWristHudOffX")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsWrist(); })
-        .Options(FloatSliderOptions()
-                     .Min(-0.3f)
-                     .Max(0.3f)
-                     .DefaultValue(-0.04f)
-                     .Step(0.01f)
-                     .Format("%.2f")
-                     .Tooltip("Offset along the grip's sideways axis. Negative moves the panel to the "
-                              "back of the hand (mirrored automatically for the right hand)."));
-    AddWidget(hudPath, "Wrist HUD Up: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrWristHudOffY")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsWrist(); })
-        .Options(FloatSliderOptions().Min(-0.3f).Max(0.3f).DefaultValue(0.02f).Step(0.01f).Format("%.2f"));
-    AddWidget(hudPath, "Wrist HUD Along Forearm: %.2f m", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrWristHudOffZ")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !VrHudIsWrist(); })
-        .Options(FloatSliderOptions()
-                     .Min(-0.3f)
-                     .Max(0.4f)
-                     .DefaultValue(0.10f)
-                     .Step(0.01f)
-                     .Format("%.2f")
-                     .Tooltip("Positive moves the panel from the grip back toward the elbow."));
-
-    AddWidget(hudPath, "Menu Screen", WIDGET_SEPARATOR_TEXT);
-    AddWidget(hudPath, "Menu Screen Distance: %.1f m", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrScreenDistance")
-        .Options(FloatSliderOptions()
-                     .Min(0.5f)
-                     .Max(5.0f)
-                     .DefaultValue(2.2f)
-                     .Step(0.1f)
-                     .Format("%.1f")
-                     .Tooltip("How far in front of you the floating menu panel (file select, pause) "
-                              "appears. Applies the next time a menu opens."));
-    AddWidget(hudPath, "Menu Screen Size: %.1f m", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrScreenSize")
-        .Options(FloatSliderOptions()
-                     .Min(0.5f)
-                     .Max(5.0f)
-                     .DefaultValue(2.4f)
-                     .Step(0.1f)
-                     .Format("%.1f")
-                     .Tooltip("Width of the floating menu panel in meters (height follows 4:3). "
-                              "Applies live."));
-
-    // ---------------------------------------------------------------- Performance
-    AddSidebarEntry("VR Settings", "Performance", 2);
-    WidgetPath perfPath = { "VR Settings", "Performance", SECTION_COLUMN_1 };
-
-    AddWidget(perfPath, "Render Cost", WIDGET_SEPARATOR_TEXT);
-    AddWidget(perfPath, "The game's display list is walked once per eye, every frame. At 120 Hz "
-                       "that is 240 full traversals a second on one thread, plus the HUD. These "
-                       "settings trade world-update rate for headroom; head tracking always stays "
-                       "at the headset's full rate because skipped frames are reprojected by the "
-                       "compositor.",
-              WIDGET_TEXT);
-    // SOH [VR] "Automatic" is the default (issue #83).
-    AddWidget(perfPath, "Headset Refresh Rate", WIDGET_CVAR_COMBOBOX)
-        .CVar("gVrRefreshRate")
-        .Options(ComboboxOptions()
-                     .DefaultIndex(0)
-                     .ComboMap(vrRefreshRateOptions)
-                     .Tooltip("How many images per second the headset shows. Automatic (default) "
-                              "uses 90 Hz, and 72 Hz when frames are late, for example in Hyrule "
-                              "Field. A fixed rate does not change."));
-    AddWidget(perfPath, "Stereo Render Divisor: %d", WIDGET_CVAR_SLIDER_INT)
-        .CVar("gVrStereoDivisor")
-        .Options(IntSliderOptions()
-                     .Min(1)
-                     .Max(4)
-                     .DefaultValue(2) // SOH [VR] issue #83
-                     .Format("%d")
-                     .Tooltip("Redraw the stereo pair every Nth frame; in between, the previous "
-                              "images are resubmitted with the pose they were drawn from and the "
-                              "compositor reprojects them onto your live head pose. 2 roughly "
-                              "halves render cost. The source animation is 20 fps, so the drop "
-                              "from 120 to 60 world updates is hard to see; head tracking is "
-                              "unaffected."));
-    AddWidget(perfPath, "Draw HUD Once Per Game Tick", WIDGET_CVAR_CHECKBOX)
-        .CVar("gVrHudPerTick")
-        .Options(CheckboxOptions()
-                     .DefaultValue(true)
-                     .Tooltip("The overlay display list is rebuilt once per 20 Hz game tick, so "
-                              "redrawing it on every interpolated sub-frame renders identical "
-                              "content up to six times. Off = redraw every frame (only useful if "
-                              "something in the HUD looks like it is updating too slowly)."));
-    AddWidget(perfPath, "Companion Window Divisor: %d", WIDGET_CVAR_SLIDER_INT)
-        .CVar("gVrDesktopViewDivisor")
-        .Options(IntSliderOptions()
-                     .Min(1)
-                     .Max(16)
-                     .DefaultValue(4)
-                     .Format("%d")
-                     .Tooltip("How often the desktop window is updated, in frames. Each update "
-                              "costs an ImGui frame, a full-eye-resolution mirror copy and a "
-                              "Present, all on the critical path. 4 gives roughly 30 fps on the "
-                              "monitor at a 120 Hz headset. This menu updates at that rate too."));
-    AddWidget(perfPath, "Render Resolution Scale: %.2f", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrResolutionScale")
-        .Options(FloatSliderOptions()
-                     .Min(0.5f)
-                     .Max(1.5f)
-                     .DefaultValue(1.0f)
-                     .Step(0.05f)
-                     .Format("%.2f")
-                     .Tooltip("Multiplier on the runtime's recommended per-eye resolution. This is "
-                              "the GPU-side knob. Applied when the OpenXR session is created, so "
-                              "it takes effect on the next restart."));
-
-    perfPath.column = SECTION_COLUMN_2;
-    AddWidget(perfPath, "Live Frame Cost", WIDGET_SEPARATOR_TEXT);
-    AddWidget(perfPath, "VRPerformanceReadout", WIDGET_CUSTOM).CustomFunction(VrPerformanceReadout).HideInSearch(true);
-
-    AddWidget(perfPath, "Settings That Do Nothing In VR", WIDGET_SEPARATOR_TEXT);
-    AddWidget(perfPath, "MSAA and Internal Resolution (under Settings > Graphics) have no effect "
-                       "while VR is active: the eyes render into OpenXR swapchains, which are "
-                       "created single-sampled and at the size set by Render Resolution Scale "
-                       "above. Turning them up costs memory and changes nothing you can see.",
-              WIDGET_TEXT);
-    AddWidget(perfPath, "V-Sync is bypassed in VR: the headset's compositor paces frames, and a "
-                       "second pacer running off the monitor's refresh rate would fight it.",
-              WIDGET_TEXT);
-
-    // ------------------------------------------------------------------ VR Inputs
-    AddSidebarEntry("VR Settings", "VR Inputs", 1);
-    WidgetPath buttonsPath = { "VR Settings", "VR Inputs", SECTION_COLUMN_1 };
-
-    AddWidget(buttonsPath, "VrControlScheme", WIDGET_CUSTOM).CustomFunction(VrControlSchemeSelector).HideInSearch(true);
-    AddWidget(buttonsPath, "VrInputBindings", WIDGET_CUSTOM).CustomFunction(VrInputBindings).HideInSearch(true);
-
-    AddWidget(buttonsPath, "Item Select (Half-Life: Alyx Style)", WIDGET_SEPARATOR_TEXT);
-    AddWidget(buttonsPath, "Alyx-Style Item Select", WIDGET_CVAR_CHECKBOX)
-        .CVar("gVrItemSelect")
-        .Options(CheckboxOptions()
-                     .DefaultValue(true)
-                     .Tooltip("Hold the selector input and a compass of your equipped items "
-                              "appears at your hand: flick toward one and release to take it. "
-                              "Up = sword & shield, left/right/down = your three C items, "
-                              "release without moving = empty hands. Haptic tick marks each "
-                              "highlight.\n\n"
-                              "This also changes how items are USED. The selector equips; the "
-                              "shield-hand TRIGGER fires the held item — squeeze to draw the bow, "
-                              "let go to loose — and the sword-hand trigger is Z-target. Buttons "
-                              "can no longer pull items out or draw the sword (that is the "
-                              "selector's job), so this mode has its own binding set. "
-                              "Turning it off restores the classic scheme and its bindings "
-                              "exactly as you left them."));
-    AddWidget(buttonsPath, "Selector Hand", WIDGET_CVAR_COMBOBOX)
-        .CVar("gVrItemSelHand")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrItemSelect", 1); })
-        .Options(ComboboxOptions()
-                     .DefaultIndex(0)
-                     .ComboMap(vrItemSelHandOptions)
-                     .Tooltip("Which hand opens the selector and does the flicking. Alyx uses "
-                              "the weapon hand."));
-    AddWidget(buttonsPath, "Selector Input (Hold)", WIDGET_CVAR_COMBOBOX)
-        .CVar("gVrItemSelInput")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrItemSelect", 1); })
-        .Options(ComboboxOptions()
-                     .DefaultIndex(VR_BTN_THUMBCLICK)
-                     .ComboMap(vrItemSelInputOptions)
-                     .Tooltip("The input you hold to open the selector. It becomes DEDICATED: "
-                              "its normal button binding stops firing, and while held, that "
-                              "hand's thumbstick is ignored (no turning or C-buttons from a "
-                              "resting thumb)."));
-    AddWidget(buttonsPath, "Sword Swap (Both Hands)", WIDGET_CVAR_COMBOBOX)
-        .CVar("gVrItemSelSwapInput")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrItemSelect", 1); })
-        .Options(ComboboxOptions()
-                     .DefaultIndex(VR_BTN_GRIP)
-                     .ComboMap(vrItemSelSwapOptions)
-                     .Tooltip("Quick swap back to sword & shield: squeeze this input on BOTH "
-                              "controllers at once to stow whatever you're holding and draw the "
-                              "sword (the shield already rides your off hand). While both are "
-                              "down, the inputs' normal bindings pause so the swap doesn't also "
-                              "Z-target or raise R; squeezed alone they work as bound. Z-target "
-                              "stays on the sword-hand trigger meanwhile."));
-    AddWidget(buttonsPath, "Flick Distance: %.0f cm", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrItemSelDistance")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrItemSelect", 1); })
-        .Options(FloatSliderOptions()
-                     .Min(3.0f)
-                     .Max(30.0f)
-                     .DefaultValue(5.0f)
-                     .Step(1.0f)
-                     .Format("%.0f")
-                     .Tooltip("How far your hand must move from where you pressed the input "
-                              "for a direction to count. Shorter = snappier, longer = harder "
-                              "to pick by accident."));
-    AddWidget(buttonsPath, "Click a chip to remove a binding, + to add one. A VR input may press "
-                           "several buttons at once. Sticks are fixed: left = movement, right = "
-                           "C-buttons/snap turn.",
-              WIDGET_TEXT);
-
-    // ---------------------------------------------------------------- Calibration
-    AddSidebarEntry("VR Settings", "Calibration", 2);
-    WidgetPath calPath = { "VR Settings", "Calibration", SECTION_COLUMN_1 };
-
-    AddWidget(calPath, "One-time tuning. The defaults were calibrated in-headset; you should not "
-                       "need anything here unless the hands, weapon aim or camera look off on "
-                       "your setup. Tune, then use the copy button to share your values.",
-              WIDGET_TEXT);
-
-    AddWidget(calPath, "Hand Mirroring", WIDGET_SEPARATOR_TEXT);
-    AddWidget(calPath, "Mirror Sword Hand", WIDGET_CVAR_CHECKBOX)
-        .CVar("gVrHandMirrorSword")
-        .Options(CheckboxOptions()
-                     .DefaultValue(true)
-                     .Tooltip("Reflect the sword hand's mesh so it reads as a right hand on the right "
-                              "controller. Only applies in right-handed mode."));
-    AddWidget(calPath, "Mirror Shield Hand", WIDGET_CVAR_CHECKBOX)
-        .CVar("gVrHandMirrorShield")
-        .Options(CheckboxOptions()
-                     .DefaultValue(true)
-                     .Tooltip("Reflect the shield hand's mesh so it reads as a left hand on the left "
-                              "controller. Note the reflection also mirrors the shield's face design; "
-                              "pair with the Left Hand Override values to orient it correctly."));
-    AddWidget(calPath, "Mirror Axis", WIDGET_CVAR_COMBOBOX)
-        .CVar("gVrHandMirrorAxis")
-        .Options(ComboboxOptions()
-                     .DefaultIndex(2)
-                     .ComboMap(vrMirrorAxisOptions)
-                     .Tooltip("Which model-local axis the mirror reflection negates. Should be the thumb "
-                              "axis: it must keep the finger direction and flip the thumb so the mesh reads "
-                              "as the opposite hand. Try each if the hands look inside-out."));
-
-    AddWidget(calPath, "Hand Rotation", WIDGET_SEPARATOR_TEXT);
-    AddWidget(calPath, "Tune while looking at the SWORD hand - the other hand mirrors automatically.", WIDGET_TEXT);
-    AddWidget(calPath, "Pitch: %.1f deg", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrHandCalPitch")
-        .Options(FloatSliderOptions()
-                     .Min(-180.0f)
-                     .Max(180.0f)
-                     .DefaultValue(88.0f)
-                     .Step(1.0f)
-                     .Format("%.1f")
-                     .Tooltip("Rotation about the grip X axis (wrist tilt up/down)."));
-    AddWidget(calPath, "Yaw: %.1f deg", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrHandCalYaw")
-        .Options(FloatSliderOptions()
-                     .Min(-180.0f)
-                     .Max(180.0f)
-                     .DefaultValue(-100.0f)
-                     .Step(1.0f)
-                     .Format("%.1f")
-                     .Tooltip("Rotation about the grip Y axis. If the sword points backward or sideways "
-                              "out of your fist, adjust this first."));
-    AddWidget(calPath, "Roll: %.1f deg", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrHandCalRoll")
-        .Options(FloatSliderOptions()
-                     .Min(-180.0f)
-                     .Max(180.0f)
-                     .DefaultValue(80.0f)
-                     .Step(1.0f)
-                     .Format("%.1f")
-                     .Tooltip("Rotation about the grip Z axis (twist around the handle - use to line up "
-                              "the blade edge and palm)."));
-
-    AddWidget(calPath, "Hand Position", WIDGET_SEPARATOR_TEXT);
-    AddWidget(calPath, "Offset X: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrHandOffX")
-        .Options(FloatSliderOptions()
-                     .Min(-30.0f)
-                     .Max(30.0f)
-                     .DefaultValue(0.0f)
-                     .Step(0.5f)
-                     .Format("%.1f")
-                     .Tooltip("Slide the hand along the grip X axis (game units, tuned for the left "
-                              "controller; the right controller mirrors)."));
-    AddWidget(calPath, "Offset Y: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrHandOffY")
-        .Options(FloatSliderOptions()
-                     .Min(-30.0f)
-                     .Max(30.0f)
-                     .DefaultValue(0.0f)
-                     .Step(0.5f)
-                     .Format("%.1f")
-                     .Tooltip("Slide the hand along the grip Y axis."));
-    AddWidget(calPath, "Offset Z: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrHandOffZ")
-        .Options(FloatSliderOptions()
-                     .Min(-30.0f)
-                     .Max(30.0f)
-                     .DefaultValue(0.0f)
-                     .Step(0.5f)
-                     .Format("%.1f")
-                     .Tooltip("Slide the hand along the grip Z axis (roughly along the handle)."));
-
-    calPath.column = SECTION_COLUMN_2;
-    AddWidget(calPath, "Left Hand Override", WIDGET_SEPARATOR_TEXT);
-    AddWidget(calPath, "Tune Left Hand Separately", WIDGET_CVAR_CHECKBOX)
-        .CVar("gVrHandLOverride")
-        .Options(CheckboxOptions().DefaultValue(true).Tooltip(
-            "By default the left controller's hand is derived from the values above by mirror symmetry. "
-            "If it doesn't look right, enable this and dial it in with its own values below."));
-    AddWidget(calPath, "L Pitch: %.1f deg", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrHandLCalPitch")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrHandLOverride", 1); })
-        .Options(FloatSliderOptions().Min(-180.0f).Max(180.0f).DefaultValue(-149.0f).Step(1.0f).Format("%.1f"));
-    AddWidget(calPath, "L Yaw: %.1f deg", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrHandLCalYaw")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrHandLOverride", 1); })
-        .Options(FloatSliderOptions().Min(-180.0f).Max(180.0f).DefaultValue(76.0f).Step(1.0f).Format("%.1f"));
-    AddWidget(calPath, "L Roll: %.1f deg", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrHandLCalRoll")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrHandLOverride", 1); })
-        .Options(FloatSliderOptions().Min(-180.0f).Max(180.0f).DefaultValue(30.0f).Step(1.0f).Format("%.1f"));
-    AddWidget(calPath, "L Offset X: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrHandLOffX")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrHandLOverride", 1); })
-        .Options(FloatSliderOptions().Min(-30.0f).Max(30.0f).DefaultValue(0.0f).Step(0.5f).Format("%.1f"));
-    AddWidget(calPath, "L Offset Y: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrHandLOffY")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrHandLOverride", 1); })
-        .Options(FloatSliderOptions().Min(-30.0f).Max(30.0f).DefaultValue(0.0f).Step(0.5f).Format("%.1f"));
-    AddWidget(calPath, "L Offset Z: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrHandLOffZ")
-        .PreFunc([](WidgetInfo& info) { info.isHidden = !CVarGetInteger("gVrHandLOverride", 1); })
-        .Options(FloatSliderOptions().Min(-30.0f).Max(30.0f).DefaultValue(0.0f).Step(0.5f).Format("%.1f"));
-
-    AddWidget(calPath, "Head Position (relative to Link's body)", WIDGET_SEPARATOR_TEXT);
-    AddWidget(calPath, "Forward Offset: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrHeadOffsetForward")
-        .Options(FloatSliderOptions()
-                     .Min(-60.0f)
-                     .Max(60.0f)
-                     .DefaultValue(6.0f)
-                     .Step(1.0f)
-                     .Format("%.1f")
-                     .Tooltip("Move the eye anchor along Link's facing (game units). Positive pushes "
-                              "the camera forward out of his head; negative pulls it back."));
-    AddWidget(calPath, "Side Offset: %.1f", WIDGET_CVAR_SLIDER_FLOAT)
-        .CVar("gVrHeadOffsetSide")
-        .Options(FloatSliderOptions()
-                     .Min(-60.0f)
-                     .Max(60.0f)
-                     .DefaultValue(0.0f)
-                     .Step(1.0f)
-                     .Format("%.1f")
-                     .Tooltip("Move the eye anchor sideways relative to Link's facing (game units)."));
-
-    AddWidget(calPath, "Export", WIDGET_SEPARATOR_TEXT);
-    AddWidget(calPath, "Copy All Calibration Values", WIDGET_BUTTON)
-        .Options(ButtonOptions().Tooltip("Copy every VR tuning value (hands, weapon aim, camera, "
-                                         "world scale, HUD placement) so they can be handed to a "
-                                         "developer to become the defaults."))
-        .Callback([](WidgetInfo& info) {
-            char buf[2048];
-            snprintf(buf, sizeof(buf),
-                     "gVrMotionHands=%d\n"
-                     "gVrLeftHanded=%d\n"
-                     "gVrHandMirrorSword=%d\n"
-                     "gVrHandMirrorShield=%d\n"
-                     "gVrHandMirrorAxis=%d\n"
-                     "gVrHandCalPitch=%.1f\n"
-                     "gVrHandCalYaw=%.1f\n"
-                     "gVrHandCalRoll=%.1f\n"
-                     "gVrHandOffX=%.1f\n"
-                     "gVrHandOffY=%.1f\n"
-                     "gVrHandOffZ=%.1f\n"
-                     "gVrHandLOverride=%d\n"
-                     "gVrHandLCalPitch=%.1f\n"
-                     "gVrHandLCalYaw=%.1f\n"
-                     "gVrHandLCalRoll=%.1f\n"
-                     "gVrHandLOffX=%.1f\n"
-                     "gVrHandLOffY=%.1f\n"
-                     "gVrHandLOffZ=%.1f\n"
-                     "gVrHeadHeightOffset=%.1f\n"
-                     "gVrHeadOffsetForward=%.1f\n"
-                     "gVrHeadOffsetSide=%.1f\n"
-                     "gVrWorldScale=%.1f\n"
-                     "gVrScreenDistance=%.1f\n"
-                     "gVrScreenSize=%.1f\n"
-                     "gVrHudAttach=%d\n"
-                     "gVrHudDistance=%.1f\n"
-                     "gVrHudSize=%.2f\n"
-                     "gVrHudOffX=%.2f\n"
-                     "gVrHudOffY=%.2f\n"
-                     "gVrHudHandSize=%.2f\n"
-                     "gVrHudHandOffX=%.2f\n"
-                     "gVrHudHandOffY=%.2f\n"
-                     "gVrHudHandOffZ=%.2f\n"
-                     "gVrHudHandPitch=%.0f\n"
-                     "gVrWristHudGlance=%d\n"
-                     "gVrWristHudSize=%.2f\n"
-                     "gVrWristHudOffX=%.2f\n"
-                     "gVrWristHudOffY=%.2f\n"
-                     "gVrWristHudOffZ=%.2f\n",
-                     CVarGetInteger("gVrMotionHands", 1), CVarGetInteger("gVrLeftHanded", 0),
-                     CVarGetInteger("gVrHandMirrorSword", 1), CVarGetInteger("gVrHandMirrorShield", 1),
-                     CVarGetInteger("gVrHandMirrorAxis", 2),
-                     CVarGetFloat("gVrHandCalPitch", 88.0f), CVarGetFloat("gVrHandCalYaw", -100.0f),
-                     CVarGetFloat("gVrHandCalRoll", 80.0f), CVarGetFloat("gVrHandOffX", 0.0f),
-                     CVarGetFloat("gVrHandOffY", 0.0f), CVarGetFloat("gVrHandOffZ", 0.0f),
-                     CVarGetInteger("gVrHandLOverride", 1), CVarGetFloat("gVrHandLCalPitch", -149.0f),
-                     CVarGetFloat("gVrHandLCalYaw", 76.0f), CVarGetFloat("gVrHandLCalRoll", 30.0f),
-                     CVarGetFloat("gVrHandLOffX", 0.0f), CVarGetFloat("gVrHandLOffY", 0.0f),
-                     CVarGetFloat("gVrHandLOffZ", 0.0f),
-                     CVarGetFloat("gVrHeadHeightOffset", -9.0f), CVarGetFloat("gVrHeadOffsetForward", 6.0f),
-                     CVarGetFloat("gVrHeadOffsetSide", 0.0f), CVarGetFloat("gVrWorldScale", 35.0f),
-                     CVarGetFloat("gVrScreenDistance", 2.2f), CVarGetFloat("gVrScreenSize", 2.4f),
-                     CVarGetInteger("gVrHudAttach", 0), CVarGetFloat("gVrHudDistance", 2.0f),
-                     CVarGetFloat("gVrHudSize", 1.5f), CVarGetFloat("gVrHudOffX", 0.0f),
-                     CVarGetFloat("gVrHudOffY", 0.0f), CVarGetFloat("gVrHudHandSize", 0.35f),
-                     CVarGetFloat("gVrHudHandOffX", 0.0f), CVarGetFloat("gVrHudHandOffY", 0.10f),
-                     CVarGetFloat("gVrHudHandOffZ", -0.08f), CVarGetFloat("gVrHudHandPitch", -40.0f),
-                     CVarGetInteger("gVrWristHudGlance", 1), CVarGetFloat("gVrWristHudSize", 0.20f),
-                     CVarGetFloat("gVrWristHudOffX", -0.04f), CVarGetFloat("gVrWristHudOffY", 0.02f),
-                     CVarGetFloat("gVrWristHudOffZ", 0.10f));
             ImGui::SetClipboardText(buf);
         });
 }
