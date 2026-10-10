@@ -3,7 +3,7 @@
 _The Legend of Zelda: Ocarina of Time_ in first person on the Meta Quest 3S.
 The game runs on the headset. You do not need a PC to play.
 
-**Status: alpha.** You can play the main story from Kokiri Forest to Ganon's
+**Status: beta.** You can play the main story from Kokiri Forest to Ganon's
 Tower. Some problems are known: read [`STATUS.md`](STATUS.md) and the
 [open issues](https://github.com/gibranfelix/oot-vr/issues) before you play.
 
