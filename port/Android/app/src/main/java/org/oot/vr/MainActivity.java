@@ -5,6 +5,7 @@ import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.os.Process;
 import android.util.Log;
 
 import org.libsdl.app.SDLActivity;
@@ -43,6 +44,9 @@ public class MainActivity extends SDLActivity {
     /** Home opens this PendingIntent as a panel. From Meta's "Hybrid apps overview" guide. */
     private static final String EXTRA_LAUNCH_IN_HOME = "extra_launch_in_home_pending_intent";
 
+    /** This activity ended in onCreate to start the setup. Read GameProcess. */
+    private boolean handedOverToSetup;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         // Must match SDL_AndroidGetExternalStoragePath(), which is what libultraship asks for:
@@ -66,8 +70,22 @@ public class MainActivity extends SDLActivity {
         super.onCreate(savedInstanceState);
         if (root != null && SetupGate.needsSetup(root)) {
             Log.i(TAG, "No game archive: starting the setup");
+            handedOverToSetup = true;
             startSetup();
             finishAndRemoveTask();
+        }
+    }
+
+    /**
+     * SDLActivity.onDestroy waits for SDL_main to return and frees what onCreate made. The game
+     * cannot start a second time in the same process (read GameProcess), so the process ends here.
+     */
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (GameProcess.endsWithActivity(handedOverToSetup, isChangingConfigurations())) {
+            Log.i(TAG, "Game ended: ending the process, so that the next launch starts a new one");
+            Process.killProcess(Process.myPid());
         }
     }
 
