@@ -72,6 +72,11 @@ cd - && git worktree remove /tmp/pr-assets
 - Do not delete the `pr-assets` branch, and do not force-push it. The links
   stop working without its commits.
 
+### Release notes
+
+Write the release notes with the template in
+[`docs/release-notes.md`](docs/release-notes.md).
+
 ## Game assets
 
 **This repository must never contain game assets.**
