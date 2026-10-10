@@ -24,6 +24,19 @@ final class SetupText {
     static final String NO_PICKER = "The headset has no file picker. Make oot.o2r with Ship of "
         + "Harkinian for PC. Read the README of this project.";
 
+    static final String PERMISSION = "Mods (optional)\n\nSelect Allow to make the folder oot-vr "
+        + "on the headset. It keeps your mods and your saves.";
+    static final String MODS_READY = "Mods\n\nConnect the headset to a PC, and copy mods into "
+        + "oot-vr/mods. Or select Add mods.";
+    static final String ADDING_MODS = "Copying the mods…";
+    static final String SAVES_OUT_OF_REACH = "Your saves are in the folder oot-vr. Select Allow to "
+        + "use them.";
+    static final String ALLOW = "Allow";
+    static final String SKIP = "Skip";
+    static final String ADD_MODS = "Add mods";
+    static final String START_GAME = "Start the game";
+    static final String START_WITHOUT_SAVES = "Start without the saves";
+
     /** ProgressBar maximum: a fixed scale, because the file total is a long and can be 0. */
     static final int BAR_MAX = 1000;
 
@@ -37,6 +50,17 @@ final class SetupText {
             return EXTRACTING;
         }
         return EXTRACTING + " " + clamp(done, total) + " / " + total;
+    }
+
+    static String modsAdded(int added, int skipped, boolean failed) {
+        StringBuilder text = new StringBuilder("Mods added: " + added + ".");
+        if (skipped > 0) {
+            text.append(" Not mods: ").append(skipped).append(".");
+        }
+        if (failed) {
+            text.append(" Some files failed.");
+        }
+        return text.toString();
     }
 
     static int barPosition(long done, long total) {

@@ -3,6 +3,7 @@
 #include "soh/OTRGlobals.h"
 #include "soh/ShipInit.hpp"
 #include "SohGui.hpp"
+#include "soh/PlayerFolder.h" // SOH [Quest]
 #include <libultraship/bridge/consolevariablebridge.h>
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -674,6 +675,33 @@ static void VrQuickSetup(WidgetInfo& info) {
     VrHudCard(width);
 }
 
+#ifdef __ANDROID__
+// SOH [Quest] The player folder and its permission. Read soh/PlayerFolder.h.
+static void VrModsFolder(WidgetInfo& info) {
+    static int sFramesToCheck = 0;
+    static bool sGranted = false;
+    if (--sFramesToCheck <= 0) {
+        sGranted = PlayerFolder::HasAccess(); // JNI: once a second.
+        sFramesToCheck = 72;
+    }
+    if (!PlayerFolder::Path().empty()) {
+        ImGui::TextWrapped("Copy mods into oot-vr/mods, then start the game again.");
+        return;
+    }
+    if (sGranted) {
+        ImGui::TextWrapped("Start the game again to use the folder oot-vr.");
+        return;
+    }
+    ImGui::TextWrapped("Allow access to make the folder oot-vr for mods and saves.");
+    ImGui::Dummy(ImVec2(0.0f, ImGui::GetStyle().ItemSpacing.y));
+    static const VrChoice sChoices[] = { { "Allow Access", nullptr } };
+    if (VrChoiceRow("VrModsAccess", sChoices, 1, -1, ImGui::GetContentRegionAvail().x) == 0) {
+        PlayerFolder::RequestAccess();
+        sFramesToCheck = 0;
+    }
+}
+#endif
+
 static void VrRightStickCardWidget(WidgetInfo& info) {
     VrRightStickCard(ImGui::GetContentRegionAvail().x);
 }
@@ -1057,6 +1085,14 @@ void SohMenu::AddMenuVRSettings() {
         .CVar("gVrLetterbox")
         .Options(
             CheckboxOptions().Tooltip("Shows the black bars of the original game during Z-targeting and cutscenes."));
+
+#ifdef __ANDROID__
+    // ---------------------------------------------------------------------- Mods
+    // SOH [Quest] The player folder. Settings > Mod Menu sets the order.
+    AddSidebarEntry("VR Settings", "Mods", 1);
+    WidgetPath modsPath = { "VR Settings", "Mods", SECTION_COLUMN_1 };
+    AddWidget(modsPath, "VrModsFolder", WIDGET_CUSTOM).CustomFunction(VrModsFolder).HideInSearch(true);
+#endif
 
     // ----------------------------------------------------------------- Developer
     // Tuning and tests. Shows only with Dev Tools > Debug Mode on.

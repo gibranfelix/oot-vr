@@ -186,6 +186,7 @@ adb push <your-dump>.z64 /sdcard/Download/
 1. In the headset, open **Library** > **Unknown Sources** > **OoT VR**.
 2. Select **Select ROM**, then select your dump in the `Download` folder.
 3. Wait some minutes for the extraction. Do not remove the headset.
+4. Optional: select **Allow** to make the folder for mods. Read [Mods](#mods).
 
 The game makes `oot.o2r` from your dump. Then you can delete the dump. The next
 starts go directly to the game.
@@ -214,10 +215,35 @@ and texts.
 > [!IMPORTANT]
 > This project does not contain or give mods. Get each mod from its author.
 
+### Make the mods folder
+
+The game needs the "All files access" permission to use the folder `oot-vr/`.
+
+1. Select **Allow** after the first extraction. Or, in the SoH menu, select
+   **VR Settings** > **Mods** > **Allow Access**.
+2. Turn on the permission for OoT VR.
+3. Go back to the game.
+
+The game makes `oot-vr/mods/` and `oot-vr/Save/`. It moves your saves and
+`shipofharkinian.json` into `oot-vr/`, so that they stay when you remove the
+game. A copy of the old saves stays in
+`Android/data/org.oot.vr/files/Save.backup/`.
+
 ### Install a mod
 
-Copy the mod files into `Android/data/org.oot.vr/files/mods/` on the headset.
-Subfolders are permitted. The game turns on new mods at the next start.
+1. If the mod is a `.zip` file, extract it on your PC.
+2. Connect the headset to the PC. Open the SideQuest file manager.
+3. Copy the `.o2r` and `.otr` files into `oot-vr/mods/`.
+4. Start the game again.
+
+At the first start, **Add mods** also copies mods from the `Download` folder of
+the headset. It extracts `.zip` files.
+
+The game also reads mods from the old folder
+`Android/data/org.oot.vr/files/mods/`.
+
+A `.sav` file is a save, not a mod. The game reads it only from `oot-vr/Save/`.
+Its name sets the slot: `file1.sav`, `file2.sav`, or `file3.sav`.
 
 ### Manage the mods
 
