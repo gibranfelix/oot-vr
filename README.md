@@ -77,8 +77,8 @@ to block.
 
 ### Quick Setup
 
-At the first start, the game asks how you want to turn. To change it, open the
-SoH menu and go to VR Settings > **Quick Setup**.
+The first start asks how you want to turn. To change it, go to VR Settings >
+**Quick Setup**:
 
 | Setting                | Choices                                       |
 | ---------------------- | --------------------------------------------- |
@@ -88,24 +88,18 @@ SoH menu and go to VR Settings > **Quick Setup**.
 | Use Items              | Item Selector, C Buttons                      |
 | Hearts and Items (HUD) | In Front, On the Wrist, Left Hand, Right Hand |
 
-The right thumbstick takes items or turns the view. It does not do the two.
-**Use Items** sets how you take an item:
+The right thumbstick takes items or turns. It does not do the two:
 
-| Right Stick | Use Items     | Take an item                                                                                 |
-| ----------- | ------------- | -------------------------------------------------------------------------------------------- |
-| Items       | Item Selector | Flick the right thumbstick ← → ↓, or hold the right thumbstick click and move your hand.     |
-| Turn        | Item Selector | Hold the right thumbstick click and move your hand.                                          |
-| Items       | C Buttons     | Flick the right thumbstick ← → ↓, or push X (C-Left), B (C-Down), or the left Menu button (C-Right). |
-| Turn        | C Buttons     | Push X (C-Left), B (C-Down), or the left Menu button (C-Right).                              |
+| Right Stick | Use Items     | Take an item                                                            |
+| ----------- | ------------- | ----------------------------------------------------------------------- |
+| Items       | Item Selector | Flick the right thumbstick, or hold its click and move your hand.       |
+| Turn        | Item Selector | Hold the right thumbstick click and move your hand.                     |
+| Items       | C Buttons     | Flick the right thumbstick, or push X, B, or the left Menu button.      |
+| Turn        | C Buttons     | Push X (C-Left), B (C-Down), or the left Menu button (C-Right).         |
 
-- Right thumbstick ↑ talks to Navi.
-- With C Buttons, the right trigger is N64 B and the left thumbstick click is
-  Start. The belt works only with the item selector.
-- The answer "With the stick" at the first start comes from
-  [Shipwright-VR](https://github.com/ShinyWindow/Shipwright-VR) for PC.
-
-VR Settings > **Controls** changes each button. **Reset to Default** puts the
-buttons back.
+With C Buttons, the right trigger is N64 B, and the left thumbstick click is
+Start. The belt works only with the item selector. To change a button, go to VR
+Settings > **Controls**.
 
 ### SoH menu
 

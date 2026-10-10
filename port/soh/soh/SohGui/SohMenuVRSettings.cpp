@@ -330,7 +330,7 @@ static void VrInputBindingRow(const VrN64RowDef& row) {
     ImGui::PopID();
 }
 
-// Puts the set that the editor shows back to its default buttons.
+// Resets the binding set that the editor shows.
 static void VrResetBindingsButton() {
     ImGui::Spacing();
     if (ImGui::Button("Reset to Default##VrInputs")) {
@@ -422,10 +422,8 @@ static void VrInputBindings(WidgetInfo& info) {
     VrResetBindingsButton();
 }
 
-// --- Control schemes. A scheme is a value for the turning CVars, with the item selector on and
-// every selector and ocarina binding at its default. The first start in VR asks for one (the
-// question replaces Quick Setup until the player answers). gVrControlScheme keeps the last
-// selected scheme, gVrControlSchemeAsked records the answer.
+// --- Control schemes: the turning CVars, the item selector on, and the default bindings. The first
+// start in VR asks for one. gVrControlSchemeAsked records the answer.
 struct VrControlScheme {
     const char* name;
     const char* summary;
@@ -455,7 +453,7 @@ static void VrApplyControlScheme(int idx) {
     sVrListenRowMask = 0;
 }
 
-// First start in VR: the question replaces Quick Setup until the player answers it.
+// Shows in place of Quick Setup until the player answers.
 static void VrControlSchemeQuestion() {
     ImGui::PushFont(OTRGlobals::Instance->fontStandardLargest);
     ImGui::TextUnformatted("How do you want to turn?");
@@ -488,9 +486,8 @@ static void VrControlSchemeQuestion() {
     ImGui::Separator();
 }
 
-// Opens the SoH menu on Quick Setup at the first start in VR, for the control scheme question.
-// Waits a few game frames, so that the headset shows the game before the menu opens. Until the
-// player answers, the question comes back at each start.
+// Opens Quick Setup at each start in VR until the player answers the question. Waits 60 game
+// frames, so that the headset shows the game first.
 static void VrControlSchemeFirstStartTick() {
     static bool sAskedThisSession = false;
     static int sFramesInVr = 0;
@@ -514,9 +511,8 @@ static void RegisterVrControlSchemeFirstStart() {
 static RegisterShipInitFunc initVrControlSchemeFirstStart(RegisterVrControlSchemeFirstStart,
                                                           { "gVrControlSchemeAsked" });
 
-// --- Quick Setup (issue #104): the main choices as rows of large buttons. The same cards are at
-// the top of their tabs. Each card writes the CVars that the old check boxes and combo boxes
-// wrote, so saved settings keep their values.
+// --- Quick Setup (#104): rows of large buttons for the main choices. They write the same CVars as
+// the old widgets.
 struct VrChoice {
     const char* label;
     const char* detail; // second line, or nullptr
@@ -528,8 +524,7 @@ static void VrSetCVar(const char* cvar, int32_t value) {
     ShipInit::Init(cvar);
 }
 
-// One row of large buttons that share the width. Returns the index of the button that the player
-// pushed in this frame, or -1.
+// Returns the index of the pushed button, or -1.
 static int VrChoiceRow(const char* id, const VrChoice* choices, int count, int selected, float width) {
     const ImGuiStyle& style = ImGui::GetStyle();
     bool hasDetail = false;
@@ -607,7 +602,7 @@ static void VrSwordHandCard(float width) {
     }
 }
 
-// The right thumbstick has one job in first person: it takes C items, or it turns.
+// In first person, the right stick takes C items or turns. It does not do the two.
 static void VrRightStickCard(float width) {
     static const VrChoice sChoices[] = { { "Items", "Turn with your body" },
                                          { "Snap Turn", "Turn in steps" },
@@ -622,7 +617,7 @@ static void VrRightStickCard(float width) {
     }
 }
 
-// The text under each button tells where the items are with the current right stick choice.
+// The text under each button follows the right stick choice.
 static void VrUseItemsCard(float width) {
     const bool stickTakesItems = !CVarGetInteger("gVrSnapTurnOn", 0);
     const int32_t selectorInput = CVarGetInteger("gVrItemSelInput", VR_BTN_THUMBCLICK);
@@ -1064,7 +1059,7 @@ void SohMenu::AddMenuVRSettings() {
             CheckboxOptions().Tooltip("Shows the black bars of the original game during Z-targeting and cutscenes."));
 
     // ----------------------------------------------------------------- Developer
-    // Tuning and tests. The entry shows only while Dev Tools > Debug Mode is on.
+    // Tuning and tests. Shows only with Dev Tools > Debug Mode on.
     AddSidebarEntry("VR Settings", "Developer", 2);
     SetSidebarHidden("VR Settings", "Developer",
                      []() { return !CVarGetInteger(CVAR_DEVELOPER_TOOLS("DebugEnabled"), 0); });
