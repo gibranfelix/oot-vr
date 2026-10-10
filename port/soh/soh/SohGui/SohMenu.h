@@ -37,6 +37,8 @@ class SohMenu : public Ship::Menu {
     void Draw() override;
 
     void AddSidebarEntry(std::string sectionName, std::string sidbarName, uint32_t columnCount);
+    // SOH [VR] Hides a sidebar entry while isHidden returns true.
+    void SetSidebarHidden(std::string sectionName, std::string sidebarName, std::function<bool()> isHidden);
     WidgetInfo& AddWidget(WidgetPath& pathInfo, std::string widgetName, WidgetType widgetType);
     void AddMenuElements();
     void AddMenuSettings();

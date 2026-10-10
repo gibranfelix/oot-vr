@@ -335,7 +335,7 @@ void PadMgr_HandleRetraceMsg(PadMgr* padMgr) {
         // direction never double-fires alongside it.
         s32 vrOcaStickClaimed[2] = { 0, 0 };
 
-        // Assignable VR input -> N64 button mapping, configured in VR Settings -> VR Inputs. Each
+        // Assignable VR input -> N64 button mapping, configured in VR Settings -> Controls. Each
         // CVar holds an N64 BUTTON BITMASK (same encoding as the base game's button-combination
         // selector), so one controller input may press a single button or a whole combination.
         {

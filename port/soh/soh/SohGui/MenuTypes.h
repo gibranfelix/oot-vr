@@ -253,6 +253,8 @@ struct disabledInfo {
 struct SidebarEntry {
     uint32_t columnCount;
     std::vector<std::vector<WidgetInfo>> columnWidgets;
+    // SOH [VR] When set and true, the sidebar does not show this entry, and search skips its widgets.
+    std::function<bool()> isHidden = nullptr;
 };
 
 // Contains entries for what's listed in the header at the top, including the name displayed on the top bar (label),

@@ -21,6 +21,11 @@ void SohMenu::AddSidebarEntry(std::string sectionName, std::string sidebarName, 
     menuEntries.at(sectionName).sidebarOrder.push_back(sidebarName);
 }
 
+// SOH [VR] See SidebarEntry::isHidden.
+void SohMenu::SetSidebarHidden(std::string sectionName, std::string sidebarName, std::function<bool()> isHidden) {
+    menuEntries.at(sectionName).sidebars.at(sidebarName).isHidden = isHidden;
+}
+
 WidgetInfo& SohMenu::AddWidget(WidgetPath& pathInfo, std::string widgetName, WidgetType widgetType) {
     assert(!widgetName.empty());                        // Must be unique
     assert(menuEntries.contains(pathInfo.sectionName)); // Section/header must already exist

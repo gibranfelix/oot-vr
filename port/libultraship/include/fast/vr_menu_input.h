@@ -47,7 +47,7 @@ class VrMenuInput {
     // The game turns the left Y button over to its own bindings while this is false (the ocarina
     // set uses every input). Closing an open menu still works.
     void SetOpenAllowed(bool allowed);
-    // Menu code that reads the controllers itself (the VR Inputs binding listener) calls this each
+    // Menu code that reads the controllers itself (the Controls binding listener) calls this each
     // frame. For the next frame, navigation and the Y toggle stand down.
     void HoldNavigation();
 

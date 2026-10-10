@@ -130,7 +130,7 @@ void     VR_GetThumbstickRaw(int hand, float* x, float* y);
 // True by default. False gives the left Y button back to the game; the menu cannot open then, but
 // an open menu still closes. The game does not use it now: Y opens the menu at all times.
 void     VR_SetMenuButtonEnabled(bool enabled);
-// Call each frame while menu code reads the raw controllers (the VR Inputs binding listener): menu
+// Call each frame while menu code reads the raw controllers (the Controls binding listener): menu
 // navigation and the Y toggle stand down for the next frame.
 void     VR_HoldMenuNavigation(void);
 // Hand draw matrix (model-local -> game-world, engine MtxF layout) for pinning Link's hand limb to the

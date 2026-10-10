@@ -1,6 +1,6 @@
 #pragma once
 
-// VR Physical Combat (gVrPhysCombat): motion-driven melee, shield, carrying and archery,
+// VR Physical Combat (always on in VR first person): motion-driven melee, shield, carrying and archery,
 // replacing the animation-driven systems while active. This header is the module's surface for
 // both the C decomp code (master predicate + per-frame shims, added milestone by milestone) and
 // the module's own C++ files (soh/soh/Enhancements/vr-combat/).

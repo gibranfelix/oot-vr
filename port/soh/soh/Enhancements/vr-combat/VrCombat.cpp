@@ -122,7 +122,8 @@ extern "C" bool VrCombat_InPlay(void) {
 }
 
 extern "C" bool VrCombat_Active(void) {
-    if (!CVarGetInteger("gVrPhysCombat", 1) || !InterfaceOk()) {
+    // Physical combat is always on in VR first person (issue #104).
+    if (!InterfaceOk()) {
         return false;
     }
     if (!VR_IsInitialized() || !VR_GetFirstPerson()) {
