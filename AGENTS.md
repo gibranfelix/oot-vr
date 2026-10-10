@@ -52,23 +52,25 @@ game. Show each view that changed. Record the captures on the headset. The
 Quest keeps them in `/sdcard/Oculus/Screenshots/` and
 `/sdcard/Oculus/VideoShots/`.
 
-Put the files on a branch that contains only captures. Link them by commit:
+Put the files in the `pr-assets` branch, in a folder with the issue number. Link
+them by commit:
 
 ```sh
-git worktree add --detach /tmp/pr-assets && cd /tmp/pr-assets
-git switch --orphan pr-assets/<issue>
-cp <dir>/*.png <dir>/*.mp4 . && git add .
-git commit -m "Add captures for #<issue>" && git push origin pr-assets/<issue>
+git fetch origin pr-assets
+git worktree add --detach /tmp/pr-assets origin/pr-assets && cd /tmp/pr-assets
+mkdir <issue> && cp <dir>/*.png <dir>/*.mp4 <issue>/ && git add <issue>
+git commit -m "Add captures for #<issue>" && git push origin HEAD:pr-assets
 git rev-parse --short HEAD
 cd - && git worktree remove /tmp/pr-assets
 ```
 
 - Show an image with
-  `![What it shows](https://raw.githubusercontent.com/gibranfelix/oot-vr/<commit>/<file>.png)`.
+  `![What it shows](https://raw.githubusercontent.com/gibranfelix/oot-vr/<commit>/<issue>/<file>.png)`.
 - GitHub does not play a video from a branch. Link the `.mp4` file, or make a
   short GIF.
 - Keep each file smaller than 100 MB.
-- Do not delete a `pr-assets/` branch. The links stop working without it.
+- Do not delete the `pr-assets` branch, and do not force-push it. The links
+  stop working without its commits.
 
 ## Game assets
 
