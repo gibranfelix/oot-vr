@@ -73,8 +73,8 @@ pulls it back. The release of the grip shoots.
 ## Carry
 
 The grip lifts a small object: a pot, a rock, a bush, a crate, a bomb flower, a
-bomb, or a cucco. The release of the grip throws the object. The two grips lift
-the silver boulder and the golden gauntlet pillar.
+bomb, or a cucco. The release of the grip throws the object. Two grips lift the
+silver boulder and the golden gauntlet pillar.
 
 ## Aim mark
 

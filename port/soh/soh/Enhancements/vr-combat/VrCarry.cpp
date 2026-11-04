@@ -15,7 +15,7 @@ extern PlayState* gPlayState;
 #include <libultraship/bridge/consolevariablebridge.h>
 #include <vr_interface.h>
 
-// The carry (#158, #159). Read "Carry" in docs/architecture.md.
+// Read "Carry" in docs/architecture.md.
 
 namespace {
 
@@ -29,7 +29,7 @@ constexpr int kMaxOffers = 16;
 Offer sOffers[kMaxOffers];
 int sOfferCount = 0;
 
-// The golden gauntlet pillar that Link touches in this tick (Player_ActionHandler_5).
+// The pillar that Link touches in this tick.
 struct WallOffer {
     Actor* actor;
     float n[3];
@@ -37,7 +37,7 @@ struct WallOffer {
 };
 WallOffer sWall = { NULL, { 0.0f, 0.0f, 0.0f }, 0.0f };
 
-// The valid offers. Same index as sCandidates. The pillar is the last one and has no cylinder.
+// The valid offers. The pillar is last and has no cylinder.
 constexpr int kMaxCandidates = kMaxOffers + 1;
 Actor* sCandidateActors[kMaxCandidates];
 VrCarry::Kind sCandidateKinds[kMaxCandidates];
@@ -51,7 +51,7 @@ bool sInReach[2] = { false, false };
 Actor* sTarget = NULL;
 VrCarry::Kind sTargetKind = VrCarry::Kind::None;
 VrCarry::Vec3 sGrabOffset = { 0.0f, 0.0f, 0.0f };
-// The grips that took the pillar. They stay with the carry until one opens.
+// The grips that took the pillar stay reserved until one opens.
 bool sPillarGrips = false;
 // The next Player_Update takes the grab. The release stays ready while Link holds the object.
 bool sGrabReady = false;
@@ -96,7 +96,7 @@ VrCarry::Shape DrawnShape(VrCarry::Kind kind) {
     return s;
 }
 
-// The strength rules of Player_ActionHandler_2, Player_ActionHandler_5, and func_8083A0F4.
+// The strength rules of the A button.
 bool StrongEnough(Actor* actor, VrCarry::Kind kind) {
     if (kind == VrCarry::Kind::SilverBoulder) {
         return Player_GetStrength() >= PLAYER_STR_SILVER_G;
@@ -226,8 +226,7 @@ VrCarry::Input MakeInput(Player* player, bool on) {
     return in;
 }
 
-// The point that holds the object: the hand, or the midpoint of the two hands. With two hands,
-// the object does not turn. False when a hand is not tracked.
+// The hand, or the midpoint of two hands (no rotation). False when a hand is not tracked.
 bool HoldPose(bool twoHands, int hand, VrCarry::Vec3* outPos, float outQuat[4]) {
     float pos[2][3];
     float quat[4];
@@ -247,7 +246,7 @@ bool HoldPose(bool twoHands, int hand, VrCarry::Vec3* outPos, float outQuat[4]) 
     return true;
 }
 
-// The actor position in the hands. False when a hand is not tracked.
+// False when a hand is not tracked.
 bool HeldPosNow(float* outXyz) {
     VrCarry::Vec3 pos;
     float quat[4];
@@ -431,7 +430,7 @@ extern "C" bool VrCombat_CarryTakeRelease(Player* player, VrCombatBombRelease* o
 }
 
 extern "C" bool VrCombat_CarryOwnsGrip(void) {
-    // Also while both hands are at objects: the two grips lift, they do not draw the sword.
+    // Both hands at objects: the grips lift, they do not draw the sword.
     return VR_IsInitialized() && ((sHold.Hand() >= 0) || sPillarGrips || (sInReach[0] && sInReach[1]));
 }
 

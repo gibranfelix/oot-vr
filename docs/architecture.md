@@ -270,16 +270,13 @@ Objects: `ObjTsubo`, `EnIshi` (small), `EnKusa`, `ObjKibako`, `EnBombf`, `EnBom`
 
 Two hands (#159):
 
-| Object | Actor | Needs | Release |
-|---|---|---|---|
-| Silver boulder | `EnIshi` (large) | Silver Gauntlets | One open grip throws it with the mean hand velocity. Link cannot walk while he holds it. |
-| Golden gauntlet pillar | `BgHeavyBlock` | Golden Gauntlets | The game throws it. |
+| Object | Actor | Release |
+|---|---|---|
+| Silver boulder | `EnIshi` (large) | One open grip throws it. Link cannot walk while he holds it. |
+| Golden gauntlet pillar | `BgHeavyBlock` | The game throws it. |
 
-- The pillar has no offer. `Player_VrHeavyWallGrab` in `Player_ActionHandler_5` gives the pillar
-  wall that Link touches. The hands must be 10 cm from the wall.
-- The two grips start the vanilla pillar lift, as the A button does. The game throws the pillar.
-  The vanilla lift is a cutscene: `BgHeavyBlock_Draw` puts the pillar at the hand of the animation,
-  and the landing uses that position. A throw from the hands can break the puzzles.
+- The pillar has no offer. `Player_VrHeavyWallGrab` (`Player_ActionHandler_5`) gives its wall.
+- The pillar lift is a cutscene, and the landing uses the animation. Thus the hands do not throw it.
 
 Math: `VrCarry.h`. Tests: `port/soh/tests/vr/VrCarryTests.cpp`.
 

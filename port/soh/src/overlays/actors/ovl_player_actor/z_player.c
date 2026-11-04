@@ -7613,7 +7613,7 @@ static void Player_VrLiftNow(PlayState* play, Player* this) {
         return;
     }
     if ((actor->id == ACTOR_EN_ISHI) && (PARAMS_GET_U(actor->params, 0, 4) == 1)) {
-        // The silver boulder: Link waits with it, as at the end of the vanilla lift.
+        // Silver boulder: the end state of the vanilla lift.
         Player_SetupAction(play, this, Player_Action_80846260, 0);
         Player_AnimPlayLoop(play, this, &gPlayerAnim_link_silver_wait);
         this->av2.actionVar2 = 1;
@@ -8173,8 +8173,7 @@ void func_8083F72C(Player* this, LinkAnimationHeader* anim, PlayState* play) {
     this->actor.shape.rot.y = this->yaw = this->actor.wallYaw + 0x8000;
 }
 
-// SOH [VR] Link touches a golden gauntlet pillar: two hands can lift it (VrCarry.cpp). True when
-// they took it in the last tick. The game then does the vanilla lift and throw.
+// SOH [VR] Offers the pillar wall to the hands (VrCarry.cpp). True: the hands took the pillar.
 static s32 Player_VrHeavyWallGrab(Player* this, PlayState* play) {
     DynaPolyActor* wallPolyActor;
     float normal[3];
@@ -10906,7 +10905,7 @@ void Player_Action_80846260(Player* this, PlayState* play) {
         }
 
     } else if (VR_IsInitialized() && Player_VrReleaseHeld(this, play)) {
-        // SOH [VR] The grips throw or drop the silver boulder.
+        // SOH [VR] The grips release the silver boulder.
         func_80839F90(this, play);
     } else if (CHECK_BTN_ANY(sControlInput->press.button, buttonsToCheck)) {
         Player_SetupAction(play, this, Player_Action_80846358, 1);

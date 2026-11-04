@@ -14,7 +14,7 @@ using Sample = VrHandThrow::Sample;
 
 enum class Kind { None, Pot, SmallRock, Bush, Crate, BombFlower, Bomb, Cucco, SilverBoulder, Pillar };
 
-// The object needs the two hands (#159).
+// #159.
 inline bool NeedsTwoHands(Kind kind) {
     return (kind == Kind::SilverBoulder) || (kind == Kind::Pillar);
 }
@@ -45,7 +45,7 @@ inline Shape ShapeOf(Kind kind) {
             return { 15.0f, 25.0f, 4.0f, 2.0f }; // EnNiw
         case Kind::SilverBoulder:
             return { 55.0f, 70.0f, 0.0f, 2.5f }; // EnIshi
-        case Kind::Pillar: // BgHeavyBlock: the hands touch its wall. The game throws it.
+        case Kind::Pillar: // BgHeavyBlock: a wall, not a cylinder.
         case Kind::None:
             break;
     }
@@ -94,8 +94,7 @@ inline int PickTarget(const Vec3& hand, const Candidate* candidates, int count, 
     return best;
 }
 
-// The pillar has no cylinder: the hand touches the pillar wall that Link touches. n: the unit
-// normal of the wall. Plane: n . p + d = 0. reach: the hand is this near to Link (xz).
+// The hand is at the pillar wall. Plane: n . p + d = 0. reach: xz distance to Link.
 inline bool WallInReach(const Vec3& hand, const Vec3& link, const float n[3], float d, float margin,
                         float reach) {
     const float dx = hand.x - link.x;
@@ -104,7 +103,6 @@ inline bool WallInReach(const Vec3& hand, const Vec3& link, const float n[3], fl
     return (std::fabs(plane) <= margin) && (std::sqrt(dx * dx + dz * dz) <= reach);
 }
 
-// The pillar wall is in reach when the hand is this near to Link.
 constexpr float kWallReachM = 1.0f;
 
 // The same hand speed throws all objects the same distance as a bomb.
@@ -179,7 +177,7 @@ struct Result {
     Event event = Event::None;
     int hand = -1;
     int target = -1;                    // Grab: the candidate.
-    bool twoHands = false;              // The two hands grab or release.
+    bool twoHands = false;
     Vec3 pos = { 0.0f, 0.0f, 0.0f };    // Throw and Drop: the hand position. Two hands: the midpoint.
     Vec3 velMps = { 0.0f, 0.0f, 0.0f }; // Throw: the hand velocity. Two hands: the mean.
     bool inReach[2] = { false, false };    // The hand can lift an object.
@@ -206,7 +204,7 @@ class Hold {
         return mTwoHands;
     }
 
-    // The game does the rest of the lift.
+    // The game does the rest of the lift (pillar).
     void Forget() {
         mHand = -1;
         mTwoHands = false;
