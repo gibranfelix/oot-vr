@@ -250,36 +250,25 @@ a 2D fill, and it shows as a small gray rectangle in VR.
 
 ## Carry
 
-`VrCarry.cpp` does the carry (#158). The A button also lifts the objects.
+`VrCarry.cpp` (#158). The grip lifts the object. The release throws it with the hand velocity, or
+drops it. The A button still works.
 
-| Object | Actor |
-|---|---|
-| Pot | `ObjTsubo` |
-| Small rock | `EnIshi` |
-| Bush | `EnKusa` |
-| Crate | `ObjKibako` |
-| Bomb flower | `EnBombf` |
-| Bomb | `EnBom` |
-| Cucco | `EnNiw` |
+Objects: `ObjTsubo`, `EnIshi` (small), `EnKusa`, `ObjKibako`, `EnBombf`, `EnBom`, `EnNiw`.
 
 | Step | Code |
 |---|---|
-| The object offers a lift | `Actor_OfferGetItem` with `GI_NONE` calls `VrCombat_CarryOffer`. The game rules of the object apply. |
-| The grip lifts the object | `Player_VrStartCarry` in `Player_ActionHandler_2`. Link puts his item away. There is no lift animation. |
-| Link carries the object | The object keeps its place relative to the hand from the lift (`VrCombat_CarryHeldPos`). |
-| The grip is released | `Player_VrReleaseHeld` throws the object with the hand velocity, or drops it. |
+| Offer | `Actor_OfferGetItem` with `GI_NONE` calls `VrCombat_CarryOffer`. The game rules apply. |
+| Lift | `Player_VrStartCarry`. No lift animation. |
+| Carry | `VrCombat_CarryHeldPos`. The object keeps its offset from the hand. |
+| Release | `Player_VrReleaseHeld`. |
 
-- The hand lifts an object at 10 cm or less from its collider.
-- A pot offers a lift only when it is in front of Link, as with the A button.
-- A dropped object that is more than 15 cm above the floor falls. Lower, Link puts it down.
-- The throw speed changes with the gravity of the object. Thus a throw with the same hand speed
-  sends all objects the same distance.
-- The bomb flower gives Link a new `EnBombf` when he lifts it. The hand then holds the new actor.
-- A grip that the belt, the boomerang, or the bow string uses does not lift an object.
-- Near an object, padmgr does not send the binding of the grip.
-- While a hand holds an object, the two grips do not draw the sword.
+- Reach: 10 cm from the collider.
+- The throw speed changes with the gravity of the object. All objects go the same distance.
+- A drop higher than 15 cm falls. Lower, Link puts the object down.
+- The belt, the boomerang, and the bow string keep their grip.
+- While a hand holds an object, the grips do not draw the sword.
 
-The math is in `VrCarry.h`. The host unit tests are in `port/soh/tests/vr/VrCarryTests.cpp`.
+Math: `VrCarry.h`. Tests: `port/soh/tests/vr/VrCarryTests.cpp`.
 
 ## Ranged weapons
 

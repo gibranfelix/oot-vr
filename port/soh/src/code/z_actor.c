@@ -2178,7 +2178,7 @@ s32 Actor_OfferGetItem(Actor* actor, PlayState* play, s32 getItemId, f32 xzRange
         if ((((player->heldActor != NULL) || (actor == player->talkActor)) &&
              ((getItemId > GI_NONE) && (getItemId < GI_MAX))) ||
             (!(player->stateFlags1 & (PLAYER_STATE1_CARRYING_ACTOR | PLAYER_STATE1_IN_CUTSCENE)))) {
-            // SOH [VR] The object offers a lift. The hand can take it out of the A button range.
+            // SOH [VR] The hand can lift the object out of the A button range.
             if ((getItemId == GI_NONE) && VR_IsInitialized()) {
                 VrCombat_CarryOffer(actor);
             }

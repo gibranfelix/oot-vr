@@ -3319,8 +3319,7 @@ static s32 Player_VrTakeBeltBomb(Player* this, PlayState* play) {
     return true;
 }
 
-// SOH [VR] The release of the grip throws the bomb or the object with the hand velocity, or drops
-// it. Returns false when there is no release.
+// SOH [VR] The release of the grip throws the held bomb or object, or drops it. False: no release.
 static s32 Player_VrReleaseHeld(Player* this, PlayState* play) {
     Actor* bomb = this->heldActor;
     VrCombatBombRelease release;
@@ -3363,7 +3362,7 @@ s32 Player_UpperAction_CarryActor(Player* this, PlayState* play) {
     }
 
     if (this->stateFlags1 & PLAYER_STATE1_CARRYING_ACTOR) {
-        // SOH [VR] The grip throw or drop of a bomb from the belt, or of an object.
+        // SOH [VR] The grip releases the bomb or the object.
         if (Player_VrReleaseHeld(this, play)) {
             return true;
         }
@@ -7604,8 +7603,7 @@ void func_8083E4C4(PlayState* play, Player* this, GetItemEntry* giEntry) {
                                                                                   : NA_SE_SY_GET_ITEM);
 }
 
-// SOH [VR] The hand lifts the object after Link puts his item away (VrCarry.cpp). There is no lift
-// animation: the object goes to the hand.
+// SOH [VR] After the put-away, the object goes to the hand. No lift animation.
 static void Player_VrLiftNow(PlayState* play, Player* this) {
     Actor* actor = this->interactRangeActor;
 
@@ -7622,10 +7620,9 @@ static void Player_VrLiftNow(PlayState* play, Player* this) {
     func_80835688(this, play);
 }
 
-// SOH [VR] The grip lifts an object (VrCarry.cpp). The rules of the A button apply. Returns false
-// when there is no grab.
+// SOH [VR] The grip lifts an object (VrCarry.cpp). False: no lift.
 static s32 Player_VrStartCarry(Player* this, PlayState* play) {
-    Actor* actor = VrCombat_CarryTakeGrab(this);
+    Actor* actor = VrCombat_CarryTakeGrab();
 
     if ((actor == NULL) || (this->heldActor != NULL) || (this->stateFlags1 & PLAYER_STATE1_CARRYING_ACTOR) ||
         (this->stateFlags2 & PLAYER_STATE2_UNDERWATER)) {

@@ -72,10 +72,8 @@ pulls it back. The release of the grip shoots.
 
 ## Carry
 
-The player lifts an object with one hand: a pot, a small rock, a bush, a crate,
-a bomb flower, a bomb, or a cucco. The hand holds the grip to lift the object.
-The release of the grip throws the object, or drops it when the hand moves
-slowly. The A button also lifts the objects.
+The grip lifts a small object: a pot, a rock, a bush, a crate, a bomb flower, a
+bomb, or a cucco. The release of the grip throws the object.
 
 ## Aim mark
 

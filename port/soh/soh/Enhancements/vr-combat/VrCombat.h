@@ -232,13 +232,9 @@ int32_t VrCombat_NutHand(void);
 // The EnArrow timer of a nut from the hand.
 uint8_t VrCombat_NutFlightTicks(void);
 bool VrCombat_NutGripConsumed(int32_t vrHand, uint16_t vrBtnMask);
-// Carry (VrCarry.cpp, #158): the hand lifts and throws an object. Offer: Actor_OfferGetItem calls it
-// for each object that Link can lift. TakeGrab: the object that the grip lifted in the last tick,
-// one time.
-// HeldPos: the actor position in the hand. TakeRelease: the throw or the drop, one time.
-// OwnsGrip: a hand holds an object. GripConsumed: padmgr skips the grip binding.
+// Carry (VrCarry.cpp, #158). The Take functions return the event of the last tick one time.
 void VrCombat_CarryOffer(struct Actor* actor);
-struct Actor* VrCombat_CarryTakeGrab(struct Player* player);
+struct Actor* VrCombat_CarryTakeGrab(void);
 bool VrCombat_CarryHeldPos(struct Player* player, float* outXyz);
 bool VrCombat_CarryTakeRelease(struct Player* player, VrCombatBombRelease* out);
 bool VrCombat_CarryOwnsGrip(void);

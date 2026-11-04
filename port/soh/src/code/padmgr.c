@@ -445,7 +445,7 @@ void PadMgr_HandleRetraceMsg(PadMgr* padMgr) {
                     // its binding is likewise suspended. The grip of the boomerang hand throws it.
                     // SOH [VR] The grip takes the bomb or the Deku nut from the belt and throws it.
                     // SOH [VR] The sword-hand grip pulls the bow string.
-                    // SOH [VR] The grip lifts and throws an object.
+                    // SOH [VR] The grip lifts an object.
                     if (VrItemSelect_ConsumesInput(vrHandIdx, sVrBtnMasks[vrBtnIdx]) ||
                         VrItemSelect_TriggerConsumed(vrHandIdx, sVrBtnMasks[vrBtnIdx]) ||
                         VrItemSelect_SwapConsumed(vrHandIdx, sVrBtnMasks[vrBtnIdx]) ||

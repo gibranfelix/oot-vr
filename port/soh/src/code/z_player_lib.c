@@ -2269,8 +2269,7 @@ void Player_PostLimbDrawGameplay(PlayState* play, s32 limbIndex, Gfx** dList, Ve
                     sGetItemRefPos.z = (this->bodyPartsPos[15].z + this->leftHandPos.z) * 0.5f;
                 }
 
-                // SOH [VR] A bomb from the belt, or an object that the hand lifted, is in one hand, not
-                // between the two hands.
+                // SOH [VR] A belt bomb or a lifted object is in one hand.
                 if ((this->unk_862 == 0) && !VrCombat_BombHeldPos(this, &heldActor->world.pos.x) &&
                     !VrCombat_CarryHeldPos(this, &heldActor->world.pos.x)) {
                     Math_Vec3f_Copy(&heldActor->world.pos, &sGetItemRefPos);

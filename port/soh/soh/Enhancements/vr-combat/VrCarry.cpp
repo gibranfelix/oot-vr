@@ -15,12 +15,11 @@ extern PlayState* gPlayState;
 #include <libultraship/bridge/consolevariablebridge.h>
 #include <vr_interface.h>
 
-// The carry (#158): the hand lifts an object and throws it. Read "Carry" in docs/architecture.md.
+// The carry (#158). Read "Carry" in docs/architecture.md.
 
 namespace {
 
-// The objects that offered a lift in the last tick. Actor_OfferGetItem adds them after the player
-// update. Carry_OnPlayerUpdate reads them in the next tick.
+// The offers of the last tick. The actors update after the player, so the next tick reads them.
 struct Offer {
     Actor* actor;
     int16_t id;
@@ -30,19 +29,18 @@ constexpr int kMaxOffers = 16;
 Offer sOffers[kMaxOffers];
 int sOfferCount = 0;
 
-// The valid offers of this tick, with the same index as sCandidates.
+// The valid offers. Same index as sCandidates.
 Actor* sCandidateActors[kMaxOffers];
 VrCarry::Candidate sCandidates[kMaxOffers];
 int sCandidateCount = 0;
 
 VrCarry::Hold sHold;
 bool sInReach[2] = { false, false };
-// The object of the last grab, and its place in the frame of the hand.
+// The object of the last grab, and its offset in the frame of the hand.
 Actor* sTarget = NULL;
 VrCarry::Kind sTargetKind = VrCarry::Kind::None;
 VrCarry::Vec3 sGrabOffset = { 0.0f, 0.0f, 0.0f };
-// The grab is ready for one tick: the next Player_Update takes it. The release stays ready while
-// Link carries the object.
+// The next Player_Update takes the grab. The release stays ready while Link holds the object.
 bool sGrabReady = false;
 bool sReleaseReady = false;
 VrCombatBombRelease sRelease;
@@ -84,14 +82,14 @@ VrCarry::Shape DrawnShape(VrCarry::Kind kind) {
     return s;
 }
 
-// The rule of the A button (func_8083A0F4): Link needs strength for the bomb flower and the bush.
+// The rule of func_8083A0F4: the bomb flower and the bush need strength.
 bool StrongEnough(Actor* actor) {
     const bool weak =
         ((actor->id == ACTOR_EN_BOMBF) || (actor->id == ACTOR_EN_KUSA)) && (Player_GetStrength() <= PLAYER_STR_NONE);
     return !GameInteractor_Should(VB_PREVENT_STRENGTH, weak);
 }
 
-// The actor is still in the actor list. A killed actor is not.
+// The actor is still in the actor list.
 bool Alive(PlayState* play, const Offer& o) {
     if (o.category >= ACTORCAT_MAX) {
         return false;
@@ -134,8 +132,7 @@ bool CanGrab(Player* player) {
            !(player->stateFlags2 & PLAYER_STATE2_UNDERWATER);
 }
 
-// The bomb flower gives Link a new bomb actor when he lifts it (func_8002F5C4). The hand holds
-// the new actor.
+// The bomb flower gives Link a new actor when he lifts it (func_8002F5C4).
 void FollowNewHeldActor(Player* player) {
     if ((sTarget != NULL) && (sHold.Hand() >= 0) && (player->stateFlags1 & PLAYER_STATE1_CARRYING_ACTOR) &&
         (player->heldActor != NULL) && (player->heldActor != sTarget) &&
@@ -145,7 +142,7 @@ void FollowNewHeldActor(Player* player) {
     }
 }
 
-// Link lifts or carries the object of the last grab.
+// Link lifts or holds the object of the last grab.
 bool Carrying(Player* player) {
     if ((sTarget == NULL) || !(player->stateFlags1 & PLAYER_STATE1_CARRYING_ACTOR)) {
         return false;
@@ -191,7 +188,7 @@ VrCarry::Input MakeInput(Player* player, bool on) {
     return in;
 }
 
-// The actor position for the hand pose. False when the hand is not tracked.
+// False when the hand is not tracked.
 bool PosInHand(int hand, float* outXyz) {
     float pos[3];
     float quat[4];
@@ -311,8 +308,8 @@ extern "C" void VrCombat_CarryOffer(Actor* actor) {
     sOffers[sOfferCount++] = { actor, actor->id, actor->category };
 }
 
-extern "C" Actor* VrCombat_CarryTakeGrab(Player* player) {
-    if (!sGrabReady || (player == NULL) || (sTarget == NULL)) {
+extern "C" Actor* VrCombat_CarryTakeGrab(void) {
+    if (!sGrabReady || (sTarget == NULL)) {
         return NULL;
     }
     sGrabReady = false;
@@ -323,7 +320,7 @@ extern "C" bool VrCombat_CarryHeldPos(Player* player, float* outXyz) {
     if (player != NULL) {
         FollowNewHeldActor(player);
     }
-    if ((player == NULL) || (sTarget == NULL) || (player->heldActor != sTarget) || !Carrying(player)) {
+    if ((player == NULL) || (sTarget == NULL) || (player->heldActor != sTarget)) {
         return false;
     }
     if (sReleaseReady) {
@@ -353,6 +350,5 @@ extern "C" bool VrCombat_CarryGripConsumed(int32_t vrHand, uint16_t vrBtnMask) {
     if (!(vrBtnMask & VR_BTN_GRIP) || !VR_IsInitialized() || (vrHand < 0) || (vrHand > 1)) {
         return false;
     }
-    // Only the grip that holds the object, or the grip of a hand at an object.
     return (sHold.Hand() == vrHand) || sInReach[vrHand];
 }

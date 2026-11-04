@@ -1,6 +1,6 @@
 #pragma once
 
-// The carry (VrCarry.cpp, #158): the hand lifts an object and throws it. No game types.
+// The carry (VrCarry.cpp, #158). No game types.
 // Tests: port/soh/tests/vr/VrCarryTests.cpp.
 
 #include "VrBeltThrow.h"
@@ -12,11 +12,9 @@ namespace VrCarry {
 using Vec3 = VrHandThrow::Vec3;
 using Sample = VrHandThrow::Sample;
 
-// The objects that the hand lifts. The game lifts them with the A button.
 enum class Kind { None, Pot, SmallRock, Bush, Crate, BombFlower, Bomb, Cucco };
 
-// The collider cylinder of the object and its gravity, in game units. The cylinder starts yShift
-// above the actor position.
+// The collider cylinder and the gravity, in game units. The cylinder starts yShift above the actor.
 struct Shape {
     float radius;
     float height;
@@ -24,7 +22,6 @@ struct Shape {
     float gravity; // Units for each tick squared, positive.
 };
 
-// The values come from the collider and the gravity of each actor.
 inline Shape ShapeOf(Kind kind) {
     switch (kind) {
         case Kind::Pot:
@@ -49,9 +46,9 @@ inline Shape ShapeOf(Kind kind) {
 
 // The hand lifts an object at this distance from its collider.
 constexpr float kGrabMarginM = 0.1f;
-// A grip that is pushed this number of ticks (0.3 s) before the hand gets to the object lifts it.
+// A grip pushed up to 0.3 s before the hand gets to the object lifts it.
 constexpr int kGripGraceTicks = VrBeltThrow::kGripGraceTicks;
-// Slower than this, the object falls from the hand.
+// Slower than this, the release is a drop.
 constexpr float kMinThrowSpeedMps = VrBeltThrow::kMinThrowSpeedMps;
 
 // The distance from p to a vertical cylinder. 0 when p is in the cylinder.
@@ -68,14 +65,12 @@ inline float DistanceToCylinder(const Vec3& p, const Vec3& base, float radius, f
     return std::sqrt(out * out + dy * dy);
 }
 
-// An object that the game lets Link lift now.
 struct Candidate {
     Vec3 pos; // The actor position.
     Shape shape;
 };
 
-// The candidate nearest to the hand, in reach. -1 when no candidate is in reach. margin: game
-// units.
+// The nearest candidate in reach, or -1. margin: game units.
 inline int PickTarget(const Vec3& hand, const Candidate* candidates, int count, float margin) {
     int best = -1;
     float bestDist = 0.0f;
@@ -91,8 +86,7 @@ inline int PickTarget(const Vec3& hand, const Candidate* candidates, int count, 
     return best;
 }
 
-// A throw with the same hand speed goes the same distance for all objects. The bomb belt sets the
-// speed for the gravity of the bomb.
+// The same hand speed throws all objects the same distance as a bomb.
 constexpr float kRefGravity = 1.2f;
 constexpr float kThrowGain = 1.8f;
 constexpr float kMaxThrowSpeed = 21.9f;
@@ -103,13 +97,11 @@ inline Vec3 ThrowVelocity(const Vec3& velMps, float ticksPerSecond, float gravit
     return VrBeltThrow::ThrowVelocity(velMps, ticksPerSecond, kThrowGain * k, kMaxThrowSpeed * k);
 }
 
-// A drop puts the object down when its bottom is this near to the floor. Higher, the object falls.
+// A drop nearer to the floor than this puts the object down. Higher, it falls.
 constexpr float kPutDownHeightM = 0.15f;
-// The speed of a falling object, in units for each tick. At zero speed, a crate (ObjKibako) puts
-// itself down in the air.
+// Units for each tick. At zero speed, ObjKibako puts itself down in the air.
 constexpr float kFallSpeed = 0.2f;
 
-// The speed of a dropped object. heightAboveFloor: game units.
 inline float DropSpeed(float heightAboveFloor, float unitsPerMeter) {
     return (heightAboveFloor > kPutDownHeightM * unitsPerMeter) ? kFallSpeed : 0.0f;
 }
@@ -131,8 +123,7 @@ inline Vec3 InverseRotate(const float q[4], const Vec3& v) {
     return Rotate(inv, v);
 }
 
-// The object keeps its place relative to the hand from the grab. GrabOffset: the actor position
-// in the frame of the hand. HeldPos: the actor position for the hand pose.
+// The object keeps its offset from the hand. GrabOffset is in the frame of the hand.
 inline Vec3 GrabOffset(const Vec3& handPos, const float handQuat[4], const Vec3& actorPos) {
     return InverseRotate(handQuat, { actorPos.x - handPos.x, actorPos.y - handPos.y, actorPos.z - handPos.z });
 }
@@ -144,16 +135,16 @@ inline Vec3 HeldPos(const Vec3& handPos, const float handQuat[4], const Vec3& of
 
 struct HandInput {
     bool gripHeld;
-    bool blocked; // Another item uses this grip: the belt, the boomerang, or the bow string.
+    bool blocked; // The belt, the boomerang, or the bow string uses this grip.
     Vec3 pos;     // Game units.
     int target;   // The candidate in reach, or -1.
 };
 
 struct Input {
     bool canGrab;  // Link can lift an object now.
-    bool carrying; // Link lifts or carries the object of the last grab.
+    bool carrying; // Link lifts or holds the object of the last grab.
     HandInput hands[2];
-    int firstHand; // When the two hands lift an object in the same tick, this hand gets it.
+    int firstHand; // Wins when both hands grab in the same tick.
 };
 
 enum class Event { None, Grab, Throw, Drop };
@@ -165,7 +156,7 @@ struct Result {
     Vec3 pos = { 0.0f, 0.0f, 0.0f };    // Throw and Drop: the hand position.
     Vec3 velMps = { 0.0f, 0.0f, 0.0f }; // Throw: the hand velocity.
     bool inReach[2] = { false, false };    // The hand can lift an object.
-    bool reachPulse[2] = { false, false }; // The hand came to an object in this tick.
+    bool reachPulse[2] = { false, false }; // The hand got to an object in this tick.
 };
 
 class Hold {
