@@ -70,6 +70,13 @@ leaves the belt. A bombchu does not fly: it starts on the floor below the hand.
 The sword hand holds the string of the bow or the slingshot with the grip, and
 pulls it back. The release of the grip shoots.
 
+## Carry
+
+The player lifts an object with one hand: a pot, a small rock, a bush, a crate,
+a bomb flower, a bomb, or a cucco. The hand holds the grip to lift the object.
+The release of the grip throws the object, or drops it when the hand moves
+slowly. The A button also lifts the objects.
+
 ## Aim mark
 
 A point on the surface where a shot will hit. It shows while the player aims.
