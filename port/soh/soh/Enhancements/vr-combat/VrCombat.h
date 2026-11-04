@@ -232,9 +232,13 @@ int32_t VrCombat_NutHand(void);
 // The EnArrow timer of a nut from the hand.
 uint8_t VrCombat_NutFlightTicks(void);
 bool VrCombat_NutGripConsumed(int32_t vrHand, uint16_t vrBtnMask);
-// Carry (VrCarry.cpp, #158). The Take functions return the event of the last tick one time.
+// Carry (VrCarry.cpp, #158, #159). The Take functions return the event of the last tick one time.
+// OfferWall: Link touches a golden gauntlet pillar. The wall plane is n . p + dist = 0.
+// TakeGrab: not the pillar. TakeWallGrab: the two hands took this pillar.
 void VrCombat_CarryOffer(struct Actor* actor);
+void VrCombat_CarryOfferWall(struct Actor* actor, const float* normalXyz, float dist);
 struct Actor* VrCombat_CarryTakeGrab(void);
+bool VrCombat_CarryTakeWallGrab(struct Actor* actor);
 bool VrCombat_CarryHeldPos(struct Player* player, float* outXyz);
 bool VrCombat_CarryTakeRelease(struct Player* player, VrCombatBombRelease* out);
 bool VrCombat_CarryOwnsGrip(void);

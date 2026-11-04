@@ -47,8 +47,8 @@ static Input MakeInput(bool canGrab, bool carrying, bool leftGrip, int leftTarge
     Input in;
     in.canGrab = canGrab;
     in.carrying = carrying;
-    in.hands[kLeft] = { leftGrip, false, kHand, leftTarget };
-    in.hands[kRight] = { rightGrip, false, kHand, rightTarget };
+    in.hands[kLeft] = { leftGrip, false, kHand, leftTarget, false };
+    in.hands[kRight] = { rightGrip, false, kHand, rightTarget, false };
     in.firstHand = kRight;
     return in;
 }
@@ -84,6 +84,18 @@ static void TestPickTarget() {
     EXPECT(PickTarget({ 0.0f, -2.5f, 40.0f }, c, 3, 0.0f) == -1);
     // No candidates.
     EXPECT(PickTarget({ 0.0f, 0.0f, 0.0f }, c, 0, 4.0f) == -1);
+}
+
+static void TestWallInReach() {
+    // The wall is the plane z = 50, its normal points to Link (-z).
+    const float n[3] = { 0.0f, 0.0f, -1.0f };
+    const float d = 50.0f;
+    const Vec3 link = { 0.0f, 0.0f, 20.0f };
+    EXPECT(WallInReach({ 5.0f, 40.0f, 48.0f }, link, n, d, 4.0f, 40.0f));
+    // Too far from the wall.
+    EXPECT(!WallInReach({ 5.0f, 40.0f, 40.0f }, link, n, d, 4.0f, 40.0f));
+    // Too far from Link along the wall.
+    EXPECT(!WallInReach({ 60.0f, 40.0f, 50.0f }, link, n, d, 4.0f, 40.0f));
 }
 
 static void TestThrowVelocity() {
@@ -279,9 +291,105 @@ static void TestOtherHandNoSecondGrab() {
     EXPECT(h.Hand() == kRight);
 }
 
+static Input TwoHandInput(bool carrying, bool leftGrip, bool rightGrip, int leftTarget = 0, int rightTarget = 0) {
+    Input in = MakeInput(!carrying, carrying, leftGrip, leftTarget, rightGrip, rightTarget);
+    in.hands[kLeft].pos = { -10.0f, 30.0f, 20.0f };
+    in.hands[kRight].pos = { 10.0f, 30.0f, 20.0f };
+    in.hands[kLeft].twoHands = (leftTarget >= 0);
+    in.hands[kRight].twoHands = (rightTarget >= 0);
+    return in;
+}
+
+static void TestTwoHandGrab() {
+    Hold h;
+    h.Update(TwoHandInput(false, false, false));
+    // The left grip first, the right grip 2 ticks later.
+    Result r = h.Update(TwoHandInput(false, true, false));
+    EXPECT(r.event == Event::None);
+    EXPECT(r.inReach[kLeft]);
+    h.Update(TwoHandInput(false, true, false));
+    r = h.Update(TwoHandInput(false, true, true));
+    EXPECT(r.event == Event::Grab);
+    EXPECT(r.twoHands);
+    EXPECT(r.target == 0);
+    EXPECT(h.Hand() == kRight);
+    EXPECT(h.TwoHands());
+}
+
+static void TestTwoHandNeedsBothHands() {
+    Hold h;
+    h.Update(TwoHandInput(false, false, false, -1, 0));
+    Result r = h.Update(TwoHandInput(false, true, true, -1, 0));
+    EXPECT(r.event == Event::None);
+    EXPECT(r.inReach[kRight]);
+    // Two different silver boulders.
+    Hold other;
+    other.Update(TwoHandInput(false, false, false, 0, 1));
+    r = other.Update(TwoHandInput(false, true, true, 0, 1));
+    EXPECT(r.event == Event::None);
+}
+
+static void TestTwoHandOldGrips() {
+    Hold h;
+    // The two grips were held before the hands got to the object.
+    h.Update(TwoHandInput(false, false, false, -1, -1));
+    for (int i = 0; i < kGripGraceTicks + 2; i++) {
+        h.Update(TwoHandInput(false, true, true, -1, -1));
+    }
+    Result r = h.Update(TwoHandInput(false, true, true));
+    EXPECT(r.event == Event::None);
+}
+
+static Hold HoldingTwoHands() {
+    Hold h;
+    h.Update(TwoHandInput(false, false, false));
+    h.Update(TwoHandInput(false, true, true));
+    h.Update(TwoHandInput(true, true, true, -1, -1));
+    return h;
+}
+
+static void TestTwoHandThrowAverage() {
+    uint64_t t = 0;
+    Hold h = HoldingTwoHands();
+    uint64_t tl = t;
+    Feed(h, kLeft, &tl, { -10.0f, 30.0f, 20.0f }, { 0.0f, 0.0f, 4.0f }, 10);
+    Feed(h, kRight, &t, { 10.0f, 30.0f, 20.0f }, { 0.0f, 0.0f, 6.0f }, 10);
+    // One grip opens: the object leaves both hands.
+    Result r = h.Update(TwoHandInput(true, false, true, -1, -1));
+    EXPECT(r.event == Event::Throw);
+    EXPECT(r.twoHands);
+    EXPECT(Near(r.velMps.z, 5.0f));
+    EXPECT(NearV(r.pos, { 0.0f, 30.0f, 20.0f }));
+    EXPECT(h.Hand() == -1);
+    EXPECT(!h.TwoHands());
+}
+
+static void TestTwoHandSlowReleaseDrops() {
+    uint64_t t = 0;
+    Hold h = HoldingTwoHands();
+    uint64_t tl = t;
+    Feed(h, kLeft, &tl, { -10.0f, 30.0f, 20.0f }, { 0.0f, 0.0f, 0.2f }, 10);
+    Feed(h, kRight, &t, { 10.0f, 30.0f, 20.0f }, { 0.0f, 0.0f, 0.2f }, 10);
+    Result r = h.Update(TwoHandInput(true, true, false, -1, -1));
+    EXPECT(r.event == Event::Drop);
+    EXPECT(NearV(r.pos, { 0.0f, 30.0f, 20.0f }));
+}
+
+static void TestForget() {
+    Hold h;
+    h.Update(TwoHandInput(false, false, false));
+    h.Update(TwoHandInput(false, true, true));
+    // The game does the lift and the throw (the golden gauntlet pillar).
+    h.Forget();
+    EXPECT(h.Hand() == -1);
+    Result r = h.Update(TwoHandInput(true, false, false, -1, -1));
+    EXPECT(r.event == Event::None);
+}
+
 int main() {
     TestDistanceToCylinder();
     TestPickTarget();
+    TestWallInReach();
     TestThrowVelocity();
     TestRotate();
     TestHeldPosKeepsGrabPlace();
@@ -298,6 +406,12 @@ int main() {
     TestObjectGoneResets();
     TestReleaseWhileGameLifts();
     TestOtherHandNoSecondGrab();
+    TestTwoHandGrab();
+    TestTwoHandNeedsBothHands();
+    TestTwoHandOldGrips();
+    TestTwoHandThrowAverage();
+    TestTwoHandSlowReleaseDrops();
+    TestForget();
     if (sFailures == 0) {
         std::printf("All VrCarry tests passed.\n");
     }
