@@ -12,11 +12,16 @@ namespace VrCarry {
 using Vec3 = VrHandThrow::Vec3;
 using Sample = VrHandThrow::Sample;
 
-enum class Kind { None, Pot, SmallRock, Bush, Crate, BombFlower, Bomb, Cucco, SilverBoulder, Pillar };
+enum class Kind { None, Pot, SmallRock, Bush, Crate, BombFlower, Bomb, Cucco, SilverBoulder, Pillar, Block };
 
-// #159.
+// #159, #160.
 inline bool NeedsTwoHands(Kind kind) {
-    return (kind == Kind::SilverBoulder) || (kind == Kind::Pillar);
+    return (kind == Kind::SilverBoulder) || (kind == Kind::Pillar) || (kind == Kind::Block);
+}
+
+// The hands touch a wall: the pillar or a block. The game moves the object.
+inline bool IsWall(Kind kind) {
+    return (kind == Kind::Pillar) || (kind == Kind::Block);
 }
 
 // The collider cylinder and the gravity, in game units. The cylinder starts yShift above the actor.
@@ -46,6 +51,7 @@ inline Shape ShapeOf(Kind kind) {
         case Kind::SilverBoulder:
             return { 55.0f, 70.0f, 0.0f, 2.5f }; // EnIshi
         case Kind::Pillar: // BgHeavyBlock: a wall, not a cylinder.
+        case Kind::Block:
         case Kind::None:
             break;
     }
@@ -124,6 +130,45 @@ constexpr float kFallSpeed = 0.2f;
 inline float DropSpeed(float heightAboveFloor, float unitsPerMeter) {
     return (heightAboveFloor > kPutDownHeightM * unitsPerMeter) ? kFallSpeed : 0.0f;
 }
+
+// Block push (#160). Move the hands forward of the grab to push, back to pull. The game moves
+// the block at its own speed.
+constexpr float kPushM = 0.08f;
+constexpr float kStopM = 0.04f;
+
+// The hand distance from the eyes into the wall, on the floor plane. n: the wall normal, to Link.
+inline float PushAlong(const Vec3& hand, const Vec3& eye, const float n[3]) {
+    const float len = std::sqrt(n[0] * n[0] + n[2] * n[2]);
+    if (len <= 0.0f) {
+        return 0.0f;
+    }
+    return -((hand.x - eye.x) * n[0] + (hand.z - eye.z) * n[2]) / len;
+}
+
+// Works as the stick: 1 push, -1 pull, 0 stop.
+class PushStick {
+  public:
+    void Start(float along) {
+        mRef = along;
+        mDir = 0;
+    }
+
+    int Update(float along, float unitsPerMeter) {
+        const float d = along - mRef;
+        if (d >= kPushM * unitsPerMeter) {
+            mDir = 1;
+        } else if (d <= -kPushM * unitsPerMeter) {
+            mDir = -1;
+        } else if (std::fabs(d) < kStopM * unitsPerMeter) {
+            mDir = 0;
+        }
+        return mDir;
+    }
+
+  private:
+    float mRef = 0.0f;
+    int mDir = 0;
+};
 
 inline Vec3 Mid(const Vec3& a, const Vec3& b) {
     return { 0.5f * (a.x + b.x), 0.5f * (a.y + b.y), 0.5f * (a.z + b.z) };

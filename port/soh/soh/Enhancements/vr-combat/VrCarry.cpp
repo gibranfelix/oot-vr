@@ -29,7 +29,7 @@ constexpr int kMaxOffers = 16;
 Offer sOffers[kMaxOffers];
 int sOfferCount = 0;
 
-// The pillar that Link touches in this tick.
+// The grabbable wall of an actor that Link touches in this tick: the pillar or a block.
 struct WallOffer {
     Actor* actor;
     float n[3];
@@ -37,7 +37,7 @@ struct WallOffer {
 };
 WallOffer sWall = { NULL, { 0.0f, 0.0f, 0.0f }, 0.0f };
 
-// The valid offers. The pillar is last and has no cylinder.
+// The valid offers. The wall is last and has no cylinder.
 constexpr int kMaxCandidates = kMaxOffers + 1;
 Actor* sCandidateActors[kMaxCandidates];
 VrCarry::Kind sCandidateKinds[kMaxCandidates];
@@ -51,8 +51,12 @@ bool sInReach[2] = { false, false };
 Actor* sTarget = NULL;
 VrCarry::Kind sTargetKind = VrCarry::Kind::None;
 VrCarry::Vec3 sGrabOffset = { 0.0f, 0.0f, 0.0f };
-// The grips that took the pillar stay reserved until one opens.
-bool sPillarGrips = false;
+// The grips that took a wall stay reserved until one opens.
+bool sWallGrips = false;
+// Block push (#160): the wall normal at the grab, and the stick of the hands.
+float sPushN[3] = { 0.0f, 0.0f, 0.0f };
+VrCarry::PushStick sPushStick;
+int sPushDir = 0;
 // The next Player_Update takes the grab. The release stays ready while Link holds the object.
 bool sGrabReady = false;
 bool sReleaseReady = false;
@@ -83,6 +87,10 @@ VrCarry::Kind KindOf(Actor* actor) {
         default:
             return VrCarry::Kind::None;
     }
+}
+
+VrCarry::Kind WallKindOf(Actor* actor) {
+    return (actor->id == ACTOR_BG_HEAVY_BLOCK) ? VrCarry::Kind::Pillar : VrCarry::Kind::Block;
 }
 
 VrCarry::Shape DrawnShape(VrCarry::Kind kind) {
@@ -138,15 +146,15 @@ void MakeCandidates(PlayState* play) {
         }
         Actor* actor = sOffers[i].actor;
         const VrCarry::Kind kind = KindOf(actor);
-        if ((kind == VrCarry::Kind::None) || (kind == VrCarry::Kind::Pillar) || !StrongEnough(actor, kind)) {
+        if ((kind == VrCarry::Kind::None) || VrCarry::IsWall(kind) || !StrongEnough(actor, kind)) {
             continue;
         }
         AddCandidate(actor, kind);
     }
     sOfferCount = 0;
     sCylinderCount = sCandidateCount;
-    if ((sWall.actor != NULL) && (sWall.actor->update != NULL) && StrongEnough(sWall.actor, VrCarry::Kind::Pillar)) {
-        AddCandidate(sWall.actor, VrCarry::Kind::Pillar);
+    if ((sWall.actor != NULL) && (sWall.actor->update != NULL) && StrongEnough(sWall.actor, WallKindOf(sWall.actor))) {
+        AddCandidate(sWall.actor, WallKindOf(sWall.actor));
     }
     sWall.actor = NULL;
 }
@@ -226,6 +234,16 @@ VrCarry::Input MakeInput(Player* player, bool on) {
     return in;
 }
 
+// The hands and the eyes use the same camera anchor. Link moves one tick before the anchor. Thus a
+// distance from Link changes while Link pushes, and a distance from the eyes does not.
+VrCarry::Vec3 EyePos() {
+    float eye[3];
+    float fwd[3];
+    float up[3];
+    VR_GetCameraPose(eye, fwd, up);
+    return { eye[0], eye[1], eye[2] };
+}
+
 // The hand, or the midpoint of two hands (no rotation). False when a hand is not tracked.
 bool HoldPose(bool twoHands, int hand, VrCarry::Vec3* outPos, float outQuat[4]) {
     float pos[2][3];
@@ -264,16 +282,23 @@ void Grab(const VrCarry::Result& r) {
     VrCarry::Vec3 pos;
     float quat[4];
     Actor* actor = sCandidateActors[r.target];
+    const bool tracked = HoldPose(r.twoHands, r.hand, &pos, quat);
     sTarget = actor;
     sTargetKind = sCandidateKinds[r.target];
     sGrabOffset = { 0.0f, 0.0f, 0.0f };
-    if (HoldPose(r.twoHands, r.hand, &pos, quat)) {
+    if (tracked) {
         sGrabOffset = VrCarry::GrabOffset(pos, quat, { actor->world.pos.x, actor->world.pos.y, actor->world.pos.z });
     }
-    if (sTargetKind == VrCarry::Kind::Pillar) {
-        // The game lifts and throws the pillar.
+    if (VrCarry::IsWall(sTargetKind)) {
+        // The game moves the object. VrCombat_CarryTakeWallGrab starts the push.
         sHold.Forget();
-        sPillarGrips = true;
+        if (!tracked) {
+            return;
+        }
+        for (int i = 0; i < 3; i++) {
+            sPushN[i] = sWall.n[i];
+        }
+        sPushStick.Start(VrCarry::PushAlong(pos, EyePos(), sPushN));
     }
     sGrabReady = true;
 }
@@ -344,7 +369,15 @@ void VrCombat::Carry_OnPlayerUpdate(Player* player) {
 
     const VrCarry::Input in = MakeInput(player, on);
     if (!in.hands[0].gripHeld || !in.hands[1].gripHeld) {
-        sPillarGrips = false;
+        sWallGrips = false;
+    }
+    sPushDir = 0;
+    if (sWallGrips && (sTargetKind == VrCarry::Kind::Block)) {
+        VrCarry::Vec3 pos;
+        float quat[4];
+        if (HoldPose(true, -1, &pos, quat)) {
+            sPushDir = sPushStick.Update(VrCarry::PushAlong(pos, EyePos(), sPushN), VrBelt::UnitsPerMeter());
+        }
     }
     if (!in.carrying) {
         sReleaseReady = false;
@@ -387,7 +420,7 @@ extern "C" void VrCombat_CarryOfferWall(Actor* actor, const float* normalXyz, fl
 }
 
 extern "C" Actor* VrCombat_CarryTakeGrab(void) {
-    if (!sGrabReady || (sTarget == NULL) || (sTargetKind == VrCarry::Kind::Pillar)) {
+    if (!sGrabReady || (sTarget == NULL) || VrCarry::IsWall(sTargetKind)) {
         return NULL;
     }
     sGrabReady = false;
@@ -395,12 +428,21 @@ extern "C" Actor* VrCombat_CarryTakeGrab(void) {
 }
 
 extern "C" bool VrCombat_CarryTakeWallGrab(Actor* actor) {
-    if (!sGrabReady || (actor == NULL) || (sTarget != actor) || (sTargetKind != VrCarry::Kind::Pillar)) {
+    if (!sGrabReady || (actor == NULL) || (sTarget != actor) || !VrCarry::IsWall(sTargetKind)) {
         return false;
     }
     sGrabReady = false;
-    sTarget = NULL;
+    sWallGrips = true;
+    sPushDir = 0;
     return true;
+}
+
+extern "C" bool VrCombat_CarryWallHeld(void) {
+    return VR_IsInitialized() && sWallGrips && (sTargetKind == VrCarry::Kind::Block);
+}
+
+extern "C" int32_t VrCombat_CarryPushDir(void) {
+    return VrCombat_CarryWallHeld() ? sPushDir : 0;
 }
 
 extern "C" bool VrCombat_CarryHeldPos(Player* player, float* outXyz) {
@@ -431,12 +473,12 @@ extern "C" bool VrCombat_CarryTakeRelease(Player* player, VrCombatBombRelease* o
 
 extern "C" bool VrCombat_CarryOwnsGrip(void) {
     // Both hands at objects: the grips lift, they do not draw the sword.
-    return VR_IsInitialized() && ((sHold.Hand() >= 0) || sPillarGrips || (sInReach[0] && sInReach[1]));
+    return VR_IsInitialized() && ((sHold.Hand() >= 0) || sWallGrips || (sInReach[0] && sInReach[1]));
 }
 
 extern "C" bool VrCombat_CarryGripConsumed(int32_t vrHand, uint16_t vrBtnMask) {
     if (!(vrBtnMask & VR_BTN_GRIP) || !VR_IsInitialized() || (vrHand < 0) || (vrHand > 1)) {
         return false;
     }
-    return (sHold.Hand() == vrHand) || sHold.TwoHands() || sPillarGrips || sInReach[vrHand];
+    return (sHold.Hand() == vrHand) || sHold.TwoHands() || sWallGrips || sInReach[vrHand];
 }
