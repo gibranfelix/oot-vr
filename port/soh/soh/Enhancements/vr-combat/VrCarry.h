@@ -12,16 +12,13 @@ namespace VrCarry {
 using Vec3 = VrHandThrow::Vec3;
 using Sample = VrHandThrow::Sample;
 
-enum class Kind { None, Pot, SmallRock, Bush, Crate, BombFlower, Bomb, Cucco, SilverBoulder, Pillar, Block };
+// The golden gauntlet pillar is not here: only the A button lifts it. Its lift is a cutscene, and
+// the landing uses the animation.
+enum class Kind { None, Pot, SmallRock, Bush, Crate, BombFlower, Bomb, Cucco, SilverBoulder, Block };
 
 // #159, #160.
 inline bool NeedsTwoHands(Kind kind) {
-    return (kind == Kind::SilverBoulder) || (kind == Kind::Pillar) || (kind == Kind::Block);
-}
-
-// The hands touch a wall: the pillar or a block. The game moves the object.
-inline bool IsWall(Kind kind) {
-    return (kind == Kind::Pillar) || (kind == Kind::Block);
+    return (kind == Kind::SilverBoulder) || (kind == Kind::Block);
 }
 
 // The collider cylinder and the gravity, in game units. The cylinder starts yShift above the actor.
@@ -50,8 +47,7 @@ inline Shape ShapeOf(Kind kind) {
             return { 15.0f, 25.0f, 4.0f, 2.0f }; // EnNiw
         case Kind::SilverBoulder:
             return { 55.0f, 70.0f, 0.0f, 2.5f }; // EnIshi
-        case Kind::Pillar: // BgHeavyBlock: a wall, not a cylinder.
-        case Kind::Block:
+        case Kind::Block: // A wall, not a cylinder.
         case Kind::None:
             break;
     }
@@ -125,7 +121,7 @@ inline int PickTarget(const Vec3& hand, const Candidate* candidates, int count, 
     return best;
 }
 
-// The hand is at the pillar wall. Plane: n . p + d = 0. reach: xz distance to Link.
+// The hand is at the block wall. Plane: n . p + d = 0. reach: xz distance to Link.
 inline bool WallInReach(const Vec3& hand, const Vec3& link, const float n[3], float d, float margin,
                         float reach) {
     const float dx = hand.x - link.x;
@@ -274,7 +270,7 @@ class Hold {
         return mTwoHands;
     }
 
-    // The game does the rest of the lift (pillar).
+    // The game moves the object (block).
     void Forget() {
         mHand = -1;
         mTwoHands = false;

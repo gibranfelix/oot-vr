@@ -423,7 +423,7 @@ static void TestForget() {
     Hold h;
     h.Update(TwoHandInput(false, false, false));
     h.Update(TwoHandInput(false, true, true));
-    // The game does the lift and the throw (the golden gauntlet pillar).
+    // The game moves the object (a block).
     h.Forget();
     EXPECT(h.Hand() == -1);
     Result r = h.Update(TwoHandInput(true, false, false, -1, -1));

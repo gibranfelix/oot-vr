@@ -11,9 +11,7 @@ extern PlayState* gPlayState;
 #include "VrBelt.h"
 #include "VrCarry.h"
 
-#include "soh/Enhancements/game-interactor/GameInteractor.h"
 #include "soh/Enhancements/game-interactor/GameInteractor_Hooks.h"
-#include "soh/ShipInit.hpp"
 #include <libultraship/bridge/consolevariablebridge.h>
 #include <vr_interface.h>
 
@@ -39,17 +37,14 @@ struct WallOffer {
 };
 WallOffer sWall = { NULL, { 0.0f, 0.0f, 0.0f }, 0.0f };
 
-// The valid offers, then the block wall and the pillar. They have no cylinder.
-constexpr int kMaxCandidates = kMaxOffers + 2;
+// The valid offers, then the block wall. The wall has no cylinder.
+constexpr int kMaxCandidates = kMaxOffers + 1;
 Actor* sCandidateActors[kMaxCandidates];
 VrCarry::Kind sCandidateKinds[kMaxCandidates];
 VrCarry::Candidate sCandidates[kMaxCandidates];
 int sCylinderCount = 0;
 int sCandidateCount = 0;
 int sBlockIndex = -1;
-int sPillarIndex = -1;
-// The hand touches the pillar.
-bool sHandOnPillar[2] = { false, false };
 
 VrCarry::Hold sHold;
 bool sInReach[2] = { false, false };
@@ -78,8 +73,6 @@ VrCarry::Kind KindOf(Actor* actor) {
             return VrCarry::Kind::Pot;
         case ACTOR_EN_ISHI:
             return ((actor->params & 1) == ROCK_SMALL) ? VrCarry::Kind::SmallRock : VrCarry::Kind::SilverBoulder;
-        case ACTOR_BG_HEAVY_BLOCK:
-            return VrCarry::Kind::Pillar;
         case ACTOR_EN_KUSA:
             return VrCarry::Kind::Bush;
         case ACTOR_OBJ_KIBAKO:
@@ -96,7 +89,8 @@ VrCarry::Kind KindOf(Actor* actor) {
 }
 
 VrCarry::Kind WallKindOf(Actor* actor) {
-    return (actor->id == ACTOR_BG_HEAVY_BLOCK) ? VrCarry::Kind::Pillar : VrCarry::Kind::Block;
+    // Only the A button lifts the golden gauntlet pillar.
+    return (actor->id == ACTOR_BG_HEAVY_BLOCK) ? VrCarry::Kind::None : VrCarry::Kind::Block;
 }
 
 VrCarry::Shape DrawnShape(VrCarry::Kind kind) {
@@ -114,9 +108,6 @@ VrCarry::Shape DrawnShape(VrCarry::Kind kind) {
 bool StrongEnough(Actor* actor, VrCarry::Kind kind) {
     if (kind == VrCarry::Kind::SilverBoulder) {
         return Player_GetStrength() >= PLAYER_STR_SILVER_G;
-    }
-    if (kind == VrCarry::Kind::Pillar) {
-        return Player_GetStrength() >= PLAYER_STR_GOLD_G;
     }
     const bool weak =
         ((actor->id == ACTOR_EN_BOMBF) || (actor->id == ACTOR_EN_KUSA)) && (Player_GetStrength() <= PLAYER_STR_NONE);
@@ -162,7 +153,7 @@ void MakeCandidates(PlayState* play) {
         }
         Actor* actor = sOffers[i].actor;
         const VrCarry::Kind kind = KindOf(actor);
-        if ((kind == VrCarry::Kind::None) || VrCarry::IsWall(kind) || !StrongEnough(actor, kind)) {
+        if ((kind == VrCarry::Kind::None) || !StrongEnough(actor, kind)) {
             continue;
         }
         AddCandidate(actor, kind);
@@ -176,47 +167,6 @@ void MakeCandidates(PlayState* play) {
         AddCandidate(sWall.actor, VrCarry::Kind::Block);
     }
     sWall.actor = NULL;
-}
-
-// The hand touches the pillar: a line from the eyes through the hand hits it. Link does not have
-// to touch it.
-void FindPillar(PlayState* play) {
-    sPillarIndex = -1;
-    const float margin = VrCarry::kGrabMarginM * VrBelt::UnitsPerMeter();
-    const VrCarry::Vec3 eye = EyePos();
-    for (int hand = 0; hand < 2; hand++) {
-        float pos[3];
-        float quat[4];
-        sHandOnPillar[hand] = false;
-        if (!VR_GetHandPose(hand, pos, quat)) {
-            continue;
-        }
-        const VrCarry::Vec3 d = { pos[0] - eye.x, pos[1] - eye.y, pos[2] - eye.z };
-        const float len = VrHandThrow::Length(d);
-        if (len <= 0.0f) {
-            continue;
-        }
-        const float k = (len + margin) / len;
-        Vec3f from = { eye.x, eye.y, eye.z };
-        Vec3f to = { eye.x + d.x * k, eye.y + d.y * k, eye.z + d.z * k };
-        Vec3f hit;
-        CollisionPoly* poly;
-        s32 bgId;
-        if (!BgCheck_EntityLineTest1(&play->colCtx, &from, &to, &hit, &poly, true, true, true, true, &bgId) ||
-            (bgId == BGCHECK_SCENE)) {
-            continue;
-        }
-        DynaPolyActor* dyna = DynaPoly_GetActor(&play->colCtx, bgId);
-        if ((dyna == NULL) || (dyna->actor.id != ACTOR_BG_HEAVY_BLOCK) ||
-            !StrongEnough(&dyna->actor, VrCarry::Kind::Pillar)) {
-            continue;
-        }
-        if (sPillarIndex < 0) {
-            sPillarIndex = sCandidateCount;
-            AddCandidate(&dyna->actor, VrCarry::Kind::Pillar);
-        }
-        sHandOnPillar[hand] = (sCandidateActors[sPillarIndex] == &dyna->actor);
-    }
 }
 
 // Another item uses the grip of this hand.
@@ -279,9 +229,7 @@ VrCarry::Input MakeInput(Player* player, bool on) {
         h.blocked = GripBlocked(hand);
         if (VR_GetHandPose(hand, pos, quat)) {
             h.pos = { pos[0], pos[1], pos[2] };
-            if (sHandOnPillar[hand]) {
-                h.target = sPillarIndex;
-            } else if ((sBlockIndex >= 0) &&
+            if ((sBlockIndex >= 0) &&
                        VrCarry::WallInReach(h.pos, link, sWall.n, sWall.d, margin, VrCarry::kWallReachM * upm)) {
                 h.target = sBlockIndex;
             } else {
@@ -346,7 +294,7 @@ void Grab(const VrCarry::Result& r) {
         }
         sGrabOffset = VrCarry::GrabOffset(pos, quat, actorPos);
     }
-    if (VrCarry::IsWall(sTargetKind)) {
+    if (sTargetKind == VrCarry::Kind::Block) {
         // The game moves the object. VrCombat_CarryTakeWallGrab starts the push.
         sHold.Forget();
         if (!tracked) {
@@ -421,7 +369,6 @@ void VrCombat::Carry_OnPlayerUpdate(Player* player) {
     }
     const bool on = On();
     MakeCandidates(gPlayState);
-    FindPillar(gPlayState);
     Feed();
     FollowNewHeldActor(player);
 
@@ -540,15 +487,3 @@ extern "C" bool VrCombat_CarryGripConsumed(int32_t vrHand, uint16_t vrBtnMask) {
     }
     return (sHold.Hand() == vrHand) || sHold.TwoHands() || sWallGrips || sInReach[vrHand];
 }
-
-static void RegisterVrCarry() {
-    // In VR the camera stays in the eyes of Link while he lifts the pillar.
-    COND_VB_SHOULD(VB_PLAY_ONEPOINT_ACTOR_CS, true, {
-        Actor* actor = va_arg(args, Actor*);
-        if ((actor != NULL) && (actor->id == ACTOR_BG_HEAVY_BLOCK) && VR_IsInitialized() && VR_GetFirstPerson()) {
-            *should = false;
-        }
-    });
-}
-
-static RegisterShipInitFunc initVrCarry(RegisterVrCarry, {});

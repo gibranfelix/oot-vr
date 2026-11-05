@@ -268,17 +268,11 @@ Objects: `ObjTsubo`, `EnIshi` (small), `EnKusa`, `ObjKibako`, `EnBombf`, `EnBom`
 - The belt, the boomerang, and the bow string keep their grip.
 - While a hand holds an object, the grips do not draw the sword.
 
-Two hands (#159):
+Two hands (#159): the silver boulder (`EnIshi`, large). One open grip throws it. Link cannot walk
+while he holds it.
 
-| Object | Actor | Release |
-|---|---|---|
-| Silver boulder | `EnIshi` (large) | One open grip throws it. Link cannot walk while he holds it. |
-| Golden gauntlet pillar | `BgHeavyBlock` | The game throws it. |
-
-- The pillar has no offer. A line from the eyes through each hand finds it. Link does not have to
-  touch it.
-- The pillar lift is a cutscene, and the landing uses the animation. Thus the hands do not throw it.
-  In VR first person, the camera stays in the eyes of Link (`VB_PLAY_ONEPOINT_ACTOR_CS`).
+Only the A button lifts the golden gauntlet pillar (`BgHeavyBlock`). Its lift is a cutscene, and
+the landing uses the animation. A lift from the hands can break the puzzles.
 
 Blocks (#160): two hands on the wall of an actor hold the grips. This replaces the held A button
 (`func_8083F9D0`). Move the hands 8 cm forward to push, 8 cm back to pull. This replaces the stick

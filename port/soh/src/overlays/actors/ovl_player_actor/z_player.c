@@ -7638,14 +7638,7 @@ static s32 Player_VrStartCarry(Player* this, PlayState* play) {
     }
     this->interactRangeActor = actor;
     this->getItemId = GI_NONE;
-    if (actor->id == ACTOR_BG_HEAVY_BLOCK) {
-        // The pillar: the vanilla lift of Player_ActionHandler_5, facing the pillar.
-        this->getItemEntry = (GetItemEntry)GET_ITEM_NONE;
-        this->yaw = Math_Vec3f_Yaw(&this->actor.world.pos, &actor->world.pos);
-        Player_SetupWaitForPutAway(play, this, func_8083A0F4);
-    } else {
-        Player_SetupWaitForPutAway(play, this, Player_VrLiftNow);
-    }
+    Player_SetupWaitForPutAway(play, this, Player_VrLiftNow);
     func_80832224(this);
     this->stateFlags1 |= PLAYER_STATE1_CARRYING_ACTOR;
     return true;
@@ -8181,8 +8174,7 @@ void func_8083F72C(Player* this, LinkAnimationHeader* anim, PlayState* play) {
     this->actor.shape.rot.y = this->yaw = this->actor.wallYaw + 0x8000;
 }
 
-// SOH [VR] Offers the wall of an actor to the hands: the pillar or a block (VrCarry.cpp). True: the
-// hands took it.
+// SOH [VR] Offers the wall of an actor to the hands: a block (VrCarry.cpp). True: the hands took it.
 static s32 Player_VrWallGrab(Player* this, PlayState* play) {
     DynaPolyActor* wallPolyActor;
     float normal[3];
