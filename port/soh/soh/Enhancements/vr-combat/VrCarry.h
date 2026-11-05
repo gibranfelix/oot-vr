@@ -1,6 +1,6 @@
 #pragma once
 
-// The carry (VrCarry.cpp, #158). No game types.
+// The carry (VrCarry.cpp). No game types.
 // Tests: port/soh/tests/vr/VrCarryTests.cpp.
 
 #include "VrBeltThrow.h"
@@ -12,11 +12,9 @@ namespace VrCarry {
 using Vec3 = VrHandThrow::Vec3;
 using Sample = VrHandThrow::Sample;
 
-// The golden gauntlet pillar is not here: only the A button lifts it. Its lift is a cutscene, and
-// the landing uses the animation.
+// Only the A button lifts the golden gauntlet pillar.
 enum class Kind { None, Pot, SmallRock, Bush, Crate, BombFlower, Bomb, Cucco, SilverBoulder, Block };
 
-// #159, #160.
 inline bool NeedsTwoHands(Kind kind) {
     return (kind == Kind::SilverBoulder) || (kind == Kind::Block);
 }
@@ -236,7 +234,7 @@ class Hold {
         return mTwoHands;
     }
 
-    // The game moves the object (block).
+    // The game moves the block.
     void Forget() {
         mHand = -1;
         mTwoHands = false;

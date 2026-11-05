@@ -250,33 +250,27 @@ a 2D fill, and it shows as a small gray rectangle in VR.
 
 ## Carry
 
-`VrCarry.cpp` (#158, #159). The grip lifts the object. The release throws it with the hand velocity, or
-drops it. The A button still works.
+`VrCarry.cpp`. The A button still lifts all objects.
 
-Objects: `ObjTsubo`, `EnIshi` (small), `EnKusa`, `ObjKibako`, `EnBombf`, `EnBom`, `EnNiw`.
+| Object | Actor | Hands | Release |
+|---|---|---|---|
+| Pot, small rock, bush, crate, bomb flower, bomb, cucco | `ObjTsubo`, `EnIshi`, `EnKusa`, `ObjKibako`, `EnBombf`, `EnBom`, `EnNiw` | One | Throw with the hand velocity, or drop. |
+| Silver boulder | `EnIshi` (large) | Two | One open grip throws it. Link cannot walk. |
+| Block | The wall of an actor | Two | The grips replace the held A button (`func_8083F9D0`). The body or the stick moves the block. |
+| Golden gauntlet pillar | `BgHeavyBlock` | None | Only the A button. The lift is a cutscene, and the landing uses the animation. |
 
 | Step | Code |
 |---|---|
-| Offer | `Actor_OfferGetItem` with `GI_NONE` calls `VrCombat_CarryOffer`. The game rules apply. |
+| Offer | `Actor_OfferGetItem` with `GI_NONE` calls `VrCombat_CarryOffer`. Blocks: `Player_VrWallGrab`. |
 | Lift | `Player_VrStartCarry`. No lift animation. |
-| Carry | `VrCombat_CarryHeldPos`. At the lift, the object moves to the hand. Then it keeps its offset. |
+| Carry | `VrCombat_CarryHeldPos`. The object moves to the hand, then keeps its offset. |
 | Release | `Player_VrReleaseHeld`. |
 
-- Reach: 10 cm from the collider.
-- The throw speed changes with the gravity of the object. All objects go the same distance.
+- Reach: 10 cm from the collider. For a block: 10 cm in front of the wall, or up to 40 cm in it.
+- The same hand speed throws all objects the same distance.
 - A drop higher than 15 cm falls. Lower, Link puts the object down.
 - The belt, the boomerang, and the bow string keep their grip.
-- While a hand holds an object, the grips do not draw the sword.
-
-Two hands (#159): the silver boulder (`EnIshi`, large). One open grip throws it. Link cannot walk
-while he holds it.
-
-Only the A button lifts the golden gauntlet pillar (`BgHeavyBlock`). Its lift is a cutscene, and
-the landing uses the animation. A lift from the hands can break the puzzles.
-
-Blocks (#160): two hands on the wall of an actor hold the grips. This replaces the held A button
-(`func_8083F9D0`). The hands can be up to 40 cm in the block. The body of the player or the stick
-moves the block, as in the game.
+- While the hands hold or touch objects, the grips do not draw the sword.
 
 Math: `VrCarry.h`. Tests: `port/soh/tests/vr/VrCarryTests.cpp`.
 
