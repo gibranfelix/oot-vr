@@ -79,6 +79,31 @@ inline float DistanceToCylinder(const Vec3& p, const Vec3& base, float radius, f
     return std::sqrt(out * out + dy * dy);
 }
 
+// The hand lifts the object before it touches it. The object moves to the hand: the hand goes
+// depth into the collider. In the collider: no move. Returns the new actor position.
+inline Vec3 SnapToHand(const Vec3& hand, const Vec3& actor, const Shape& shape, float depth) {
+    const float baseY = actor.y + shape.yShift;
+    float dx = hand.x - actor.x;
+    float dz = hand.z - actor.z;
+    const float xz = std::sqrt(dx * dx + dz * dz);
+    Vec3 closest = hand;
+    if (xz > shape.radius) {
+        closest.x = actor.x + dx * shape.radius / xz;
+        closest.z = actor.z + dz * shape.radius / xz;
+    }
+    closest.y = std::fmin(std::fmax(hand.y, baseY), baseY + shape.height);
+    const Vec3 d = { hand.x - closest.x, hand.y - closest.y, hand.z - closest.z };
+    const float dist = VrHandThrow::Length(d);
+    if (dist <= 0.0f) {
+        return actor;
+    }
+    const float k = (dist + depth) / dist;
+    return { actor.x + d.x * k, actor.y + d.y * k, actor.z + d.z * k };
+}
+
+// The hand goes this far into the object at the lift.
+constexpr float kSnapDepthM = 0.03f;
+
 struct Candidate {
     Vec3 pos; // The actor position.
     Shape shape;

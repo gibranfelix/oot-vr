@@ -287,7 +287,12 @@ void Grab(const VrCarry::Result& r) {
     sTargetKind = sCandidateKinds[r.target];
     sGrabOffset = { 0.0f, 0.0f, 0.0f };
     if (tracked) {
-        sGrabOffset = VrCarry::GrabOffset(pos, quat, { actor->world.pos.x, actor->world.pos.y, actor->world.pos.z });
+        VrCarry::Vec3 actorPos = { actor->world.pos.x, actor->world.pos.y, actor->world.pos.z };
+        if (!r.twoHands) {
+            actorPos = VrCarry::SnapToHand(pos, actorPos, sCandidates[r.target].shape,
+                                           VrCarry::kSnapDepthM * VrBelt::UnitsPerMeter());
+        }
+        sGrabOffset = VrCarry::GrabOffset(pos, quat, actorPos);
     }
     if (VrCarry::IsWall(sTargetKind)) {
         // The game moves the object. VrCombat_CarryTakeWallGrab starts the push.

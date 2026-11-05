@@ -259,7 +259,7 @@ Objects: `ObjTsubo`, `EnIshi` (small), `EnKusa`, `ObjKibako`, `EnBombf`, `EnBom`
 |---|---|
 | Offer | `Actor_OfferGetItem` with `GI_NONE` calls `VrCombat_CarryOffer`. The game rules apply. |
 | Lift | `Player_VrStartCarry`. No lift animation. |
-| Carry | `VrCombat_CarryHeldPos`. The object keeps its offset from the hand. |
+| Carry | `VrCombat_CarryHeldPos`. At the lift, the object moves to the hand. Then it keeps its offset. |
 | Release | `Player_VrReleaseHeld`. |
 
 - Reach: 10 cm from the collider.
