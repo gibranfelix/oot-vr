@@ -12,7 +12,12 @@ namespace VrCarry {
 using Vec3 = VrHandThrow::Vec3;
 using Sample = VrHandThrow::Sample;
 
-enum class Kind { None, Pot, SmallRock, Bush, Crate, BombFlower, Bomb, Cucco };
+enum class Kind { None, Pot, SmallRock, Bush, Crate, BombFlower, Bomb, Cucco, SilverBoulder, Pillar };
+
+// #159.
+inline bool NeedsTwoHands(Kind kind) {
+    return (kind == Kind::SilverBoulder) || (kind == Kind::Pillar);
+}
 
 // The collider cylinder and the gravity, in game units. The cylinder starts yShift above the actor.
 struct Shape {
@@ -38,6 +43,9 @@ inline Shape ShapeOf(Kind kind) {
             return { 7.0f, 14.0f, 0.0f, 1.2f }; // EnBom: the model, at the vanilla scale.
         case Kind::Cucco:
             return { 15.0f, 25.0f, 4.0f, 2.0f }; // EnNiw
+        case Kind::SilverBoulder:
+            return { 55.0f, 70.0f, 0.0f, 2.5f }; // EnIshi
+        case Kind::Pillar: // BgHeavyBlock: a wall, not a cylinder.
         case Kind::None:
             break;
     }
@@ -86,6 +94,17 @@ inline int PickTarget(const Vec3& hand, const Candidate* candidates, int count, 
     return best;
 }
 
+// The hand is at the pillar wall. Plane: n . p + d = 0. reach: xz distance to Link.
+inline bool WallInReach(const Vec3& hand, const Vec3& link, const float n[3], float d, float margin,
+                        float reach) {
+    const float dx = hand.x - link.x;
+    const float dz = hand.z - link.z;
+    const float plane = n[0] * hand.x + n[1] * hand.y + n[2] * hand.z + d;
+    return (std::fabs(plane) <= margin) && (std::sqrt(dx * dx + dz * dz) <= reach);
+}
+
+constexpr float kWallReachM = 1.0f;
+
 // The same hand speed throws all objects the same distance as a bomb.
 constexpr float kRefGravity = 1.2f;
 constexpr float kThrowGain = 1.8f;
@@ -104,6 +123,10 @@ constexpr float kFallSpeed = 0.2f;
 
 inline float DropSpeed(float heightAboveFloor, float unitsPerMeter) {
     return (heightAboveFloor > kPutDownHeightM * unitsPerMeter) ? kFallSpeed : 0.0f;
+}
+
+inline Vec3 Mid(const Vec3& a, const Vec3& b) {
+    return { 0.5f * (a.x + b.x), 0.5f * (a.y + b.y), 0.5f * (a.z + b.z) };
 }
 
 // Rotates v with the unit quaternion q (x, y, z, w).
@@ -138,6 +161,7 @@ struct HandInput {
     bool blocked; // The belt, the boomerang, or the bow string uses this grip.
     Vec3 pos;     // Game units.
     int target;   // The candidate in reach, or -1.
+    bool twoHands; // The target needs two hands.
 };
 
 struct Input {
@@ -153,8 +177,9 @@ struct Result {
     Event event = Event::None;
     int hand = -1;
     int target = -1;                    // Grab: the candidate.
-    Vec3 pos = { 0.0f, 0.0f, 0.0f };    // Throw and Drop: the hand position.
-    Vec3 velMps = { 0.0f, 0.0f, 0.0f }; // Throw: the hand velocity.
+    bool twoHands = false;
+    Vec3 pos = { 0.0f, 0.0f, 0.0f };    // Throw and Drop: the hand position. Two hands: the midpoint.
+    Vec3 velMps = { 0.0f, 0.0f, 0.0f }; // Throw: the hand velocity. Two hands: the mean.
     bool inReach[2] = { false, false };    // The hand can lift an object.
     bool reachPulse[2] = { false, false }; // The hand got to an object in this tick.
 };
@@ -170,9 +195,19 @@ class Hold {
         mHistory[hand].Clear();
     }
 
-    // The hand that holds the object, or -1.
+    // The hand that holds the object, or -1. With two hands: firstHand.
     int Hand() const {
         return mHand;
+    }
+
+    bool TwoHands() const {
+        return mTwoHands;
+    }
+
+    // The game does the rest of the lift (pillar).
+    void Forget() {
+        mHand = -1;
+        mTwoHands = false;
     }
 
     // Call one time in each game tick, after AddSample.
@@ -189,22 +224,40 @@ class Hold {
         }
         if (!in.carrying) {
             // The object is gone, or the game did not take the grab.
-            mHand = -1;
+            Forget();
         }
         bool reach[2] = { false, false };
-        if (mHand >= 0) {
+        if (mTwoHands) {
+            // One open grip releases the object.
+            if (!in.hands[0].gripHeld || !in.hands[1].gripHeld) {
+                r = ReleaseTwoHands(in.hands[0].pos, in.hands[1].pos);
+            }
+        } else if (mHand >= 0) {
             const HandInput& h = in.hands[mHand];
             if (!h.gripHeld) {
                 r = Release(h.pos);
             }
         } else if (in.canGrab && !in.carrying) {
+            const HandInput& l = in.hands[0];
+            const HandInput& rh = in.hands[1];
+            if (!l.blocked && !rh.blocked && l.twoHands && (l.target >= 0) && (l.target == rh.target) &&
+                (mGripAge[0] != kNotHeld) && (mGripAge[1] != kNotHeld) &&
+                ((mGripAge[0] <= kGripGraceTicks) || (mGripAge[1] <= kGripGraceTicks))) {
+                r.event = Event::Grab;
+                r.hand = in.firstHand;
+                r.target = l.target;
+                r.twoHands = true;
+                mHand = in.firstHand;
+                mTwoHands = true;
+                mGripAge[0] = mGripAge[1] = kGripGraceTicks + 1;
+            }
             for (int i = 0; i < 2; i++) {
                 const int hand = (i == 0) ? in.firstHand : (in.firstHand ^ 1);
                 const HandInput& h = in.hands[hand];
                 reach[hand] = !h.blocked && (h.target >= 0);
                 r.reachPulse[hand] = reach[hand] && !mInReach[hand];
-                if (reach[hand] && (mGripAge[hand] != kNotHeld) && (mGripAge[hand] <= kGripGraceTicks) &&
-                    (r.event == Event::None)) {
+                if (reach[hand] && !h.twoHands && (mGripAge[hand] != kNotHeld) &&
+                    (mGripAge[hand] <= kGripGraceTicks) && (r.event == Event::None)) {
                     r.event = Event::Grab;
                     r.hand = hand;
                     r.target = h.target;
@@ -222,6 +275,24 @@ class Hold {
     }
 
   private:
+    Result ReleaseTwoHands(const Vec3& left, const Vec3& right) {
+        Result r;
+        r.hand = mHand;
+        r.twoHands = true;
+        r.pos = Mid(left, right);
+        Vec3 v[2];
+        Vec3 pos[2];
+        if (mHistory[0].Release(&v[0], &pos[0]) && mHistory[1].Release(&v[1], &pos[1])) {
+            r.velMps = Mid(v[0], v[1]);
+        }
+        r.event = (VrHandThrow::Length(r.velMps) < kMinThrowSpeedMps) ? Event::Drop : Event::Throw;
+        if (r.event == Event::Drop) {
+            r.velMps = { 0.0f, 0.0f, 0.0f };
+        }
+        Forget();
+        return r;
+    }
+
     Result Drop(const Vec3& handPos) {
         Result r;
         r.event = Event::Drop;
@@ -248,6 +319,7 @@ class Hold {
 
     VrHandThrow::History mHistory[2];
     int mHand = -1;
+    bool mTwoHands = false;
     // Ticks since the push of the grip. A grip that is held at the start is too old.
     static constexpr int kNotHeld = -1;
     int mGripAge[2] = { kGripGraceTicks + 1, kGripGraceTicks + 1 };

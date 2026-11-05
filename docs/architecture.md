@@ -250,7 +250,7 @@ a 2D fill, and it shows as a small gray rectangle in VR.
 
 ## Carry
 
-`VrCarry.cpp` (#158). The grip lifts the object. The release throws it with the hand velocity, or
+`VrCarry.cpp` (#158, #159). The grip lifts the object. The release throws it with the hand velocity, or
 drops it. The A button still works.
 
 Objects: `ObjTsubo`, `EnIshi` (small), `EnKusa`, `ObjKibako`, `EnBombf`, `EnBom`, `EnNiw`.
@@ -267,6 +267,16 @@ Objects: `ObjTsubo`, `EnIshi` (small), `EnKusa`, `ObjKibako`, `EnBombf`, `EnBom`
 - A drop higher than 15 cm falls. Lower, Link puts the object down.
 - The belt, the boomerang, and the bow string keep their grip.
 - While a hand holds an object, the grips do not draw the sword.
+
+Two hands (#159):
+
+| Object | Actor | Release |
+|---|---|---|
+| Silver boulder | `EnIshi` (large) | One open grip throws it. Link cannot walk while he holds it. |
+| Golden gauntlet pillar | `BgHeavyBlock` | The game throws it. |
+
+- The pillar has no offer. `Player_VrHeavyWallGrab` (`Player_ActionHandler_5`) gives its wall.
+- The pillar lift is a cutscene, and the landing uses the animation. Thus the hands do not throw it.
 
 Math: `VrCarry.h`. Tests: `port/soh/tests/vr/VrCarryTests.cpp`.
 

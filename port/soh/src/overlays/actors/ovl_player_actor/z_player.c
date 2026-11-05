@@ -7612,12 +7612,20 @@ static void Player_VrLiftNow(PlayState* play, Player* this) {
         this->stateFlags1 &= ~PLAYER_STATE1_CARRYING_ACTOR;
         return;
     }
+    // Attach first: func_80835688 stops the carry when heldActor is NULL.
     this->heldActor = actor;
     this->actor.child = actor;
     actor->parent = &this->actor;
     actor->bgCheckFlags &= 0xFF00;
-    func_80839F90(this, play);
-    func_80835688(this, play);
+    if ((actor->id == ACTOR_EN_ISHI) && (PARAMS_GET_U(actor->params, 0, 4) == 1)) {
+        // Silver boulder: the end state of the vanilla lift.
+        Player_SetupAction(play, this, Player_Action_80846260, 0);
+        Player_AnimPlayLoop(play, this, &gPlayerAnim_link_silver_wait);
+        this->av2.actionVar2 = 1;
+    } else {
+        func_80839F90(this, play);
+        func_80835688(this, play);
+    }
 }
 
 // SOH [VR] The grip lifts an object (VrCarry.cpp). False: no lift.
@@ -8166,6 +8174,23 @@ void func_8083F72C(Player* this, LinkAnimationHeader* anim, PlayState* play) {
     this->actor.shape.rot.y = this->yaw = this->actor.wallYaw + 0x8000;
 }
 
+// SOH [VR] Offers the pillar wall to the hands (VrCarry.cpp). True: the hands took the pillar.
+static s32 Player_VrHeavyWallGrab(Player* this, PlayState* play) {
+    DynaPolyActor* wallPolyActor;
+    float normal[3];
+
+    if (!VR_IsInitialized() || (this->actor.wallBgId == BGCHECK_SCENE) || (this->actor.wallPoly == NULL) ||
+        ((wallPolyActor = DynaPoly_GetActor(&play->colCtx, this->actor.wallBgId)) == NULL) ||
+        (wallPolyActor->actor.id != ACTOR_BG_HEAVY_BLOCK)) {
+        return false;
+    }
+    normal[0] = COLPOLY_GET_NORMAL(this->actor.wallPoly->normal.x);
+    normal[1] = COLPOLY_GET_NORMAL(this->actor.wallPoly->normal.y);
+    normal[2] = COLPOLY_GET_NORMAL(this->actor.wallPoly->normal.z);
+    VrCombat_CarryOfferWall(&wallPolyActor->actor, normal, this->actor.wallPoly->dist);
+    return VrCombat_CarryTakeWallGrab(&wallPolyActor->actor);
+}
+
 s32 Player_ActionHandler_5(Player* this, PlayState* play) {
     DynaPolyActor* wallPolyActor;
 
@@ -8184,7 +8209,7 @@ s32 Player_ActionHandler_5(Player* this, PlayState* play) {
 
             this->stateFlags2 |= PLAYER_STATE2_DO_ACTION_GRAB;
 
-            if (CHECK_BTN_ALL(sControlInput->cur.button, BTN_A)) {
+            if (CHECK_BTN_ALL(sControlInput->cur.button, BTN_A) || Player_VrHeavyWallGrab(this, play)) { // SOH [VR]
 
                 if ((this->actor.wallBgId != BGCHECK_SCENE) &&
                     ((wallPolyActor = DynaPoly_GetActor(&play->colCtx, this->actor.wallBgId)) != NULL)) {
@@ -10880,6 +10905,9 @@ void Player_Action_80846260(Player* this, PlayState* play) {
             return;
         }
 
+    } else if (VR_IsInitialized() && Player_VrReleaseHeld(this, play)) {
+        // SOH [VR] The grips release the silver boulder.
+        func_80839F90(this, play);
     } else if (CHECK_BTN_ANY(sControlInput->press.button, buttonsToCheck)) {
         Player_SetupAction(play, this, Player_Action_80846358, 1);
         Player_AnimPlayOnce(play, this, &gPlayerAnim_link_silver_throw);
