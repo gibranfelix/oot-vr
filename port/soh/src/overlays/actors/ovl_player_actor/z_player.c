@@ -7612,6 +7612,11 @@ static void Player_VrLiftNow(PlayState* play, Player* this) {
         this->stateFlags1 &= ~PLAYER_STATE1_CARRYING_ACTOR;
         return;
     }
+    // Attach first: func_80835688 stops the carry when heldActor is NULL.
+    this->heldActor = actor;
+    this->actor.child = actor;
+    actor->parent = &this->actor;
+    actor->bgCheckFlags &= 0xFF00;
     if ((actor->id == ACTOR_EN_ISHI) && (PARAMS_GET_U(actor->params, 0, 4) == 1)) {
         // Silver boulder: the end state of the vanilla lift.
         Player_SetupAction(play, this, Player_Action_80846260, 0);
@@ -7621,10 +7626,6 @@ static void Player_VrLiftNow(PlayState* play, Player* this) {
         func_80839F90(this, play);
         func_80835688(this, play);
     }
-    this->heldActor = actor;
-    this->actor.child = actor;
-    actor->parent = &this->actor;
-    actor->bgCheckFlags &= 0xFF00;
 }
 
 // SOH [VR] The grip lifts an object (VrCarry.cpp). False: no lift.
