@@ -1,6 +1,6 @@
 #pragma once
 
-// The carry (VrCarry.cpp, #158). No game types.
+// The carry (VrCarry.cpp). No game types.
 // Tests: port/soh/tests/vr/VrCarryTests.cpp.
 
 #include "VrBeltThrow.h"
@@ -12,11 +12,11 @@ namespace VrCarry {
 using Vec3 = VrHandThrow::Vec3;
 using Sample = VrHandThrow::Sample;
 
-enum class Kind { None, Pot, SmallRock, Bush, Crate, BombFlower, Bomb, Cucco, SilverBoulder, Pillar };
+// Only the A button lifts the golden gauntlet pillar.
+enum class Kind { None, Pot, SmallRock, Bush, Crate, BombFlower, Bomb, Cucco, SilverBoulder, Block };
 
-// #159.
 inline bool NeedsTwoHands(Kind kind) {
-    return (kind == Kind::SilverBoulder) || (kind == Kind::Pillar);
+    return (kind == Kind::SilverBoulder) || (kind == Kind::Block);
 }
 
 // The collider cylinder and the gravity, in game units. The cylinder starts yShift above the actor.
@@ -45,7 +45,7 @@ inline Shape ShapeOf(Kind kind) {
             return { 15.0f, 25.0f, 4.0f, 2.0f }; // EnNiw
         case Kind::SilverBoulder:
             return { 55.0f, 70.0f, 0.0f, 2.5f }; // EnIshi
-        case Kind::Pillar: // BgHeavyBlock: a wall, not a cylinder.
+        case Kind::Block: // A wall, not a cylinder.
         case Kind::None:
             break;
     }
@@ -73,6 +73,31 @@ inline float DistanceToCylinder(const Vec3& p, const Vec3& base, float radius, f
     return std::sqrt(out * out + dy * dy);
 }
 
+// The hand lifts the object before it touches it. The object moves to the hand: the hand goes
+// depth into the collider. In the collider: no move. Returns the new actor position.
+inline Vec3 SnapToHand(const Vec3& hand, const Vec3& actor, const Shape& shape, float depth) {
+    const float baseY = actor.y + shape.yShift;
+    float dx = hand.x - actor.x;
+    float dz = hand.z - actor.z;
+    const float xz = std::sqrt(dx * dx + dz * dz);
+    Vec3 closest = hand;
+    if (xz > shape.radius) {
+        closest.x = actor.x + dx * shape.radius / xz;
+        closest.z = actor.z + dz * shape.radius / xz;
+    }
+    closest.y = std::fmin(std::fmax(hand.y, baseY), baseY + shape.height);
+    const Vec3 d = { hand.x - closest.x, hand.y - closest.y, hand.z - closest.z };
+    const float dist = VrHandThrow::Length(d);
+    if (dist <= 0.0f) {
+        return actor;
+    }
+    const float k = (dist + depth) / dist;
+    return { actor.x + d.x * k, actor.y + d.y * k, actor.z + d.z * k };
+}
+
+// The hand goes this far into the object at the lift.
+constexpr float kSnapDepthM = 0.03f;
+
 struct Candidate {
     Vec3 pos; // The actor position.
     Shape shape;
@@ -94,14 +119,19 @@ inline int PickTarget(const Vec3& hand, const Candidate* candidates, int count, 
     return best;
 }
 
-// The hand is at the pillar wall. Plane: n . p + d = 0. reach: xz distance to Link.
+// The hand is at the block wall: margin in front of it, or inside in the block. Plane: n . p + d = 0.
+// reach: xz distance to Link.
 inline bool WallInReach(const Vec3& hand, const Vec3& link, const float n[3], float d, float margin,
-                        float reach) {
+                        float inside, float reach) {
     const float dx = hand.x - link.x;
     const float dz = hand.z - link.z;
+    // Positive: in front of the wall. Negative: in the block.
     const float plane = n[0] * hand.x + n[1] * hand.y + n[2] * hand.z + d;
-    return (std::fabs(plane) <= margin) && (std::sqrt(dx * dx + dz * dz) <= reach);
+    return (plane <= margin) && (plane >= -inside) && (std::sqrt(dx * dx + dz * dz) <= reach);
 }
+
+// The hands can be this far in the block: there is no wall to stop them.
+constexpr float kWallInsideM = 0.4f;
 
 constexpr float kWallReachM = 1.0f;
 
@@ -204,7 +234,7 @@ class Hold {
         return mTwoHands;
     }
 
-    // The game does the rest of the lift (pillar).
+    // The game moves the block.
     void Forget() {
         mHand = -1;
         mTwoHands = false;

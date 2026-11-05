@@ -233,11 +233,13 @@ int32_t VrCombat_NutHand(void);
 uint8_t VrCombat_NutFlightTicks(void);
 bool VrCombat_NutGripConsumed(int32_t vrHand, uint16_t vrBtnMask);
 // Carry (VrCarry.cpp). The Take functions return the event of the last tick one time.
-// OfferWall: the pillar wall that Link touches (n . p + dist = 0). TakeWallGrab: only the pillar.
+// OfferWall: the wall that Link touches (n . p + dist = 0). TakeWallGrab: only a wall.
+// WallHeld: the two grips hold a block, as the held A button does.
 void VrCombat_CarryOffer(struct Actor* actor);
 void VrCombat_CarryOfferWall(struct Actor* actor, const float* normalXyz, float dist);
 struct Actor* VrCombat_CarryTakeGrab(void);
 bool VrCombat_CarryTakeWallGrab(struct Actor* actor);
+bool VrCombat_CarryWallHeld(void);
 bool VrCombat_CarryHeldPos(struct Player* player, float* outXyz);
 bool VrCombat_CarryTakeRelease(struct Player* player, VrCombatBombRelease* out);
 bool VrCombat_CarryOwnsGrip(void);

@@ -8174,14 +8174,13 @@ void func_8083F72C(Player* this, LinkAnimationHeader* anim, PlayState* play) {
     this->actor.shape.rot.y = this->yaw = this->actor.wallYaw + 0x8000;
 }
 
-// SOH [VR] Offers the pillar wall to the hands (VrCarry.cpp). True: the hands took the pillar.
-static s32 Player_VrHeavyWallGrab(Player* this, PlayState* play) {
+// SOH [VR] Offers the wall of an actor to the hands: a block (VrCarry.cpp). True: the hands took it.
+static s32 Player_VrWallGrab(Player* this, PlayState* play) {
     DynaPolyActor* wallPolyActor;
     float normal[3];
 
     if (!VR_IsInitialized() || (this->actor.wallBgId == BGCHECK_SCENE) || (this->actor.wallPoly == NULL) ||
-        ((wallPolyActor = DynaPoly_GetActor(&play->colCtx, this->actor.wallBgId)) == NULL) ||
-        (wallPolyActor->actor.id != ACTOR_BG_HEAVY_BLOCK)) {
+        ((wallPolyActor = DynaPoly_GetActor(&play->colCtx, this->actor.wallBgId)) == NULL)) {
         return false;
     }
     normal[0] = COLPOLY_GET_NORMAL(this->actor.wallPoly->normal.x);
@@ -8209,7 +8208,7 @@ s32 Player_ActionHandler_5(Player* this, PlayState* play) {
 
             this->stateFlags2 |= PLAYER_STATE2_DO_ACTION_GRAB;
 
-            if (CHECK_BTN_ALL(sControlInput->cur.button, BTN_A) || Player_VrHeavyWallGrab(this, play)) { // SOH [VR]
+            if (CHECK_BTN_ALL(sControlInput->cur.button, BTN_A) || Player_VrWallGrab(this, play)) { // SOH [VR]
 
                 if ((this->actor.wallBgId != BGCHECK_SCENE) &&
                     ((wallPolyActor = DynaPoly_GetActor(&play->colCtx, this->actor.wallBgId)) != NULL)) {
@@ -8246,8 +8245,10 @@ s32 Player_ActionHandler_5(Player* this, PlayState* play) {
 }
 
 s32 func_8083F9D0(PlayState* play, Player* this) {
+    // SOH [VR] The two grips on a block also hold it.
     if ((this->actor.bgCheckFlags & BGCHECKFLAG_PLAYER_WALL_INTERACT) &&
-        ((this->stateFlags2 & PLAYER_STATE2_MOVING_DYNAPOLY) || CHECK_BTN_ALL(sControlInput->cur.button, BTN_A))) {
+        ((this->stateFlags2 & PLAYER_STATE2_MOVING_DYNAPOLY) || CHECK_BTN_ALL(sControlInput->cur.button, BTN_A) ||
+         (VR_IsInitialized() && VrCombat_CarryWallHeld()))) {
         DynaPolyActor* wallPolyActor = NULL;
 
         if (this->actor.wallBgId != BGCHECK_SCENE) {

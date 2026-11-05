@@ -72,9 +72,9 @@ pulls it back. The release of the grip shoots.
 
 ## Carry
 
-The grip lifts a small object: a pot, a rock, a bush, a crate, a bomb flower, a
-bomb, or a cucco. The release of the grip throws the object. Two grips lift the
-silver boulder and the golden gauntlet pillar.
+The hands lift and throw objects. One grip lifts a small object: a pot, a rock,
+a bush, a crate, a bomb flower, a bomb, or a cucco. Two grips lift the silver
+boulder and hold a block. Only the A button lifts the golden gauntlet pillar.
 
 ## Aim mark
 

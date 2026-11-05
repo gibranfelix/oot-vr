@@ -67,6 +67,20 @@ static void TestDistanceToCylinder() {
     EXPECT(Near(DistanceToCylinder({ 13.0f, 24.0f, 0.0f }, base, 10.0f, 20.0f), 5.0f));
 }
 
+static void TestSnapToHand() {
+    const Shape pot = ShapeOf(Kind::Pot); // Radius 9, height 26.
+    const Vec3 actor = { 0.0f, 0.0f, 0.0f };
+    // The hand is 5 units out of the side, at mid height: the pot moves 5 + depth to the hand.
+    Vec3 p = SnapToHand({ 14.0f, 13.0f, 0.0f }, actor, pot, 2.0f);
+    EXPECT(NearV(p, { 7.0f, 0.0f, 0.0f }));
+    // The hand is 4 units above the top: the pot moves up 4 + depth.
+    p = SnapToHand({ 0.0f, 30.0f, 0.0f }, actor, pot, 2.0f);
+    EXPECT(NearV(p, { 0.0f, 6.0f, 0.0f }));
+    // The hand is in the pot: no move.
+    p = SnapToHand({ 1.0f, 10.0f, 1.0f }, actor, pot, 2.0f);
+    EXPECT(NearV(p, actor));
+}
+
 static void TestPickTarget() {
     const Candidate c[3] = {
         { { 0.0f, 0.0f, 0.0f }, ShapeOf(Kind::Pot) },        // Radius 9, height 26.
@@ -91,11 +105,15 @@ static void TestWallInReach() {
     const float n[3] = { 0.0f, 0.0f, -1.0f };
     const float d = 50.0f;
     const Vec3 link = { 0.0f, 0.0f, 20.0f };
-    EXPECT(WallInReach({ 5.0f, 40.0f, 48.0f }, link, n, d, 4.0f, 40.0f));
-    // Too far from the wall.
-    EXPECT(!WallInReach({ 5.0f, 40.0f, 40.0f }, link, n, d, 4.0f, 40.0f));
+    EXPECT(WallInReach({ 5.0f, 40.0f, 48.0f }, link, n, d, 4.0f, 16.0f, 40.0f));
+    // Too far in front of the wall.
+    EXPECT(!WallInReach({ 5.0f, 40.0f, 40.0f }, link, n, d, 4.0f, 16.0f, 40.0f));
+    // In the block: in reach.
+    EXPECT(WallInReach({ 5.0f, 40.0f, 60.0f }, link, n, d, 4.0f, 16.0f, 80.0f));
+    // Too deep in the block.
+    EXPECT(!WallInReach({ 5.0f, 40.0f, 70.0f }, link, n, d, 4.0f, 16.0f, 80.0f));
     // Too far from Link along the wall.
-    EXPECT(!WallInReach({ 60.0f, 40.0f, 50.0f }, link, n, d, 4.0f, 40.0f));
+    EXPECT(!WallInReach({ 60.0f, 40.0f, 50.0f }, link, n, d, 4.0f, 16.0f, 40.0f));
 }
 
 static void TestThrowVelocity() {
@@ -379,7 +397,7 @@ static void TestForget() {
     Hold h;
     h.Update(TwoHandInput(false, false, false));
     h.Update(TwoHandInput(false, true, true));
-    // The game does the lift and the throw (the golden gauntlet pillar).
+    // The game moves the object (a block).
     h.Forget();
     EXPECT(h.Hand() == -1);
     Result r = h.Update(TwoHandInput(true, false, false, -1, -1));
@@ -388,6 +406,7 @@ static void TestForget() {
 
 int main() {
     TestDistanceToCylinder();
+    TestSnapToHand();
     TestPickTarget();
     TestWallInReach();
     TestThrowVelocity();

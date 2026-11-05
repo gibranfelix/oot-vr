@@ -29,7 +29,7 @@ constexpr int kMaxOffers = 16;
 Offer sOffers[kMaxOffers];
 int sOfferCount = 0;
 
-// The pillar that Link touches in this tick.
+// The grabbable wall of an actor that Link touches in this tick: a block.
 struct WallOffer {
     Actor* actor;
     float n[3];
@@ -37,13 +37,14 @@ struct WallOffer {
 };
 WallOffer sWall = { NULL, { 0.0f, 0.0f, 0.0f }, 0.0f };
 
-// The valid offers. The pillar is last and has no cylinder.
+// The valid offers, then the block wall. The wall has no cylinder.
 constexpr int kMaxCandidates = kMaxOffers + 1;
 Actor* sCandidateActors[kMaxCandidates];
 VrCarry::Kind sCandidateKinds[kMaxCandidates];
 VrCarry::Candidate sCandidates[kMaxCandidates];
 int sCylinderCount = 0;
 int sCandidateCount = 0;
+int sBlockIndex = -1;
 
 VrCarry::Hold sHold;
 bool sInReach[2] = { false, false };
@@ -51,8 +52,8 @@ bool sInReach[2] = { false, false };
 Actor* sTarget = NULL;
 VrCarry::Kind sTargetKind = VrCarry::Kind::None;
 VrCarry::Vec3 sGrabOffset = { 0.0f, 0.0f, 0.0f };
-// The grips that took the pillar stay reserved until one opens.
-bool sPillarGrips = false;
+// The grips that took a wall stay reserved until one opens.
+bool sWallGrips = false;
 // The next Player_Update takes the grab. The release stays ready while Link holds the object.
 bool sGrabReady = false;
 bool sReleaseReady = false;
@@ -68,8 +69,6 @@ VrCarry::Kind KindOf(Actor* actor) {
             return VrCarry::Kind::Pot;
         case ACTOR_EN_ISHI:
             return ((actor->params & 1) == ROCK_SMALL) ? VrCarry::Kind::SmallRock : VrCarry::Kind::SilverBoulder;
-        case ACTOR_BG_HEAVY_BLOCK:
-            return VrCarry::Kind::Pillar;
         case ACTOR_EN_KUSA:
             return VrCarry::Kind::Bush;
         case ACTOR_OBJ_KIBAKO:
@@ -83,6 +82,11 @@ VrCarry::Kind KindOf(Actor* actor) {
         default:
             return VrCarry::Kind::None;
     }
+}
+
+VrCarry::Kind WallKindOf(Actor* actor) {
+    // Only the A button lifts the golden gauntlet pillar.
+    return (actor->id == ACTOR_BG_HEAVY_BLOCK) ? VrCarry::Kind::None : VrCarry::Kind::Block;
 }
 
 VrCarry::Shape DrawnShape(VrCarry::Kind kind) {
@@ -100,9 +104,6 @@ VrCarry::Shape DrawnShape(VrCarry::Kind kind) {
 bool StrongEnough(Actor* actor, VrCarry::Kind kind) {
     if (kind == VrCarry::Kind::SilverBoulder) {
         return Player_GetStrength() >= PLAYER_STR_SILVER_G;
-    }
-    if (kind == VrCarry::Kind::Pillar) {
-        return Player_GetStrength() >= PLAYER_STR_GOLD_G;
     }
     const bool weak =
         ((actor->id == ACTOR_EN_BOMBF) || (actor->id == ACTOR_EN_KUSA)) && (Player_GetStrength() <= PLAYER_STR_NONE);
@@ -138,15 +139,18 @@ void MakeCandidates(PlayState* play) {
         }
         Actor* actor = sOffers[i].actor;
         const VrCarry::Kind kind = KindOf(actor);
-        if ((kind == VrCarry::Kind::None) || (kind == VrCarry::Kind::Pillar) || !StrongEnough(actor, kind)) {
+        if ((kind == VrCarry::Kind::None) || !StrongEnough(actor, kind)) {
             continue;
         }
         AddCandidate(actor, kind);
     }
     sOfferCount = 0;
     sCylinderCount = sCandidateCount;
-    if ((sWall.actor != NULL) && (sWall.actor->update != NULL) && StrongEnough(sWall.actor, VrCarry::Kind::Pillar)) {
-        AddCandidate(sWall.actor, VrCarry::Kind::Pillar);
+    sBlockIndex = -1;
+    if ((sWall.actor != NULL) && (sWall.actor->update != NULL) &&
+        (WallKindOf(sWall.actor) == VrCarry::Kind::Block)) {
+        sBlockIndex = sCandidateCount;
+        AddCandidate(sWall.actor, VrCarry::Kind::Block);
     }
     sWall.actor = NULL;
 }
@@ -202,7 +206,6 @@ VrCarry::Input MakeInput(Player* player, bool on) {
     in.firstHand = VrBelt::SwordHand();
     const float upm = VrBelt::UnitsPerMeter();
     const float margin = VrCarry::kGrabMarginM * upm;
-    const bool wall = (sCandidateCount > sCylinderCount);
     const VrCarry::Vec3 link = { player->actor.world.pos.x, player->actor.world.pos.y, player->actor.world.pos.z };
     for (int hand = 0; hand < 2; hand++) {
         float pos[3];
@@ -212,8 +215,10 @@ VrCarry::Input MakeInput(Player* player, bool on) {
         h.blocked = GripBlocked(hand);
         if (VR_GetHandPose(hand, pos, quat)) {
             h.pos = { pos[0], pos[1], pos[2] };
-            if (wall && VrCarry::WallInReach(h.pos, link, sWall.n, sWall.d, margin, VrCarry::kWallReachM * upm)) {
-                h.target = sCylinderCount;
+            if ((sBlockIndex >= 0) &&
+                       VrCarry::WallInReach(h.pos, link, sWall.n, sWall.d, margin, VrCarry::kWallInsideM * upm,
+                                         VrCarry::kWallReachM * upm)) {
+                h.target = sBlockIndex;
             } else {
                 h.target = VrCarry::PickTarget(h.pos, sCandidates, sCylinderCount, margin);
             }
@@ -264,16 +269,21 @@ void Grab(const VrCarry::Result& r) {
     VrCarry::Vec3 pos;
     float quat[4];
     Actor* actor = sCandidateActors[r.target];
+    const bool tracked = HoldPose(r.twoHands, r.hand, &pos, quat);
     sTarget = actor;
     sTargetKind = sCandidateKinds[r.target];
     sGrabOffset = { 0.0f, 0.0f, 0.0f };
-    if (HoldPose(r.twoHands, r.hand, &pos, quat)) {
-        sGrabOffset = VrCarry::GrabOffset(pos, quat, { actor->world.pos.x, actor->world.pos.y, actor->world.pos.z });
+    if (tracked) {
+        VrCarry::Vec3 actorPos = { actor->world.pos.x, actor->world.pos.y, actor->world.pos.z };
+        if (!r.twoHands) {
+            actorPos = VrCarry::SnapToHand(pos, actorPos, sCandidates[r.target].shape,
+                                           VrCarry::kSnapDepthM * VrBelt::UnitsPerMeter());
+        }
+        sGrabOffset = VrCarry::GrabOffset(pos, quat, actorPos);
     }
-    if (sTargetKind == VrCarry::Kind::Pillar) {
-        // The game lifts and throws the pillar.
+    if (sTargetKind == VrCarry::Kind::Block) {
+        // The grips hold the block, as the A button does. The body or the stick moves it.
         sHold.Forget();
-        sPillarGrips = true;
     }
     sGrabReady = true;
 }
@@ -344,7 +354,7 @@ void VrCombat::Carry_OnPlayerUpdate(Player* player) {
 
     const VrCarry::Input in = MakeInput(player, on);
     if (!in.hands[0].gripHeld || !in.hands[1].gripHeld) {
-        sPillarGrips = false;
+        sWallGrips = false;
     }
     if (!in.carrying) {
         sReleaseReady = false;
@@ -387,7 +397,7 @@ extern "C" void VrCombat_CarryOfferWall(Actor* actor, const float* normalXyz, fl
 }
 
 extern "C" Actor* VrCombat_CarryTakeGrab(void) {
-    if (!sGrabReady || (sTarget == NULL) || (sTargetKind == VrCarry::Kind::Pillar)) {
+    if (!sGrabReady || (sTarget == NULL) || (sTargetKind == VrCarry::Kind::Block)) {
         return NULL;
     }
     sGrabReady = false;
@@ -395,12 +405,16 @@ extern "C" Actor* VrCombat_CarryTakeGrab(void) {
 }
 
 extern "C" bool VrCombat_CarryTakeWallGrab(Actor* actor) {
-    if (!sGrabReady || (actor == NULL) || (sTarget != actor) || (sTargetKind != VrCarry::Kind::Pillar)) {
+    if (!sGrabReady || (actor == NULL) || (sTarget != actor) || (sTargetKind != VrCarry::Kind::Block)) {
         return false;
     }
     sGrabReady = false;
-    sTarget = NULL;
+    sWallGrips = true;
     return true;
+}
+
+extern "C" bool VrCombat_CarryWallHeld(void) {
+    return VR_IsInitialized() && sWallGrips && (sTargetKind == VrCarry::Kind::Block);
 }
 
 extern "C" bool VrCombat_CarryHeldPos(Player* player, float* outXyz) {
@@ -431,12 +445,12 @@ extern "C" bool VrCombat_CarryTakeRelease(Player* player, VrCombatBombRelease* o
 
 extern "C" bool VrCombat_CarryOwnsGrip(void) {
     // Both hands at objects: the grips lift, they do not draw the sword.
-    return VR_IsInitialized() && ((sHold.Hand() >= 0) || sPillarGrips || (sInReach[0] && sInReach[1]));
+    return VR_IsInitialized() && ((sHold.Hand() >= 0) || sWallGrips || (sInReach[0] && sInReach[1]));
 }
 
 extern "C" bool VrCombat_CarryGripConsumed(int32_t vrHand, uint16_t vrBtnMask) {
     if (!(vrBtnMask & VR_BTN_GRIP) || !VR_IsInitialized() || (vrHand < 0) || (vrHand > 1)) {
         return false;
     }
-    return (sHold.Hand() == vrHand) || sHold.TwoHands() || sPillarGrips || sInReach[vrHand];
+    return (sHold.Hand() == vrHand) || sHold.TwoHands() || sWallGrips || sInReach[vrHand];
 }
