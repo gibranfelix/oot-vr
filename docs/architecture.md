@@ -275,9 +275,8 @@ Only the A button lifts the golden gauntlet pillar (`BgHeavyBlock`). Its lift is
 the landing uses the animation. A lift from the hands can break the puzzles.
 
 Blocks (#160): two hands on the wall of an actor hold the grips. This replaces the held A button
-(`func_8083F9D0`). Move the hands 8 cm forward to push, 8 cm back to pull. This replaces the stick
-(`func_8083FFB8`). The game moves the block at its own speed. `VrCarry.cpp` measures the hands
-from the eyes.
+(`func_8083F9D0`). The hands can be up to 40 cm in the block. The body of the player or the stick
+moves the block, as in the game.
 
 Math: `VrCarry.h`. Tests: `port/soh/tests/vr/VrCarryTests.cpp`.
 

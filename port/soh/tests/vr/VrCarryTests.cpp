@@ -105,41 +105,15 @@ static void TestWallInReach() {
     const float n[3] = { 0.0f, 0.0f, -1.0f };
     const float d = 50.0f;
     const Vec3 link = { 0.0f, 0.0f, 20.0f };
-    EXPECT(WallInReach({ 5.0f, 40.0f, 48.0f }, link, n, d, 4.0f, 40.0f));
-    // Too far from the wall.
-    EXPECT(!WallInReach({ 5.0f, 40.0f, 40.0f }, link, n, d, 4.0f, 40.0f));
+    EXPECT(WallInReach({ 5.0f, 40.0f, 48.0f }, link, n, d, 4.0f, 16.0f, 40.0f));
+    // Too far in front of the wall.
+    EXPECT(!WallInReach({ 5.0f, 40.0f, 40.0f }, link, n, d, 4.0f, 16.0f, 40.0f));
+    // In the block: in reach.
+    EXPECT(WallInReach({ 5.0f, 40.0f, 60.0f }, link, n, d, 4.0f, 16.0f, 80.0f));
+    // Too deep in the block.
+    EXPECT(!WallInReach({ 5.0f, 40.0f, 70.0f }, link, n, d, 4.0f, 16.0f, 80.0f));
     // Too far from Link along the wall.
-    EXPECT(!WallInReach({ 60.0f, 40.0f, 50.0f }, link, n, d, 4.0f, 40.0f));
-}
-
-static void TestPushAlong() {
-    // The wall normal points to Link (-z). Push goes along +z.
-    const float n[3] = { 0.0f, 0.0f, -1.0f };
-    const Vec3 link = { 0.0f, 0.0f, 0.0f };
-    EXPECT(Near(PushAlong({ 3.0f, 40.0f, 12.0f }, link, n), 12.0f));
-    // The y part of the normal does not count.
-    const float tilted[3] = { 0.0f, -0.6f, -0.8f };
-    EXPECT(Near(PushAlong({ 0.0f, 40.0f, 10.0f }, link, tilted), 10.0f));
-}
-
-static void TestPushStick() {
-    const float upm = 40.0f;
-    const float push = kPushM * upm; // 3.2 units.
-    PushStick p;
-    p.Start(20.0f);
-    EXPECT(p.Update(20.0f, upm) == 0);
-    EXPECT(p.Update(20.0f + push * 0.5f, upm) == 0);
-    // Hands forward: push.
-    EXPECT(p.Update(20.0f + push, upm) == 1);
-    // A small move back keeps the push (no flicker).
-    EXPECT(p.Update(20.0f + push * 0.6f, upm) == 1);
-    // Back near the grab point: stop.
-    EXPECT(p.Update(20.0f + kStopM * upm * 0.5f, upm) == 0);
-    // Hands back: pull.
-    EXPECT(p.Update(20.0f - push, upm) == -1);
-    // Start resets the direction.
-    p.Start(0.0f);
-    EXPECT(p.Update(0.0f, upm) == 0);
+    EXPECT(!WallInReach({ 60.0f, 40.0f, 50.0f }, link, n, d, 4.0f, 16.0f, 40.0f));
 }
 
 static void TestThrowVelocity() {
@@ -435,8 +409,6 @@ int main() {
     TestSnapToHand();
     TestPickTarget();
     TestWallInReach();
-    TestPushAlong();
-    TestPushStick();
     TestThrowVelocity();
     TestRotate();
     TestHeldPosKeepsGrabPlace();

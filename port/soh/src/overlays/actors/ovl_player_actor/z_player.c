@@ -8389,11 +8389,6 @@ s32 func_8083FD78(Player* this, f32* arg1, s16* arg2, PlayState* play) {
 }
 
 s32 func_8083FFB8(Player* this, f32* arg1, s16* arg2) {
-    // SOH [VR] The hands push or pull the block. When the hands stop, the stick applies.
-    s32 vrPushDir = VR_IsInitialized() ? VrCombat_CarryPushDir() : 0;
-    if (vrPushDir != 0) {
-        return vrPushDir;
-    }
     s16 temp1 = *arg2 - this->actor.shape.rot.y;
     u16 temp2 = ABS(temp1);
     f32 temp3 = Math_CosS(temp2);

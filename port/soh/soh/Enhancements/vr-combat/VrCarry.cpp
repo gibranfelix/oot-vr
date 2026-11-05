@@ -54,10 +54,6 @@ VrCarry::Kind sTargetKind = VrCarry::Kind::None;
 VrCarry::Vec3 sGrabOffset = { 0.0f, 0.0f, 0.0f };
 // The grips that took a wall stay reserved until one opens.
 bool sWallGrips = false;
-// Block push (#160): the wall normal at the grab, and the stick of the hands.
-float sPushN[3] = { 0.0f, 0.0f, 0.0f };
-VrCarry::PushStick sPushStick;
-int sPushDir = 0;
 // The next Player_Update takes the grab. The release stays ready while Link holds the object.
 bool sGrabReady = false;
 bool sReleaseReady = false;
@@ -125,16 +121,6 @@ bool Alive(PlayState* play, const Offer& o) {
         }
     }
     return false;
-}
-
-// The hands and the eyes use the same camera anchor. Link moves one tick before the anchor. Thus a
-// distance from Link changes while Link pushes, and a distance from the eyes does not.
-VrCarry::Vec3 EyePos() {
-    float eye[3];
-    float fwd[3];
-    float up[3];
-    VR_GetCameraPose(eye, fwd, up);
-    return { eye[0], eye[1], eye[2] };
 }
 
 void AddCandidate(Actor* actor, VrCarry::Kind kind) {
@@ -230,7 +216,8 @@ VrCarry::Input MakeInput(Player* player, bool on) {
         if (VR_GetHandPose(hand, pos, quat)) {
             h.pos = { pos[0], pos[1], pos[2] };
             if ((sBlockIndex >= 0) &&
-                       VrCarry::WallInReach(h.pos, link, sWall.n, sWall.d, margin, VrCarry::kWallReachM * upm)) {
+                       VrCarry::WallInReach(h.pos, link, sWall.n, sWall.d, margin, VrCarry::kWallInsideM * upm,
+                                         VrCarry::kWallReachM * upm)) {
                 h.target = sBlockIndex;
             } else {
                 h.target = VrCarry::PickTarget(h.pos, sCandidates, sCylinderCount, margin);
@@ -295,15 +282,8 @@ void Grab(const VrCarry::Result& r) {
         sGrabOffset = VrCarry::GrabOffset(pos, quat, actorPos);
     }
     if (sTargetKind == VrCarry::Kind::Block) {
-        // The game moves the object. VrCombat_CarryTakeWallGrab starts the push.
+        // The grips hold the block, as the A button does. The body or the stick moves it.
         sHold.Forget();
-        if (!tracked) {
-            return;
-        }
-        for (int i = 0; i < 3; i++) {
-            sPushN[i] = sWall.n[i];
-        }
-        sPushStick.Start(VrCarry::PushAlong(pos, EyePos(), sPushN));
     }
     sGrabReady = true;
 }
@@ -376,14 +356,6 @@ void VrCombat::Carry_OnPlayerUpdate(Player* player) {
     if (!in.hands[0].gripHeld || !in.hands[1].gripHeld) {
         sWallGrips = false;
     }
-    sPushDir = 0;
-    if (sWallGrips && (sTargetKind == VrCarry::Kind::Block)) {
-        VrCarry::Vec3 pos;
-        float quat[4];
-        if (HoldPose(true, -1, &pos, quat)) {
-            sPushDir = sPushStick.Update(VrCarry::PushAlong(pos, EyePos(), sPushN), VrBelt::UnitsPerMeter());
-        }
-    }
     if (!in.carrying) {
         sReleaseReady = false;
         if (sHold.Hand() < 0) {
@@ -438,16 +410,11 @@ extern "C" bool VrCombat_CarryTakeWallGrab(Actor* actor) {
     }
     sGrabReady = false;
     sWallGrips = true;
-    sPushDir = 0;
     return true;
 }
 
 extern "C" bool VrCombat_CarryWallHeld(void) {
     return VR_IsInitialized() && sWallGrips && (sTargetKind == VrCarry::Kind::Block);
-}
-
-extern "C" int32_t VrCombat_CarryPushDir(void) {
-    return VrCombat_CarryWallHeld() ? sPushDir : 0;
 }
 
 extern "C" bool VrCombat_CarryHeldPos(Player* player, float* outXyz) {
