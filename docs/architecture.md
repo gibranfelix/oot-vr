@@ -275,8 +275,10 @@ Two hands (#159):
 | Silver boulder | `EnIshi` (large) | One open grip throws it. Link cannot walk while he holds it. |
 | Golden gauntlet pillar | `BgHeavyBlock` | The game throws it. |
 
-- The pillar has no offer. `Player_VrWallGrab` (`Player_ActionHandler_5`) gives its wall.
+- The pillar has no offer. A line from the eyes through each hand finds it. Link does not have to
+  touch it.
 - The pillar lift is a cutscene, and the landing uses the animation. Thus the hands do not throw it.
+  In VR first person, the camera stays in the eyes of Link (`VB_PLAY_ONEPOINT_ACTOR_CS`).
 
 Blocks (#160): two hands on the wall of an actor hold the grips. This replaces the held A button
 (`func_8083F9D0`). Move the hands 8 cm forward to push, 8 cm back to pull. This replaces the stick

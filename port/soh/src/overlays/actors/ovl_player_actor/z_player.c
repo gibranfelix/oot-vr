@@ -7638,7 +7638,14 @@ static s32 Player_VrStartCarry(Player* this, PlayState* play) {
     }
     this->interactRangeActor = actor;
     this->getItemId = GI_NONE;
-    Player_SetupWaitForPutAway(play, this, Player_VrLiftNow);
+    if (actor->id == ACTOR_BG_HEAVY_BLOCK) {
+        // The pillar: the vanilla lift of Player_ActionHandler_5, facing the pillar.
+        this->getItemEntry = (GetItemEntry)GET_ITEM_NONE;
+        this->yaw = Math_Vec3f_Yaw(&this->actor.world.pos, &actor->world.pos);
+        Player_SetupWaitForPutAway(play, this, func_8083A0F4);
+    } else {
+        Player_SetupWaitForPutAway(play, this, Player_VrLiftNow);
+    }
     func_80832224(this);
     this->stateFlags1 |= PLAYER_STATE1_CARRYING_ACTOR;
     return true;
