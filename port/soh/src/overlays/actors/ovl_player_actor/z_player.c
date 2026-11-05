@@ -3319,15 +3319,14 @@ static s32 Player_VrTakeBeltBomb(Player* this, PlayState* play) {
     return true;
 }
 
-// SOH [VR] The release of the grip throws the bomb with the hand velocity, or drops it. Returns
-// false when there is no release.
-static s32 Player_VrReleaseBomb(Player* this, PlayState* play) {
+// SOH [VR] The release of the grip throws the held bomb or object, or drops it. False: no release.
+static s32 Player_VrReleaseHeld(Player* this, PlayState* play) {
     Actor* bomb = this->heldActor;
     VrCombatBombRelease release;
     Vec3f zero = { 0.0f, 0.0f, 0.0f };
     Vec3f velocity;
 
-    if ((bomb == NULL) || !VrCombat_BombTakeRelease(&release)) {
+    if ((bomb == NULL) || !(VrCombat_BombTakeRelease(&release) || VrCombat_CarryTakeRelease(this, &release))) {
         return false;
     }
     bomb->world.pos.x = release.pos[0];
@@ -3363,8 +3362,8 @@ s32 Player_UpperAction_CarryActor(Player* this, PlayState* play) {
     }
 
     if (this->stateFlags1 & PLAYER_STATE1_CARRYING_ACTOR) {
-        // SOH [VR] The grip throw or drop of a bomb from the belt.
-        if (Player_VrReleaseBomb(this, play)) {
+        // SOH [VR] The grip releases the bomb or the object.
+        if (Player_VrReleaseHeld(this, play)) {
             return true;
         }
         if (LinkAnimation_Update(play, &this->upperSkelAnime)) {
@@ -7604,12 +7603,50 @@ void func_8083E4C4(PlayState* play, Player* this, GetItemEntry* giEntry) {
                                                                                   : NA_SE_SY_GET_ITEM);
 }
 
+// SOH [VR] After the put-away, the object goes to the hand. No lift animation.
+static void Player_VrLiftNow(PlayState* play, Player* this) {
+    Actor* actor = this->interactRangeActor;
+
+    if ((actor == NULL) || (actor->update == NULL) || (actor->parent != NULL)) {
+        func_80839F90(this, play);
+        this->stateFlags1 &= ~PLAYER_STATE1_CARRYING_ACTOR;
+        return;
+    }
+    this->heldActor = actor;
+    this->actor.child = actor;
+    actor->parent = &this->actor;
+    actor->bgCheckFlags &= 0xFF00;
+    func_80839F90(this, play);
+    func_80835688(this, play);
+}
+
+// SOH [VR] The grip lifts an object (VrCarry.cpp). False: no lift.
+static s32 Player_VrStartCarry(Player* this, PlayState* play) {
+    Actor* actor = VrCombat_CarryTakeGrab();
+
+    if ((actor == NULL) || (this->heldActor != NULL) || (this->stateFlags1 & PLAYER_STATE1_CARRYING_ACTOR) ||
+        (this->stateFlags2 & PLAYER_STATE2_UNDERWATER)) {
+        return false;
+    }
+    this->interactRangeActor = actor;
+    this->getItemId = GI_NONE;
+    Player_SetupWaitForPutAway(play, this, Player_VrLiftNow);
+    func_80832224(this);
+    this->stateFlags1 |= PLAYER_STATE1_CARRYING_ACTOR;
+    return true;
+}
+
 s32 Player_ActionHandler_2(Player* this, PlayState* play) {
     Actor* interactedActor;
 
     if (GameInteractor_Should(VB_SHORT_CIRCUIT_GIVE_ITEM_PROCESS, false)) {
         this->getItemId = GI_NONE;
         this->getItemEntry = (GetItemEntry)GET_ITEM_NONE;
+        return 1;
+    }
+
+    // SOH [VR] The grip lifts an object.
+    if (VR_IsInitialized() && Player_VrStartCarry(this, play)) {
         return 1;
     }
 

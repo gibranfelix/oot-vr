@@ -145,7 +145,7 @@ uint16_t SwapMask() {
 // A grip on the bow string is not part of the chord.
 bool SwapChordHeld() {
     const uint16_t mask = SwapMask();
-    if ((mask & VR_BTN_GRIP) && VrCombat_BowPullOwnsGrip()) {
+    if ((mask & VR_BTN_GRIP) && (VrCombat_BowPullOwnsGrip() || VrCombat_CarryOwnsGrip())) {
         return false;
     }
     return mask != 0 && (VR_GetControllerButton(VR_HAND_LEFT) & mask) != 0 &&

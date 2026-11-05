@@ -232,6 +232,13 @@ int32_t VrCombat_NutHand(void);
 // The EnArrow timer of a nut from the hand.
 uint8_t VrCombat_NutFlightTicks(void);
 bool VrCombat_NutGripConsumed(int32_t vrHand, uint16_t vrBtnMask);
+// Carry (VrCarry.cpp, #158). The Take functions return the event of the last tick one time.
+void VrCombat_CarryOffer(struct Actor* actor);
+struct Actor* VrCombat_CarryTakeGrab(void);
+bool VrCombat_CarryHeldPos(struct Player* player, float* outXyz);
+bool VrCombat_CarryTakeRelease(struct Player* player, VrCombatBombRelease* out);
+bool VrCombat_CarryOwnsGrip(void);
+bool VrCombat_CarryGripConsumed(int32_t vrHand, uint16_t vrBtnMask);
 // String pull (VrBowPull.cpp, #150).
 // String: give the string matrix (MtxF at the string origin). True while pulled, with the new Y axis.
 // Shot: start and direction of the pulled shot. ItemMask: item button while pulled, else 0.
@@ -281,6 +288,8 @@ void Bomb_OnPlayerUpdate(Player* player);
 void Nut_OnPlayerUpdate(Player* player);
 // String pull (VrBowPull.cpp).
 void BowPull_OnPlayerUpdate(Player* player);
+// Carry (VrCarry.cpp). Call after the other grip items.
+void Carry_OnPlayerUpdate(Player* player);
 
 // Per-tick swing bookkeeping (VrSwing.cpp), driven from VrCombat's OnPlayerUpdate hook:
 // reads back last tick's quad results (hit haptics, one-hit-per-swing demotion), then resets

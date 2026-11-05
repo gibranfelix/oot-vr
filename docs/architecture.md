@@ -48,7 +48,7 @@ The VR code that is new has its own files:
 | `port/libultraship/include/vr_interface.h` | The declarations of the `VR_*` functions, with comments |
 | `port/libultraship/src/fast/vr_physics.cpp` | The collision mesh for the physical hands |
 | `port/libultraship/src/fast/vr_menu_input.cpp` | The SoH menu with the Touch controllers: the Y toggle, the menu navigation, and the input filter for the game |
-| `port/soh/soh/Enhancements/vr-combat/` | Sword and hammer swing, shield, bow and boomerang aim, string pull, belt, and item selection |
+| `port/soh/soh/Enhancements/vr-combat/` | Sword and hammer swing, shield, bow and boomerang aim, string pull, belt, carry, and item selection |
 | `port/soh/soh/SohGui/SohMenuVRSettings.cpp` | The VR settings menu. The Developer tab shows only with Dev Tools > Debug Mode on |
 
 ## Render path
@@ -201,7 +201,7 @@ has no fuse and no ammo cost.
 | Step | Code in `z_player.c` |
 |---|---|
 | The grip takes the bomb | `Player_VrTakeBeltBomb` spawns the `EnBom`. |
-| The grip is released | `Player_VrReleaseBomb` throws the bomb, or drops it. |
+| The grip is released | `Player_VrReleaseHeld` throws the bomb, or drops it. |
 | The off-hand trigger | `Player_InitExplosiveIA` spawns the bomb, and `Player_ActionHandler_9` throws it. |
 | A throw is done | `Player_DetachHeldActor` keeps the bombs selected. |
 
@@ -247,6 +247,28 @@ holds the nut stays open, and the nut is on the palm (`VrGripHand.cpp`).
 
 In VR stereo, `z_play.c` does not draw the screen flash of the nut. The flash is
 a 2D fill, and it shows as a small gray rectangle in VR.
+
+## Carry
+
+`VrCarry.cpp` (#158). The grip lifts the object. The release throws it with the hand velocity, or
+drops it. The A button still works.
+
+Objects: `ObjTsubo`, `EnIshi` (small), `EnKusa`, `ObjKibako`, `EnBombf`, `EnBom`, `EnNiw`.
+
+| Step | Code |
+|---|---|
+| Offer | `Actor_OfferGetItem` with `GI_NONE` calls `VrCombat_CarryOffer`. The game rules apply. |
+| Lift | `Player_VrStartCarry`. No lift animation. |
+| Carry | `VrCombat_CarryHeldPos`. The object keeps its offset from the hand. |
+| Release | `Player_VrReleaseHeld`. |
+
+- Reach: 10 cm from the collider.
+- The throw speed changes with the gravity of the object. All objects go the same distance.
+- A drop higher than 15 cm falls. Lower, Link puts the object down.
+- The belt, the boomerang, and the bow string keep their grip.
+- While a hand holds an object, the grips do not draw the sword.
+
+Math: `VrCarry.h`. Tests: `port/soh/tests/vr/VrCarryTests.cpp`.
 
 ## Ranged weapons
 
