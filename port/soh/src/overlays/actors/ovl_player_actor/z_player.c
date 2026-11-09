@@ -2459,8 +2459,10 @@ void func_80833A20(Player* this, s32 newMeleeWeaponState) {
             func_808328EC(this, itemSfx);
         }
 
+        // SOH [VR] Each physical swing is an attack. gVrSwordVoice can stop the voice (issue #19).
         if (!((this->meleeWeaponAnimation >= PLAYER_MWA_FLIPSLASH_START) &&
-              (this->meleeWeaponAnimation <= PLAYER_MWA_JUMPSLASH_FINISH))) {
+              (this->meleeWeaponAnimation <= PLAYER_MWA_JUMPSLASH_FINISH)) &&
+            VrCombat_SwordVoicePlays(this, voiceSfx == NA_SE_VO_LI_SWORD_L)) {
             Player_PlayVoiceSfx(this, voiceSfx);
         }
 
@@ -6559,7 +6561,10 @@ void func_8083BA90(PlayState* play, Player* this, s32 arg2, f32 xzVelocity, f32 
     this->hoverBootsTimer = 0;
 
     Player_PlayJumpingSfx(this);
-    Player_PlayVoiceSfx(this, NA_SE_VO_LI_SWORD_L);
+    // SOH [VR] gVrSwordVoice (issue #19).
+    if (VrCombat_SwordVoicePlays(this, true)) {
+        Player_PlayVoiceSfx(this, NA_SE_VO_LI_SWORD_L);
+    }
 }
 
 s32 func_8083BB20(Player* this) {

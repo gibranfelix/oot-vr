@@ -1,5 +1,6 @@
 #include "VrCombat.h"
 #include "VrGameplayGate.h"
+#include "VrSwordVoice.h"
 
 #include "soh/Enhancements/game-interactor/GameInteractor_Hooks.h"
 #include "soh/ShipInit.hpp"
@@ -122,6 +123,12 @@ extern "C" bool VrCombat_InPlay(void) {
     }
     return VrGameplayGate::InPlay(gSaveContext.gameMode == GAMEMODE_NORMAL, gSaveContext.fileNum,
                                   IS_BOSS_RUSH || IS_ARENA);
+}
+
+extern "C" bool VrCombat_SwordVoicePlays(Player* player, bool strong) {
+    const bool link = player->actor.category == ACTORCAT_PLAYER;
+    return VrSwordVoice::Plays(link && VR_IsInitialized(),
+                               CVarGetInteger("gVrSwordVoice", VrSwordVoice::kDefault), strong);
 }
 
 extern "C" bool VrCombat_Active(void) {

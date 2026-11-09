@@ -143,9 +143,12 @@ them.
 - In the vanilla game, the sword quads of Link turn around him in the spin
   attack. `VrSwing.cpp` turns the same quads around Link in the hit frames.
   The release swing does not also hit.
+- Each physical swing is an attack, and Link shouts at each attack.
+  `gVrSwordVoice` selects when Link shouts in VR: always (default), only in
+  spin and jump attacks, or never.
 
-The rules are in `VrMeleeWeapon.h`, `VrHammerSlam.h`, `VrHammerTarget.h`, and
-`VrSpinGesture.h`.
+The rules are in `VrMeleeWeapon.h`, `VrHammerSlam.h`, `VrHammerTarget.h`,
+`VrSpinGesture.h`, and `VrSwordVoice.h`.
 The host unit tests are in `port/soh/tests/vr/`.
 
 ## Physical shield
