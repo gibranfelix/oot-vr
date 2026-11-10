@@ -4,6 +4,7 @@
 #include "soh/ShipInit.hpp"
 #include "SohGui.hpp"
 #include "soh/Enhancements/vr-combat/VrMeleeWeapon.h"
+#include "soh/Enhancements/vr-combat/VrSwordVoice.h"
 #include "soh/PlayerFolder.h" // SOH [Quest]
 #include "soh/ModList.h"      // SOH [Quest]
 #include "soh/Updater.h"      // SOH [Quest]
@@ -68,6 +69,12 @@ static bool VrHudIsOnHand() {
 static bool VrHudIsWrist() {
     return CVarGetInteger("gVrHudAttach", 3) == 3;
 }
+
+static const std::map<int32_t, const char*> vrSwordVoiceOptions = {
+    { VrSwordVoice::kAlways, "Always" },
+    { VrSwordVoice::kSpinAndJump, "Spin and Jump Attacks" },
+    { VrSwordVoice::kNever, "Never" },
+};
 
 static const std::map<int32_t, const char*> vrItemSelHandOptions = {
     { 0, "Sword Hand" },
@@ -1145,6 +1152,13 @@ void SohMenu::AddMenuVRSettings() {
         .CVar("gVrLetterbox")
         .Options(
             CheckboxOptions().Tooltip("Shows the black bars of the original game during Z-targeting and cutscenes."));
+    AddWidget(displayPath, "Sound", WIDGET_SEPARATOR_TEXT);
+    AddWidget(displayPath, "Link Shouts When He Attacks", WIDGET_CVAR_COMBOBOX)
+        .CVar("gVrSwordVoice")
+        .Options(ComboboxOptions()
+                     .DefaultIndex(VrSwordVoice::kDefault)
+                     .ComboMap(vrSwordVoiceOptions)
+                     .Tooltip("Always is the original game. The sword sound does not change."));
 
 #ifdef __ANDROID__
     // ---------------------------------------------------------------------- Mods

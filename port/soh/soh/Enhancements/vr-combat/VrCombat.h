@@ -57,6 +57,10 @@ bool VrCombat_IsMeleeQuad(const void* collider);
 // 0 -> nonzero edge. The vr-combat module drives the state from real hand motion.
 void VrCombat_SetMeleeWeaponState(struct Player* player, int32_t newState);
 
+// In VrCombat.cpp. True if the attack voice plays (VrSwordVoice.h). Other Player actors, for
+// example Dark Link, always shout.
+bool VrCombat_SwordVoicePlays(struct Player* player, bool strong);
+
 // In z_player.c. Calls the vanilla Deku Stick break, func_80842AC4.
 void VrCombat_BreakDekuStick(struct PlayState* play, struct Player* player);
 
