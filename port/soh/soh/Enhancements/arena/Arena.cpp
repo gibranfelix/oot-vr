@@ -145,12 +145,8 @@ static void* sContinuePromptNoTexs[] = {
 // The state of one run. The file is temporary, so a run starts with each file.
 static const ArenaScene* sArena = nullptr;
 static ArenaRules::Director sDirector;
-struct WaveEnemy {
-    int level; // 0 to 3
-    bool hyper;
-};
-// The wave enemies that are alive or that wait for their deletion.
-static std::unordered_map<Actor*, WaveEnemy> sWaveEnemies;
+// The wave enemies that are alive or that wait for their deletion, with the request that spawned them.
+static std::unordered_map<Actor*, ArenaRules::SpawnRequest> sWaveEnemies;
 // The ambient light and the directional light that ARENA adds in the Ganon arena.
 static const s16 kGanonExtraAmbient = 70;
 static const s16 kGanonExtraLight = 50;
@@ -175,7 +171,8 @@ static bool InArenaScene(PlayState* play) {
 
 static void ResetRun() {
     sDirector.Start();
-    ArenaShop::Close();
+    // The actors of the last run can be gone: the game left ARENA, and the hooks did not see their deletion.
+    ArenaShop::Reset();
     sWaveEnemies.clear();
     sLinkPlaced = false;
     sMusicStarted = false;
@@ -244,7 +241,7 @@ static bool SpawnEnemy(PlayState* play, const ArenaRules::SpawnRequest& request)
     if (actor == NULL) {
         return false;
     }
-    sWaveEnemies[actor] = WaveEnemy{ request.level, request.hyper };
+    sWaveEnemies[actor] = request;
 
     // Smoke and a sound at the enemy, so the player sees and hears where it comes.
     Vec3f zero = { 0.0f, 0.0f, 0.0f };

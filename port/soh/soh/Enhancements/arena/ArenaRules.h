@@ -128,7 +128,8 @@ constexpr ShopItemSpec kShopItems[kShopItemCount] = {
     { ShopItem::Arrows, 1, 20, true, ShopNeed::Nothing },
     { ShopItem::Bombs, 1, 30, true, ShopNeed::BombBag },
     { ShopItem::HylianShield, 1, 30, true, ShopNeed::NoShield },
-    { ShopItem::HeartContainer, 1, 100, true, ShopNeed::Nothing },
+    // Price() uses kHeartContainerPrices.
+    { ShopItem::HeartContainer, 1, 0, true, ShopNeed::Nothing },
     { ShopItem::BombBag, 1, 60, false, ShopNeed::Nothing },
     { ShopItem::MirrorShield, 1, 120, false, ShopNeed::Nothing },
     { ShopItem::DekuNuts, 1, 40, true, ShopNeed::Nothing },
@@ -167,12 +168,14 @@ inline int Price(ShopItem item, int shop) {
     return GetShopItem(item).price;
 }
 
+// The shop has the item, but Link can need another item first.
+inline bool IsInShop(const ShopItemSpec& spec, int shop, const LinkState& link) {
+    return shop >= spec.firstShop && (spec.consumable || !link.owns[static_cast<int>(spec.item)]);
+}
+
 inline bool IsOffered(ShopItem item, int shop, const LinkState& link) {
     const ShopItemSpec& spec = GetShopItem(item);
-    if (shop < spec.firstShop) {
-        return false;
-    }
-    if (!spec.consumable && link.owns[static_cast<int>(item)]) {
+    if (!IsInShop(spec, shop, link)) {
         return false;
     }
     if (item == ShopItem::HeartContainer && link.hearts >= kMaxHearts) {
@@ -207,7 +210,7 @@ inline std::vector<ShopItem> Offers(int shop, const LinkState& link) {
 inline std::vector<ShopItem> ShopSlots(int shop, const LinkState& link) {
     std::vector<ShopItem> slots;
     for (const ShopItemSpec& spec : kShopItems) {
-        if (shop >= spec.firstShop && (spec.consumable || !link.owns[static_cast<int>(spec.item)])) {
+        if (IsInShop(spec, shop, link)) {
             slots.push_back(spec.item);
         }
     }

@@ -66,6 +66,16 @@ constexpr ItemText kItemTexts[ArenaRules::kShopItemCount] = {
     { ShopItem::DoubleMagic, "Double Magic", "doppelte Magie", "la Double magie" },
 };
 
+constexpr bool TextsAreInTheOrderOfTheItems() {
+    for (int i = 0; i < ArenaRules::kShopItemCount; i++) {
+        if (static_cast<int>(kItemTexts[i].item) != i) {
+            return false;
+        }
+    }
+    return true;
+}
+static_assert(TextsAreInTheOrderOfTheItems(), "kItemTexts must have one row for each ShopItem, in the same order");
+
 struct Slot {
     // The scrub that starts the next wave has no item.
     bool startsWave;
@@ -269,10 +279,6 @@ void SpawnScrub(PlayState* play, Slot& slot, int index) {
     EffectSsDeadDb_Spawn(play, &pos, &zero, &zero, 100, 20, 255, 255, 255, 200, 120, 120, 255, 1, 9, false);
 }
 
-std::string Join(const char* a, const std::string& b, const char* c) {
-    return std::string(a) + b + c;
-}
-
 } // namespace
 
 ArenaRules::LinkState CurrentLink() {
@@ -327,6 +333,10 @@ void Close() {
             Actor_Kill(slot.scrub);
         }
     }
+    Reset();
+}
+
+void Reset() {
     sSlots.clear();
     sOpen = false;
     sStartWave = nullptr;
@@ -378,7 +388,8 @@ void OnActorUpdate(void* refActor) {
         return;
     }
     EnDns* enDns = reinterpret_cast<EnDns*>(actor);
-    // EnDns_Update sets the text of its params in each frame.
+    // EnDns_Update sets the text of its params in each frame. This hook runs after EnDns_Update (Actor_UpdateAll), and
+    // the player reads textId in the next frame, so the player gets the text of the shop.
     actor->textId = slot->startsWave ? kStartTextId : kItemTextId;
     // A scrub that sold its item drops 3 hearts when it goes into the floor (EnDns_PostBurrow). The shop sells hearts.
     enDns->dropCollectible = 0;
@@ -402,44 +413,33 @@ void OnOpenText(uint16_t* textId, bool* loadFromMessageTable) {
     }
 
     // \x12\x38\x82: the sound of the scrub, as in the texts of the randomizer for scrubs (MerchantMessages.cpp).
+    const std::string sound = "\x12\x38\x82";
     CustomMessage msg;
     if (slot->startsWave) {
-        std::string wave = std::to_string(sNextWave);
-        msg = CustomMessage(Join("\x12\x38\x82"
-                                 "Are you ready for %rwave ",
-                                 wave, "%w?\x1B%gYes&No%w"),
-                            Join("\x12\x38\x82"
-                                 "Bist Du bereit für %rWelle ",
-                                 wave, "%w?\x1B%gJa&Nein%w"),
-                            Join("\x12\x38\x82"
-                                 "Es-tu prêt pour la %rvague ",
-                                 wave, "%w?\x1B%gOui&Non%w"));
+        const std::string wave = std::to_string(sNextWave);
+        const std::string yesNo = "%w?\x1B%g";
+        msg = CustomMessage(sound + "Are you ready for %rwave " + wave + yesNo + "Yes&No%w",
+                            sound + "Bist Du bereit für %rWelle " + wave + yesNo + "Ja&Nein%w",
+                            sound + "Es-tu prêt pour la %rvague " + wave + yesNo + "Oui&Non%w");
     } else {
         const ItemText& text = kItemTexts[static_cast<int>(slot->item)];
-        std::string price = std::to_string(ArenaRules::Price(slot->item, sShop));
+        const std::string price = std::to_string(ArenaRules::Price(slot->item, sShop));
         // \x07\x10\xA3 goes to the Yes/No question of the scrubs.
-        msg = CustomMessage(Join("\x12\x38\x82"
-                                 "I sell %g",
-                                 std::string(text.english) + "%w for %y" + price, " Rupees%w!\x07\x10\xA3"),
-                            Join("\x12\x38\x82"
-                                 "Ich verkaufe Dir %g",
-                                 std::string(text.german) + "%w für %y" + price, " Rubine%w!\x07\x10\xA3"),
-                            Join("\x12\x38\x82"
-                                 "Je te vends %g",
-                                 std::string(text.french) + "%w pour %y" + price, " Rubis%w!\x07\x10\xA3"));
+        const std::string question = "%w!\x07\x10\xA3";
+        msg = CustomMessage(sound + "I sell %g" + text.english + "%w for %y" + price + " Rupees" + question,
+                            sound + "Ich verkaufe Dir %g" + text.german + "%w für %y" + price + " Rubine" + question,
+                            sound + "Je te vends %g" + text.french + "%w pour %y" + price + " Rubis" + question);
     }
     msg.AutoFormat();
     msg.LoadIntoFont();
     *loadFromMessageTable = false;
 }
 
-bool OnGiveItemFromScrub(void* scrub, bool* should) {
-    if (FindSlot(static_cast<Actor*>(scrub)) == nullptr) {
-        return false;
-    }
+void OnGiveItemFromScrub(void* scrub, bool* should) {
     // Pay gives the item. The get item animation would stop the shop for each item.
-    *should = false;
-    return true;
+    if (FindSlot(static_cast<Actor*>(scrub)) != nullptr) {
+        *should = false;
+    }
 }
 
 } // namespace ArenaShop

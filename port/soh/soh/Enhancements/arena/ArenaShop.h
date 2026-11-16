@@ -25,12 +25,15 @@ struct Place {
     float z;
 };
 
-// Opens the shop. places has ScrubCount(shop) places. nextWave is the wave after the shop. startWave is called when the
-// player tells a scrub to start the next wave.
+// Opens the shop. places has ScrubCount(shop) places. nextWave is the wave after the shop. The shop calls startWave
+// when the player tells a scrub to start the next wave.
 void Open(int shop, int nextWave, const std::vector<Place>& places, void (*startWave)());
 
 // Removes all the scrubs.
 void Close();
+
+// Forgets the scrubs, and does not touch them. For a new run: the scrubs of the last run can be deleted.
+void Reset();
 
 bool IsOpen();
 
@@ -43,7 +46,7 @@ void SceneLoaded();
 void OnActorUpdate(void* actor);
 void OnActorDestroy(void* actor);
 void OnOpenText(uint16_t* textId, bool* loadFromMessageTable);
-// Returns true when the hook is for a scrub of the shop.
-bool OnGiveItemFromScrub(void* scrub, bool* should);
+// For VB_GIVE_ITEM_FROM_BUSINESS_SCRUB.
+void OnGiveItemFromScrub(void* scrub, bool* should);
 
 } // namespace ArenaShop
