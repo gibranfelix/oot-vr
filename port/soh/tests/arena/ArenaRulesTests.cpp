@@ -8,6 +8,7 @@
 
 #include <cmath>
 #include <cstdio>
+#include <vector>
 
 using namespace ArenaRules;
 
@@ -303,6 +304,250 @@ static void EnemiesLeftCountsTheAliveAndTheEnemiesToSpawn() {
     EXPECT(director.EnemiesLeft(1) == 3);
 }
 
+// Issue #169: 5, 10, 20, and 50 rupees for levels 1 to 4. A Hyper enemy gives 2 times the value.
+static void DeadEnemyGivesTheRupeesOfItsLevel() {
+    EXPECT(KillReward(0, false) == 5);
+    EXPECT(KillReward(1, false) == 10);
+    EXPECT(KillReward(2, false) == 20);
+    EXPECT(KillReward(3, false) == 50);
+    EXPECT(KillReward(0, true) == 10);
+    EXPECT(KillReward(3, true) == 100);
+}
+
+static void ClearedWaveGivesTenTimesTheWaveNumber() {
+    EXPECT(WaveBonus(1) == 10);
+    EXPECT(WaveBonus(3) == 30);
+    EXPECT(WaveBonus(12) == 120);
+}
+
+// Spawns all the enemies of the wave, and kills them.
+static void ClearWave(Director& director) {
+    SkipPause(director);
+    int counts[kLevels] = {};
+    int hyper[kLevels] = {};
+    DrainSpawns(director, 0, counts, hyper);
+    SpawnRequest request;
+    EXPECT(!director.Tick(0, &request));
+}
+
+static void ShopStartsAfterEachThirdWave() {
+    Director director;
+    director.StartAt(2);
+    ClearWave(director);
+    EXPECT(!director.InShop());
+    EXPECT(director.Wave() == 3);
+    ClearWave(director);
+    EXPECT(director.InShop());
+    EXPECT(!director.InPause());
+    EXPECT(director.Wave() == 4);
+    EXPECT(director.ShopNumber() == 1);
+
+    director.StartAt(6);
+    ClearWave(director);
+    EXPECT(director.InShop());
+    EXPECT(director.ShopNumber() == 2);
+}
+
+static void ShopHasNoTimeLimit() {
+    Director director;
+    director.StartAt(3);
+    ClearWave(director);
+    SpawnRequest request;
+    for (int frame = 0; frame < 100 * kFramesPerSecond; frame++) {
+        EXPECT(!director.Tick(0, &request));
+    }
+    EXPECT(director.InShop());
+    EXPECT(director.Wave() == 4);
+}
+
+static void NextWaveStartsFiveSecondsAfterTheShop() {
+    Director director;
+    director.StartAt(3);
+    ClearWave(director);
+    director.LeaveShop();
+    EXPECT(!director.InShop());
+    EXPECT(director.InPause());
+    EXPECT(director.PauseSecondsLeft() == 5);
+    SkipPause(director);
+    int counts[kLevels] = {};
+    int hyper[kLevels] = {};
+    EXPECT(DrainSpawns(director, 0, counts, hyper) == GetWave(4).Total());
+}
+
+// A void-out in the shop loads the scene again. The shop continues.
+static void RestartWaveInTheShopKeepsTheShop() {
+    Director director;
+    director.StartAt(3);
+    ClearWave(director);
+    director.RestartWave();
+    EXPECT(director.InShop());
+    EXPECT(!director.InPause());
+}
+
+static bool Offered(int shop, const LinkState& link, ShopItem item) {
+    for (ShopItem offer : Offers(shop, link)) {
+        if (offer == item) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Link at the start of the run: the Master Sword, the Hylian Shield, the bow, and 6 hearts.
+static LinkState StartLink() {
+    LinkState link;
+    link.hasShield = true;
+    link.hearts = 6;
+    return link;
+}
+
+static void FirstShopSellsTheItemsOfShopOne() {
+    LinkState link = StartLink();
+    std::vector<ShopItem> offers = Offers(1, link);
+    const ShopItem expected[] = { ShopItem::RedPotion,      ShopItem::RecoveryHearts, ShopItem::Arrows,
+                                  ShopItem::HeartContainer, ShopItem::BombBag,        ShopItem::MirrorShield,
+                                  ShopItem::DekuNuts };
+    EXPECT(offers.size() == sizeof(expected) / sizeof(expected[0]));
+    for (ShopItem item : expected) {
+        EXPECT(Offered(1, link, item));
+    }
+}
+
+static void EachShopAddsItems() {
+    LinkState link = StartLink();
+    EXPECT(!Offered(1, link, ShopItem::Longshot));
+    EXPECT(Offered(2, link, ShopItem::MagicDinsFire));
+    EXPECT(Offered(2, link, ShopItem::Longshot));
+    EXPECT(Offered(2, link, ShopItem::MegatonHammer));
+    EXPECT(Offered(2, link, ShopItem::HoverBoots));
+    EXPECT(!Offered(2, link, ShopItem::BiggoronSword));
+    EXPECT(Offered(3, link, ShopItem::BiggoronSword));
+    EXPECT(Offered(3, link, ShopItem::DoubleDefense));
+    // The shops after shop 3 sell the same items.
+    EXPECT(Offers(7, link).size() == Offers(3, link).size());
+}
+
+static void ItemThatLinkDidNotBuyStays() {
+    LinkState link = StartLink();
+    EXPECT(Offered(3, link, ShopItem::MirrorShield));
+    EXPECT(Offered(3, link, ShopItem::BombBag));
+}
+
+static void ShopDoesNotSellAnItemThatLinkHas() {
+    LinkState link = StartLink();
+    link.owns[static_cast<int>(ShopItem::MirrorShield)] = true;
+    link.owns[static_cast<int>(ShopItem::Longshot)] = true;
+    EXPECT(!Offered(3, link, ShopItem::MirrorShield));
+    EXPECT(!Offered(3, link, ShopItem::Longshot));
+}
+
+static void MagicItemsNeedMagic() {
+    LinkState link = StartLink();
+    const ShopItem magicItems[] = { ShopItem::GreenPotion, ShopItem::FireArrows, ShopItem::IceArrows,
+                                    ShopItem::LightArrows, ShopItem::NayrusLove, ShopItem::DoubleMagic };
+    for (ShopItem item : magicItems) {
+        EXPECT(!Offered(3, link, item));
+    }
+    link.owns[static_cast<int>(ShopItem::MagicDinsFire)] = true;
+    for (ShopItem item : magicItems) {
+        EXPECT(Offered(3, link, item));
+    }
+    EXPECT(!Offered(3, link, ShopItem::MagicDinsFire));
+}
+
+static void BombsNeedTheBombBag() {
+    LinkState link = StartLink();
+    EXPECT(!Offered(1, link, ShopItem::Bombs));
+    link.owns[static_cast<int>(ShopItem::BombBag)] = true;
+    EXPECT(Offered(1, link, ShopItem::Bombs));
+    EXPECT(!Offered(1, link, ShopItem::BombBag));
+}
+
+// A Like-Like can eat the Hylian Shield.
+static void HylianShieldOnlyWithoutAShield() {
+    LinkState link = StartLink();
+    EXPECT(!Offered(1, link, ShopItem::HylianShield));
+    link.hasShield = false;
+    EXPECT(Offered(1, link, ShopItem::HylianShield));
+}
+
+static void HeartContainerStopsAtTwentyHearts() {
+    LinkState link = StartLink();
+    link.hearts = 19;
+    EXPECT(Offered(1, link, ShopItem::HeartContainer));
+    link.hearts = 20;
+    EXPECT(!Offered(1, link, ShopItem::HeartContainer));
+}
+
+static void PricesAreThePricesOfTheIssue() {
+    EXPECT(Price(ShopItem::HeartContainer, 1) == 100);
+    EXPECT(Price(ShopItem::HeartContainer, 2) == 150);
+    EXPECT(Price(ShopItem::HeartContainer, 3) == 200);
+    EXPECT(Price(ShopItem::HeartContainer, 8) == 200);
+    EXPECT(Price(ShopItem::RedPotion, 1) == 40);
+    EXPECT(Price(ShopItem::MirrorShield, 1) == 120);
+    EXPECT(Price(ShopItem::MagicDinsFire, 2) == 200);
+    EXPECT(Price(ShopItem::BiggoronSword, 3) == 500);
+    EXPECT(Price(ShopItem::DoubleDefense, 3) == 300);
+}
+
+static void EachItemHasItsRowInTheTable() {
+    for (int i = 0; i < kShopItemCount; i++) {
+        EXPECT(static_cast<int>(kShopItems[i].item) == i);
+    }
+}
+
+static void ScrubsAreInTheArenaAndNotOnTopOfEachOther() {
+    const Point center{ 0.0f, 0.0f };
+    const float radius = 240.0f;
+    const Point links[] = { { 0.0f, 0.0f }, { 230.0f, 0.0f }, { -100.0f, 150.0f } };
+    for (Point link : links) {
+        for (int count = 1; count <= kShopItemCount + 1; count++) {
+            std::vector<Point> points = ShopPositions(center, radius, link, count);
+            EXPECT(static_cast<int>(points.size()) == count);
+            for (size_t i = 0; i < points.size(); i++) {
+                EXPECT(DistanceBetween(points[i], center) <= radius + 0.01f);
+                for (size_t j = i + 1; j < points.size(); j++) {
+                    EXPECT(DistanceBetween(points[i], points[j]) >= 55.0f);
+                }
+            }
+        }
+    }
+}
+
+static void ScrubsAreAroundLink() {
+    const Point center{ 0.0f, 0.0f };
+    const Point link{ 300.0f, 100.0f };
+    std::vector<Point> points = ShopPositions(center, 750.0f, link, 8);
+    for (Point point : points) {
+        float distance = DistanceBetween(point, link);
+        EXPECT(distance >= 100.0f && distance <= 200.0f);
+    }
+}
+
+// A slot keeps the place of a scrub for all the shop. Items that need magic, the bomb bag, or no shield get a slot,
+// because Link can buy their need in the same shop.
+static void ShopSlotsHaveAPlaceForTheItemsThatNeedAnotherItem() {
+    LinkState link = StartLink();
+    std::vector<ShopItem> slots = ShopSlots(3, link);
+    auto has = [&](ShopItem item) {
+        for (ShopItem slot : slots) {
+            if (slot == item) {
+                return true;
+            }
+        }
+        return false;
+    };
+    EXPECT(has(ShopItem::GreenPotion));
+    EXPECT(has(ShopItem::Bombs));
+    EXPECT(has(ShopItem::HylianShield));
+    EXPECT(has(ShopItem::NayrusLove));
+    link.owns[static_cast<int>(ShopItem::Longshot)] = true;
+    slots = ShopSlots(3, link);
+    EXPECT(!has(ShopItem::Longshot));
+    EXPECT(ShopSlots(1, StartLink()).size() == 10);
+}
+
 int main() {
     CurveIsTheCurveOfTheIssue();
     WaveHasThreePlusNEnemiesUpTo25();
@@ -321,6 +566,25 @@ int main() {
     RestartWaveSpawnsTheWholeWaveAgain();
     PointOutsideTheBoundaryComesBack();
     EnemiesLeftCountsTheAliveAndTheEnemiesToSpawn();
+    DeadEnemyGivesTheRupeesOfItsLevel();
+    ClearedWaveGivesTenTimesTheWaveNumber();
+    ShopStartsAfterEachThirdWave();
+    ShopHasNoTimeLimit();
+    NextWaveStartsFiveSecondsAfterTheShop();
+    RestartWaveInTheShopKeepsTheShop();
+    FirstShopSellsTheItemsOfShopOne();
+    EachShopAddsItems();
+    ItemThatLinkDidNotBuyStays();
+    ShopDoesNotSellAnItemThatLinkHas();
+    MagicItemsNeedMagic();
+    BombsNeedTheBombBag();
+    HylianShieldOnlyWithoutAShield();
+    HeartContainerStopsAtTwentyHearts();
+    PricesAreThePricesOfTheIssue();
+    EachItemHasItsRowInTheTable();
+    ScrubsAreInTheArenaAndNotOnTopOfEachOther();
+    ScrubsAreAroundLink();
+    ShopSlotsHaveAPlaceForTheItemsThatNeedAnotherItem();
     if (sFailures == 0) {
         std::printf("All ArenaRules tests passed.\n");
     }

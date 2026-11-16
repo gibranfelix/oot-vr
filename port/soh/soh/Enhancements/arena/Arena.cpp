@@ -1,5 +1,6 @@
 #include "Arena.h"
 #include "ArenaRules.h"
+#include "ArenaShop.h"
 #include "soh/ShipInit.hpp"
 #include "soh/ShipUtils.h"
 #include "soh/frame_interpolation.h"
@@ -133,6 +134,7 @@ static const EnemyLevel sLevels[ArenaRules::kLevels] = {
 
 static const char* sWaveText[] = { "WAVE", "WELLE", "VAGUE" };
 static const char* sEnemiesLeftText[] = { "Enemies", "Gegner", "Ennemis" };
+static const char* sShopText[] = { "Shop", "Laden", "Boutique" };
 
 static void* sContinuePromptNoTexs[] = {
     (void*)gPauseNoENGTex,
@@ -143,8 +145,12 @@ static void* sContinuePromptNoTexs[] = {
 // The state of one run. The file is temporary, so a run starts with each file.
 static const ArenaScene* sArena = nullptr;
 static ArenaRules::Director sDirector;
-// The wave enemies that are alive or that wait for their deletion. The value is true for a Hyper enemy.
-static std::unordered_map<Actor*, bool> sWaveEnemies;
+struct WaveEnemy {
+    int level; // 0 to 3
+    bool hyper;
+};
+// The wave enemies that are alive or that wait for their deletion.
+static std::unordered_map<Actor*, WaveEnemy> sWaveEnemies;
 // The ambient light and the directional light that ARENA adds in the Ganon arena.
 static const s16 kGanonExtraAmbient = 70;
 static const s16 kGanonExtraLight = 50;
@@ -169,6 +175,7 @@ static bool InArenaScene(PlayState* play) {
 
 static void ResetRun() {
     sDirector.Start();
+    ArenaShop::Close();
     sWaveEnemies.clear();
     sLinkPlaced = false;
     sMusicStarted = false;
@@ -180,6 +187,7 @@ static void ResetRun() {
 // The scene loaded again, for example after a void-out. The actors of the wave are gone: the wave starts again.
 static void RestartWave() {
     sDirector.RestartWave();
+    ArenaShop::SceneLoaded();
     sWaveEnemies.clear();
     sLinkPlaced = false;
 }
@@ -236,7 +244,7 @@ static bool SpawnEnemy(PlayState* play, const ArenaRules::SpawnRequest& request)
     if (actor == NULL) {
         return false;
     }
-    sWaveEnemies[actor] = request.hyper;
+    sWaveEnemies[actor] = WaveEnemy{ request.level, request.hyper };
 
     // Smoke and a sound at the enemy, so the player sees and hears where it comes.
     Vec3f zero = { 0.0f, 0.0f, 0.0f };
@@ -261,6 +269,28 @@ static void PlaceLink(PlayState* play) {
         Actor_Spawn(&play->actorCtx, play, ACTOR_DOOR_SHUTTER, sArena->center.x, sArena->center.y - 97.0f,
                     sArena->center.z + 308.0f, 0, 0, 0, SHUTTER_PG_BARS << 6);
     }
+}
+
+static void StartWaveAfterShop() {
+    sDirector.LeaveShop();
+}
+
+// The scrubs stand on a ring around Link, in the circle where the enemies spawn.
+static void OpenShop(PlayState* play) {
+    int shop = sDirector.ShopNumber();
+    int count = ArenaShop::ScrubCount(shop);
+    Player* player = GET_PLAYER(play);
+    std::vector<ArenaRules::Point> points = ArenaRules::ShopPositions(
+        ArenaCenter(), sArena->spawnRadius, { player->actor.world.pos.x, player->actor.world.pos.z }, count);
+    std::vector<ArenaShop::Place> places;
+    for (const ArenaRules::Point& point : points) {
+        f32 floorY = FloorBelow(play, point.x, point.z);
+        if (floorY <= BGCHECK_Y_MIN || floorY > sArena->center.y + 150.0f) {
+            floorY = player->actor.world.pos.y;
+        }
+        places.push_back(ArenaShop::Place{ point.x, floorY, point.z });
+    }
+    ArenaShop::Open(shop, sDirector.Wave(), places, StartWaveAfterShop);
 }
 
 static void KeepInBoundary(Actor* actor) {
@@ -313,8 +343,8 @@ static void OnPlayerUpdate() {
         return;
     }
     // The spin attack of a Gerudo fighter catches Link (EnGeldB_SpinAttack), and the draw of the fighter then sends him
-    // to the jail. ARENA blocks the jail (EnemyRandomizer.cpp), and the game does not draw a fighter out of the view, so
-    // Link stays caught. Release Link and let the fighter attack again: the catch only knocks Link down.
+    // to the jail. ARENA blocks the jail (EnemyRandomizer.cpp), and the game does not draw a fighter out of the view,
+    // so Link stays caught. Release Link and let the fighter attack again: the catch only knocks Link down.
     if (player->csAction == PLAYER_CSACTION_24 && player->csActor != NULL && player->csActor->id == ACTOR_EN_GELDB) {
         reinterpret_cast<EnGeldB*>(player->csActor)->spinAttackState = 0;
         Player_SetCsAction(play, NULL, PLAYER_CSACTION_7);
@@ -337,9 +367,17 @@ static void OnPlayerUpdate() {
     }
     if (sDirector.Wave() != wave) {
         SPDLOG_INFO("[ARENA] Wave {} done", wave);
+        Rupees_ChangeBy(ArenaRules::WaveBonus(wave));
+        if (sDirector.InShop()) {
+            OpenShop(play);
+        }
     }
+    if (ArenaShop::IsOpen() && !sDirector.InShop()) {
+        ArenaShop::Close();
+    }
+    ArenaShop::Update(play);
 
-    if (!sMusicStarted && !sDirector.InPause()) {
+    if (!sMusicStarted && !sDirector.InPause() && !sDirector.InShop()) {
         Audio_QueueSeqCmd(SEQ_PLAYER_BGM_MAIN << 24 | NA_BGM_MINI_BOSS);
         sMusicStarted = true;
     }
@@ -376,14 +414,29 @@ static void OnActorInit(void* refActor) {
 
 static void OnActorUpdate(void* refActor) {
     Actor* actor = static_cast<Actor*>(refActor);
+    ArenaShop::OnActorUpdate(actor);
     auto entry = sWaveEnemies.find(actor);
-    if (entry == sWaveEnemies.end() || !entry->second) {
+    if (entry == sWaveEnemies.end() || !entry->second.hyper) {
         return;
     }
     // The same second update as Hyper Enemies (HyperEnemies.cpp), only for the Hyper enemies of the wave.
     if (!Player_InBlockingCsMode(gPlayState, GET_PLAYER(gPlayState))) {
         GameInteractor::RawAction::UpdateActor(actor);
     }
+}
+
+// Actor_Kill clears update, and the deletion comes in the next frame. When the scene unloads, the game deletes the
+// actors without Actor_Kill: those enemies give no rupees.
+static void OnActorDestroy(Actor* actor) {
+    ArenaShop::OnActorDestroy(actor);
+    auto entry = sWaveEnemies.find(actor);
+    if (entry == sWaveEnemies.end()) {
+        return;
+    }
+    if (actor->update == NULL && !sDead) {
+        Rupees_ChangeBy(ArenaRules::KillReward(entry->second.level, entry->second.hyper));
+    }
+    sWaveEnemies.erase(entry);
 }
 
 // Draws the fire ring of Ganon (BossGanon2 draw of the ring, z_boss_ganon2.c), so the player sees the boundary.
@@ -480,11 +533,16 @@ static void OnVanillaBehavior(GIVanillaBehavior id, bool* should, va_list origin
             *should = !sDead;
             break;
         }
+        // The scrubs of the shop give the item without the get item animation (ArenaShop.cpp).
+        case VB_GIVE_ITEM_FROM_BUSINESS_SCRUB: {
+            void* scrub = va_arg(args, void*);
+            ArenaShop::OnGiveItemFromScrub(scrub, should);
+            break;
+        }
         case VB_BE_ABLE_TO_SAVE:
         case VB_BE_ABLE_TO_OPEN_DOORS:
         case VB_SPAWN_BLUE_WARP:
-        case VB_SPAWN_HEART_CONTAINER:
-        case VB_RENDER_RUPEE_COUNTER: {
+        case VB_SPAWN_HEART_CONTAINER: {
             *should = false;
             break;
         }
@@ -577,9 +635,14 @@ static void RegisterArena() {
             OnActorUpdate(actor);
         }
     });
-    gi->RegisterGameHook<GameInteractor::OnActorDestroy>([](void* actor) {
+    gi->RegisterGameHook<GameInteractor::OnActorDestroy>([](void* refActor) {
         if (IS_ARENA) {
-            sWaveEnemies.erase(static_cast<Actor*>(actor));
+            OnActorDestroy(static_cast<Actor*>(refActor));
+        }
+    });
+    gi->RegisterGameHook<GameInteractor::OnOpenText>([](uint16_t* textId, bool* loadFromMessageTable) {
+        if (IS_ARENA) {
+            ArenaShop::OnOpenText(textId, loadFromMessageTable);
         }
     });
     gi->RegisterGameHook<GameInteractor::OnPlayDrawEnd>([]() {
@@ -617,46 +680,43 @@ extern "C" void Arena_InitSave(void) {
     // Without this flag, the first entrance to the scene of Ganon plays the collapse of the castle.
     Flags_SetEventChkInf(EVENTCHKINF_WATCHED_GANONS_CASTLE_COLLAPSE_CAUGHT_BY_GERUDO);
 
-    // 10 hearts and double magic. With 20 hearts, the first waves were too easy on the headset.
-    gSaveContext.healthCapacity = gSaveContext.health = 10 * 16;
-    gSaveContext.isMagicAcquired = true;
-    gSaveContext.isDoubleMagicAcquired = true;
-    gSaveContext.magicLevel = 2;
-    gSaveContext.magic = 96;
+    // Issue #169: Link starts with little equipment, and buys the rest in the shop. 6 hearts, no magic.
+    gSaveContext.healthCapacity = gSaveContext.health = 6 * 16;
+    gSaveContext.isMagicAcquired = false;
+    gSaveContext.isDoubleMagicAcquired = false;
+    gSaveContext.isDoubleDefenseAcquired = false;
+    gSaveContext.inventory.defenseHearts = 0;
+    gSaveContext.magicLevel = 0;
+    gSaveContext.magic = 0;
 
-    // All the weapons of adult Link, Din's Fire, and the Bunny Hood. No bottles. No Farore's Wind: it loads the scene
-    // again and restarts the wave. No Nayru's Love: Link cannot take damage.
-    std::array<u8, 24> items = {
-        ITEM_NONE, ITEM_NUT,  ITEM_BOMB,    ITEM_BOW,      ITEM_ARROW_FIRE,  ITEM_DINS_FIRE,
-        ITEM_NONE, ITEM_NONE, ITEM_BOMBCHU, ITEM_LONGSHOT, ITEM_ARROW_ICE,   ITEM_NONE,
-        ITEM_NONE, ITEM_NONE, ITEM_NONE,    ITEM_HAMMER,   ITEM_ARROW_LIGHT, ITEM_NONE,
-        ITEM_NONE, ITEM_NONE, ITEM_NONE,    ITEM_NONE,     ITEM_NONE,        ITEM_MASK_BUNNY,
-    };
+    // The bow only. No bombs, Deku Nuts, longshot, Megaton Hammer, spells, magic arrows, masks, or bottles.
     for (int i = 0; i < ARRAY_COUNT(gSaveContext.inventory.items); i++) {
-        gSaveContext.inventory.items[i] = items[i];
+        gSaveContext.inventory.items[i] = ITEM_NONE;
     }
-
-    // The largest bomb bag, quiver, and nut capacity, and they are full. Boss Rush gives the same ammo with
-    // BR_CHOICE_AMMO_MAXED.
-    std::array<s8, 16> ammo = { 0, 40, 40, 50, 0, 0, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0 };
+    gSaveContext.inventory.items[SLOT_BOW] = ITEM_BOW;
     for (int i = 0; i < ARRAY_COUNT(gSaveContext.inventory.ammo); i++) {
-        gSaveContext.inventory.ammo[i] = ammo[i];
+        gSaveContext.inventory.ammo[i] = 0;
     }
-    Inventory_ChangeUpgrade(UPG_QUIVER, 3);
-    Inventory_ChangeUpgrade(UPG_BOMB_BAG, 3);
-    Inventory_ChangeUpgrade(UPG_NUTS, 3);
+    // The first quiver: 30 arrows, full.
+    Inventory_ChangeUpgrade(UPG_QUIVER, 1);
+    Inventory_ChangeUpgrade(UPG_BOMB_BAG, 0);
+    Inventory_ChangeUpgrade(UPG_NUTS, 0);
+    AMMO(ITEM_BOW) = CUR_CAPACITY(UPG_QUIVER);
 
+    // The rupees of the enemies buy the items. The largest wallet: 999 rupees.
+    Inventory_ChangeUpgrade(UPG_WALLET, 3);
+    gSaveContext.rupees = 0;
+
+    gSaveContext.inventory.equipment = 0;
     gSaveContext.inventory.equipment |= OWNED_EQUIP_FLAG(EQUIP_TYPE_SWORD, EQUIP_INV_SWORD_MASTER);
-    gSaveContext.inventory.equipment |= OWNED_EQUIP_FLAG(EQUIP_TYPE_SWORD, EQUIP_INV_SWORD_BIGGORON);
-    gSaveContext.bgsFlag = true;
-    gSaveContext.inventory.equipment |= OWNED_EQUIP_FLAG(EQUIP_TYPE_SHIELD, EQUIP_INV_SHIELD_MIRROR);
-    gSaveContext.inventory.equipment |= OWNED_EQUIP_FLAG(EQUIP_TYPE_BOOTS, EQUIP_INV_BOOTS_IRON);
-    gSaveContext.inventory.equipment |= OWNED_EQUIP_FLAG(EQUIP_TYPE_BOOTS, EQUIP_INV_BOOTS_HOVER);
+    gSaveContext.bgsFlag = false;
+    gSaveContext.inventory.equipment |= OWNED_EQUIP_FLAG(EQUIP_TYPE_SHIELD, EQUIP_INV_SHIELD_HYLIAN);
+    gSaveContext.inventory.equipment |= OWNED_EQUIP_FLAG(EQUIP_TYPE_TUNIC, EQUIP_INV_TUNIC_KOKIRI);
+    gSaveContext.inventory.equipment |= OWNED_EQUIP_FLAG(EQUIP_TYPE_BOOTS, EQUIP_INV_BOOTS_KOKIRI);
 
-    // B: the Master Sword, so the shield works. The player can equip the Biggoron Sword in the pause menu.
-    // C buttons: the bow, the longshot, and the bombs.
-    static const u8 sButtonItems[] = { ITEM_SWORD_MASTER, ITEM_BOW, ITEM_LONGSHOT, ITEM_BOMB };
-    static const u8 sCButtonSlots[] = { SLOT_BOW, SLOT_HOOKSHOT, SLOT_BOMB };
+    // B: the Master Sword. C buttons: the bow. The player puts the items of the shop on the C buttons.
+    static const u8 sButtonItems[] = { ITEM_SWORD_MASTER, ITEM_BOW };
+    static const u8 sCButtonSlots[] = { SLOT_BOW };
     for (int i = 0; i < ARRAY_COUNT(gSaveContext.equips.buttonItems); i++) {
         gSaveContext.equips.buttonItems[i] = i < ARRAY_COUNT(sButtonItems) ? sButtonItems[i] : ITEM_NONE;
     }
@@ -664,7 +724,7 @@ extern "C" void Arena_InitSave(void) {
         gSaveContext.equips.cButtonSlots[i] = i < ARRAY_COUNT(sCButtonSlots) ? sCButtonSlots[i] : SLOT_NONE;
     }
     Inventory_ChangeEquipment(EQUIP_TYPE_SWORD, EQUIP_VALUE_SWORD_MASTER);
-    Inventory_ChangeEquipment(EQUIP_TYPE_SHIELD, EQUIP_VALUE_SHIELD_MIRROR);
+    Inventory_ChangeEquipment(EQUIP_TYPE_SHIELD, EQUIP_VALUE_SHIELD_HYLIAN);
     Inventory_ChangeEquipment(EQUIP_TYPE_TUNIC, EQUIP_VALUE_TUNIC_KOKIRI);
     Inventory_ChangeEquipment(EQUIP_TYPE_BOOTS, EQUIP_VALUE_BOOTS_KOKIRI);
 
@@ -697,7 +757,9 @@ extern "C" void Arena_Draw(PlayState* play) {
 
     // One line below the gameplay timer (Interface_DrawTotalGameplayTimer, y 73). The wrist HUD shows only y 0 to 100
     // of this area (kWristHudStatusTop in vr_openxr.cpp), so a second line is not visible.
-    if (sDirector.InPause()) {
+    if (sDirector.InShop()) {
+        snprintf(line, sizeof(line), "%s %d   %s", waveText, sDirector.Wave(), sShopText[TextLanguage()]);
+    } else if (sDirector.InPause()) {
         snprintf(line, sizeof(line), "%s %d", waveText, sDirector.Wave());
     } else {
         snprintf(line, sizeof(line), "%s %d   %s: %d", waveText, sDirector.Wave(), sEnemiesLeftText[TextLanguage()],
