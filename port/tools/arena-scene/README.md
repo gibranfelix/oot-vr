@@ -7,6 +7,7 @@ only the Python standard library.
 |---|---|
 | `gltf_to_scene.py` | Converts a glTF file to the XML files and the PNG textures of a scene. |
 | `make_test_scene.py` | Makes `test-scene/arena_scene.gltf`: a floor, four walls, and one light. |
+| `gltfwrite.py` | Writes glTF buffers and PNG files for `make_test_scene.py` and the tests. |
 | `test_gltf_to_scene.py` | The host tests of the converter. |
 | `test-scene/` | The glTF file and the textures of the test scene. |
 

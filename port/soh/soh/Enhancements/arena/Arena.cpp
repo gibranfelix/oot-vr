@@ -80,8 +80,8 @@ static const ArenaScene sArenaScenes[] = {
       static_cast<s16>(0x8000),
       "Ganon",
       nullptr },
-    // The test scene of issue #170 (port/tools/arena-scene): a floor of 24 x 24 m and four walls of 4 m. The walls are
-    // 480 units from the center. The scene uses the slot of the debug scene SCENE_TESTROOM.
+    // The test scene of issue #170 (port/tools/arena-scene): a floor of 960 x 960 units and four walls of 160 units.
+    // The walls are 480 units from the center. The scene uses the slot of the debug scene SCENE_TESTROOM.
     { SCENE_TESTROOM,
       ENTR_TESTROOM_0,
       { 0.0f, 0.0f, 0.0f },

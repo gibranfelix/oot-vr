@@ -5,15 +5,13 @@ The geometry and the textures are new. The script makes them from numbers, so th
 Open the glTF file in Blender to change the scene. Then convert it with gltf_to_scene.py.
 """
 
-import base64
 import json
 import math
 import os
 import random
-import struct
 import sys
 
-from pngwrite import write_png
+from gltfwrite import GltfBuffer, write_png
 
 # The size of the room, in meters. Adult Link is about 1.7 m.
 HALF_SIZE = 12.0
@@ -23,6 +21,7 @@ TILE = 4.0
 # One repeat of a texture, in meters.
 TEXTURE_REPEAT = 2.0
 SPAWN_Z = 9.0
+TILES_PER_SIDE = int(2 * HALF_SIZE / TILE)
 # The direction to the sun: above the room, from the south-east. The walls get different light.
 SUN_DIRECTION = (0.5, 1.0, 0.7)
 
@@ -33,6 +32,8 @@ def rotation_from_z(d):
     d = [c / length for c in d]
     axis = (-d[1], d[0], 0.0)  # cross((0, 0, 1), d)
     axis_length = math.sqrt(axis[0] ** 2 + axis[1] ** 2)
+    if axis_length == 0.0:
+        return [0.0, 0.0, 0.0, 1.0] if d[2] > 0 else [1.0, 0.0, 0.0, 0.0]
     angle = math.acos(max(-1.0, min(1.0, d[2])))
     s = math.sin(angle / 2) / axis_length
     return [axis[0] * s, axis[1] * s, 0.0, math.cos(angle / 2)]
@@ -72,7 +73,7 @@ def wall_texture(path):
 
 def quads_floor():
     positions, uvs, indices = [], [], []
-    n = int(2 * HALF_SIZE / TILE)
+    n = TILES_PER_SIDE
     for iz in range(n):
         for ix in range(n):
             x0, z0 = -HALF_SIZE + ix * TILE, -HALF_SIZE + iz * TILE
@@ -87,7 +88,7 @@ def quads_floor():
 
 def quads_walls():
     positions, uvs, indices = [], [], []
-    n = int(2 * HALF_SIZE / TILE)
+    n = TILES_PER_SIDE
     h = HALF_SIZE
     # Each wall: a point on the wall, the direction along the wall, and the front faces the center.
     walls = [
@@ -116,34 +117,15 @@ def make(out_dir):
     floor_texture(os.path.join(out_dir, "floor.png"))
     wall_texture(os.path.join(out_dir, "wall.png"))
 
-    blob = bytearray()
-    views, accessors = [], []
-
-    def add(values, fmt, kind, comp_type, target=None):
-        offset = len(blob)
-        for v in values:
-            blob.extend(struct.pack("<" + fmt, *(v if isinstance(v, tuple) else (v,))))
-        while len(blob) % 4:
-            blob.append(0)
-        view = {"buffer": 0, "byteOffset": offset, "byteLength": len(blob) - offset}
-        if target:
-            view["target"] = target
-        views.append(view)
-        acc = {"bufferView": len(views) - 1, "componentType": comp_type, "count": len(values), "type": kind}
-        if kind == "VEC3":
-            acc["min"] = [min(v[i] for v in values) for i in range(3)]
-            acc["max"] = [max(v[i] for v in values) for i in range(3)]
-        accessors.append(acc)
-        return len(accessors) - 1
-
+    buf = GltfBuffer()
     meshes = []
     for material, (positions, uvs, indices) in enumerate((quads_floor(), quads_walls())):
         prim = {
             "attributes": {
-                "POSITION": add(positions, "fff", "VEC3", 5126, 34962),
-                "TEXCOORD_0": add(uvs, "ff", "VEC2", 5126, 34962),
+                "POSITION": buf.add(positions, "fff", "VEC3", 5126, 34962),
+                "TEXCOORD_0": buf.add(uvs, "ff", "VEC2", 5126, 34962),
             },
-            "indices": add(indices, "H", "SCALAR", 5123, 34963),
+            "indices": buf.add(indices, "H", "SCALAR", 5123, 34963),
             "material": material,
         }
         meshes.append({"name": ("floor", "walls")[material], "primitives": [prim]})
@@ -174,13 +156,10 @@ def make(out_dir):
         ],
         "textures": [{"source": 0}, {"source": 1}],
         "images": [{"uri": "floor.png"}, {"uri": "wall.png"}],
-        "buffers": [{"byteLength": len(blob), "uri": "data:application/octet-stream;base64," +
-                     base64.b64encode(bytes(blob)).decode()}],
-        "bufferViews": views,
-        "accessors": accessors,
         "extensions": {"KHR_lights_punctual": {"lights": [{"name": "sun", "type": "directional",
                                                            "color": [1.0, 0.95, 0.85], "intensity": 0.6}]}},
     }
+    buf.fill(doc)
     path = os.path.join(out_dir, "arena_scene.gltf")
     with open(path, "w") as f:
         json.dump(doc, f, indent=1)

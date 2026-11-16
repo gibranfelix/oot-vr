@@ -121,7 +121,9 @@ debug scene `SCENE_TESTROOM` and the entrance `ENTR_TESTROOM_0`.
 `OTRPlay_SpawnScene` asks `Arena_GetScenePath` for the path of the scene. The
 path is `scenes/shared/arena_scene/`, not the path of the debug scene. An
 `oot.o2r` from a debug version has the debug scene, and `oot.o2r` replaces the
-resources of `soh.o2r` that have the same path. The XML files of the scene are
+resources of `soh.o2r` that have the same path.
+
+The XML files of the ARENA scene are
 in `port/soh/assets/custom/scenes/shared/arena_scene/`.
 `port/tools/arena-scene/` makes them from a glTF file.
 

@@ -134,6 +134,22 @@
    "uri": "wall.png"
   }
  ],
+ "extensions": {
+  "KHR_lights_punctual": {
+   "lights": [
+    {
+     "name": "sun",
+     "type": "directional",
+     "color": [
+      1.0,
+      0.95,
+      0.85
+     ],
+     "intensity": 0.6
+    }
+   ]
+  }
+ },
  "buffers": [
   {
    "byteLength": 5520,
@@ -235,21 +251,5 @@
    "count": 144,
    "type": "SCALAR"
   }
- ],
- "extensions": {
-  "KHR_lights_punctual": {
-   "lights": [
-    {
-     "name": "sun",
-     "type": "directional",
-     "color": [
-      1.0,
-      0.95,
-      0.85
-     ],
-     "intensity": 0.6
-    }
-   ]
-  }
- }
+ ]
 }

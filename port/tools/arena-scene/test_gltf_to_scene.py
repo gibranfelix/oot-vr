@@ -4,39 +4,27 @@
     python3 -m unittest discover -s port/tools/arena-scene
 """
 
-import base64
 import json
 import os
-import struct
 import tempfile
 import unittest
 import xml.etree.ElementTree as ET
 
 import gltf_to_scene as g
-from pngwrite import write_png
+from gltfwrite import GltfBuffer, write_png
 
 
 def make_gltf(directory, meshes, extra_nodes=(), texture_size=(32, 32), light=True, extras=None):
     """meshes: a list of (node name, positions, uvs, indices, transform dict, use texture)."""
     write_png(os.path.join(directory, "tex.png"), texture_size[0], texture_size[1], lambda x, y: (200, 100, 50, 255))
-    blob = bytearray()
-    views, accessors, gltf_meshes, nodes = [], [], [], []
-
-    def add(values, fmt, kind, comp_type, count):
-        offset = len(blob)
-        for v in values:
-            blob.extend(struct.pack("<" + fmt, *(v if isinstance(v, tuple) else (v,))))
-        while len(blob) % 4:
-            blob.append(0)
-        views.append({"buffer": 0, "byteOffset": offset, "byteLength": len(blob) - offset})
-        accessors.append({"bufferView": len(views) - 1, "componentType": comp_type, "count": count, "type": kind})
-        return len(accessors) - 1
+    buf = GltfBuffer()
+    gltf_meshes, nodes = [], []
 
     for name, positions, uvs, indices, transform, textured in meshes:
-        attrs = {"POSITION": add(positions, "fff", "VEC3", 5126, len(positions))}
+        attrs = {"POSITION": buf.add(positions, "fff", "VEC3", 5126)}
         if uvs:
-            attrs["TEXCOORD_0"] = add(uvs, "ff", "VEC2", 5126, len(uvs))
-        prim = {"attributes": attrs, "indices": add(indices, "H", "SCALAR", 5123, len(indices)),
+            attrs["TEXCOORD_0"] = buf.add(uvs, "ff", "VEC2", 5126)
+        prim = {"attributes": attrs, "indices": buf.add(indices, "H", "SCALAR", 5123),
                 "material": 0 if textured else 1}
         gltf_meshes.append({"primitives": [prim]})
         node = {"name": name, "mesh": len(gltf_meshes) - 1}
@@ -58,12 +46,9 @@ def make_gltf(directory, meshes, extra_nodes=(), texture_size=(32, 32), light=Tr
         ],
         "textures": [{"source": 0}],
         "images": [{"uri": "tex.png"}],
-        "buffers": [{"byteLength": len(blob),
-                     "uri": "data:application/octet-stream;base64," + base64.b64encode(bytes(blob)).decode()}],
-        "bufferViews": views,
-        "accessors": accessors,
         "extensions": {"KHR_lights_punctual": {"lights": [{"type": "directional", "intensity": 1.0}]}},
     }
+    buf.fill(doc)
     path = os.path.join(directory, "scene.gltf")
     with open(path, "w") as f:
         json.dump(doc, f)
@@ -125,8 +110,10 @@ class BatchTests(unittest.TestCase):
 
 class TexCoordTests(unittest.TestCase):
     def test_large_uvs_move_by_whole_repeats(self):
-        mat = g.Material.__new__(g.Material)
-        mat.texture_path, mat.width, mat.height = "x.png", 32, 32
+        with tempfile.TemporaryDirectory() as tmp:
+            png = os.path.join(tmp, "tex.png")
+            write_png(png, 32, 32, lambda x, y: (0, 0, 0, 255))
+            mat = g.Material("tex", (1.0, 1.0, 1.0, 1.0), png)
         tri = g.Triangle([(0, 0, 0)] * 3, [(100.0, 50.5), (101.0, 50.5), (101.0, 51.5)], [(1, 1, 1, 1)] * 3, mat)
         self.assertEqual(g.tex_coords(tri), [(0, 512), (1024, 512), (1024, 1536)])
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Convert a glTF 2.0 file to the XML resources of a Ship of Harkinian scene.
 
-The output is one scene with one room: the scene file, the room file, the collision header, the display list of the
-room, the vertex buffers, and the textures. The XML loaders of the game read these files from soh.o2r
+The output is one scene with one room. The files are the scene, the room, the collision header, the display list of
+the room, the vertex buffers, and the textures. The XML loaders of the game read these files from soh.o2r
 (port/soh/soh/resource/importer/ and libultraship/src/fast/resource/factory/).
 
 The glTF file can have:
@@ -419,16 +419,12 @@ def material_commands(dl, mat, texture_resource):
     el(dl, "PipeSync")
     el(dl, "ClearGeometryMode", G_LIGHTING=1, G_TEXTURE_GEN=1)
     el(dl, "SetGeometryMode", G_ZBUFFER=1, G_SHADE=1, G_FOG=1, G_CULL_BACK=1, G_SHADING_SMOOTH=1)
-    if texture_resource:
-        el(dl, "SetCombineLERP", A0="G_CCMUX_TEXEL0", B0="G_CCMUX_0", C0="G_CCMUX_SHADE", D0="G_CCMUX_0",
-           Aa0="G_ACMUX_0", Ab0="G_ACMUX_0", Ac0="G_ACMUX_0", Ad0="G_ACMUX_1", A1="G_CCMUX_0", B1="G_CCMUX_0",
-           C1="G_CCMUX_0", D1="G_CCMUX_COMBINED", Aa1="G_ACMUX_0", Ab1="G_ACMUX_0", Ac1="G_ACMUX_0",
-           Ad1="G_ACMUX_COMBINED")
-    else:
-        el(dl, "SetCombineLERP", A0="G_CCMUX_0", B0="G_CCMUX_0", C0="G_CCMUX_0", D0="G_CCMUX_SHADE",
-           Aa0="G_ACMUX_0", Ab0="G_ACMUX_0", Ac0="G_ACMUX_0", Ad0="G_ACMUX_1", A1="G_CCMUX_0", B1="G_CCMUX_0",
-           C1="G_CCMUX_0", D1="G_CCMUX_COMBINED", Aa1="G_ACMUX_0", Ab1="G_ACMUX_0", Ac1="G_ACMUX_0",
-           Ad1="G_ACMUX_COMBINED")
+    # Cycle 1: the texture times the vertex color, or only the vertex color. Cycle 2 keeps the result of cycle 1.
+    first = ("G_CCMUX_TEXEL0", "G_CCMUX_0", "G_CCMUX_SHADE", "G_CCMUX_0") if texture_resource else \
+        ("G_CCMUX_0", "G_CCMUX_0", "G_CCMUX_0", "G_CCMUX_SHADE")
+    el(dl, "SetCombineLERP", A0=first[0], B0=first[1], C0=first[2], D0=first[3], Aa0="G_ACMUX_0", Ab0="G_ACMUX_0",
+       Ac0="G_ACMUX_0", Ad0="G_ACMUX_1", A1="G_CCMUX_0", B1="G_CCMUX_0", C1="G_CCMUX_0", D1="G_CCMUX_COMBINED",
+       Aa1="G_ACMUX_0", Ab1="G_ACMUX_0", Ac1="G_ACMUX_0", Ad1="G_ACMUX_COMBINED")
     el(dl, "SetOtherMode", Cmd="G_SETOTHERMODE_H", Sft=4, Length=20, G_AD_NOISE=1, G_CD_MAGICSQ=1, G_CK_NONE=1,
        G_TC_FILT=1, G_TF_BILERP=1, G_TT_NONE=1, G_TL_TILE=1, G_TD_CLAMP=1, G_TP_PERSP=1, G_CYC_2CYCLE=1,
        G_PM_NPRIMITIVE=1)

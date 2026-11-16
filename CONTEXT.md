@@ -157,8 +157,8 @@ It has no end.
 ## ARENA
 
 A quest type with waves of enemies in one closed scene. The player selects the
-scene in the quest menu: Phantom Ganon or Ganon. Like Boss Rush, the game does
-not save an ARENA file. When Link dies, the game goes back to the
+scene in the quest menu: Phantom Ganon, Ganon, or Test Room. Like Boss Rush,
+the game does not save an ARENA file. When Link dies, the game goes back to the
 file select.
 
 ## Wave
