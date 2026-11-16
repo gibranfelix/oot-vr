@@ -1,0 +1,20 @@
+<Room Version="0">
+	<SetSoundSettings Reverb="0" NatureAmbienceId="255" SeqId="127" />
+	<SetRoomList>
+		<RoomEntry Path="scenes/shared/arena_scene/arena_scene_room_0" VromStart="0" VromEnd="4096" />
+	</SetRoomList>
+	<SetCollisionHeader FileName="scenes/shared/arena_scene/arena_scene_col" />
+	<SetEntranceList>
+		<EntranceEntry Spawn="0" Room="0" />
+	</SetEntranceList>
+	<SetSpecialObjects ElfMessage="0" GlobalObject="0" />
+	<SetStartPositionList>
+		<StartPositionEntry Id="0" PosX="0" PosY="0" PosZ="360" RotX="0" RotY="-32768" RotZ="0" Params="4095" />
+	</SetStartPositionList>
+	<SetSkyboxSettings Unknown="0" SkyboxId="0" Weather="0" Indoors="1" />
+	<SetCameraSettings CameraMovement="0" WorldMapArea="0" />
+	<SetLightingSettings>
+		<LightingSetting AmbientColorR="115" AmbientColorG="115" AmbientColorB="128" Light1DirX="48" Light1DirY="96" Light1DirZ="67" Light1ColorR="153" Light1ColorG="145" Light1ColorB="130" Light2DirX="-48" Light2DirY="-96" Light2DirZ="-67" Light2ColorR="0" Light2ColorG="0" Light2ColorB="0" FogColorR="13" FogColorG="13" FogColorB="20" FogNear="996" FogFar="12800" />
+	</SetLightingSettings>
+	<EndMarker />
+</Room>

@@ -50,6 +50,8 @@ struct ArenaScene {
     s16 linkYaw;
     // The name in the quest menu.
     const char* name;
+    // The scene resource in soh.o2r, for a scene of ARENA in the slot of a debug scene. nullptr: the scene of the game.
+    const char* resourcePath;
 };
 
 // Phantom Ganon: the room is about 300 units from the center to the paintings (z_en_fhg.c). The boss spawns the
@@ -65,7 +67,8 @@ static const ArenaScene sArenaScenes[] = {
       0.0f,
       { 14.0f, -33.0f, -3160.0f },
       static_cast<s16>(0x8000),
-      "Phantom Ganon" },
+      "Phantom Ganon",
+      nullptr },
     { SCENE_GANON_BOSS,
       ENTR_GANON_BOSS_0,
       { -200.0f, 1086.0f, -200.0f },
@@ -75,7 +78,21 @@ static const ArenaScene sArenaScenes[] = {
       750.0f,
       { -200.0f, 1086.0f, 300.0f },
       static_cast<s16>(0x8000),
-      "Ganon" },
+      "Ganon",
+      nullptr },
+    // The test scene of issue #170 (port/tools/arena-scene): a floor of 24 x 24 m and four walls of 4 m. The walls are
+    // 480 units from the center. The scene uses the slot of the debug scene SCENE_TESTROOM.
+    { SCENE_TESTROOM,
+      ENTR_TESTROOM_0,
+      { 0.0f, 0.0f, 0.0f },
+      400.0f,
+      160.0f,
+      480.0f,
+      0.0f,
+      { 0.0f, 0.0f, 360.0f },
+      static_cast<s16>(0x8000),
+      "Test Room",
+      "scenes/shared/arena_scene/arena_scene" },
 };
 
 struct ArenaEnemy {
@@ -601,6 +618,13 @@ extern "C" void Arena_SelectNextScene(int step) {
 
 extern "C" const char* Arena_GetSelectedSceneName(void) {
     return sArenaScenes[sSelectedScene].name;
+}
+
+extern "C" const char* Arena_GetScenePath(int sceneNum) {
+    if (!IS_ARENA || sArena == nullptr || sArena->sceneNum != sceneNum) {
+        return nullptr;
+    }
+    return sArena->resourcePath;
 }
 
 extern "C" void Arena_InitSave(void) {
