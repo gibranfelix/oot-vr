@@ -10849,6 +10849,11 @@ static AnimSfxEntry D_8085461C[] = {
     { NA_SE_VO_LI_SWORD_N, -ANIMSFX_DATA(ANIMSFX_TYPE_VOICE, 230) },
 };
 
+// SOH [VR] True during the pillar lift and throw.
+s32 Player_VrIsHeavyLift(Player* this) {
+    return this->actionFunc == Player_Action_80846120;
+}
+
 void Player_Action_80846120(Player* this, PlayState* play) {
     if (LinkAnimation_Update(play, &this->skelAnime) && (this->av2.actionVar2++ > 20)) {
         if (!Player_ActionHandler_13(this, play)) {
