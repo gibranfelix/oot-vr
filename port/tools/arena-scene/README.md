@@ -7,6 +7,7 @@ only the Python standard library.
 |---|---|
 | `gltf_to_scene.py` | Converts a glTF file to the XML files and the PNG textures of a scene. |
 | `make_test_scene.py` | Makes `test-scene/arena_scene.gltf`: a floor, four walls, and one light. |
+| `preview_scene.py` | Makes an HTML preview of a scene from the XML files that the game reads. |
 | `gltfwrite.py` | Writes glTF buffers and PNG files for `make_test_scene.py` and the tests. |
 | `test_gltf_to_scene.py` | The host tests of the converter. |
 | `test-scene/` | The glTF file and the textures of the test scene. |
@@ -24,11 +25,18 @@ only the Python standard library.
        --name arena_scene --custom-assets port/soh/assets/custom
    ```
 
-4. Add the files with `git add -f`. The `.gitignore` of Ship of Harkinian
+4. Make a preview, and open the HTML file in a browser:
+
+   ```sh
+   python3 port/tools/arena-scene/preview_scene.py \
+       port/soh/assets/custom/scenes/shared/arena_scene -o /tmp/arena_scene.html
+   ```
+
+5. Add the files with `git add -f`. The `.gitignore` of Ship of Harkinian
    ignores `*.png`.
-5. Build the APK with `port/Android/build-apk.sh`. The build adds the files to
+6. Build the APK with `port/Android/build-apk.sh`. The build adds the files to
    `soh.o2r`.
-6. If the size or the spawn point of the scene changes, change the entry of the
+7. If the size or the spawn point of the scene changes, change the entry of the
    test scene in `sArenaScenes` (`port/soh/soh/Enhancements/arena/Arena.cpp`).
 
 Use only new geometry and new textures. Do not use data from the game.

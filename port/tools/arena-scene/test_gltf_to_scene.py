@@ -274,5 +274,24 @@ class TestSceneTests(unittest.TestCase):
         self.assertGreater(int(light.get("Light1DirY")), 0)
 
 
+class PreviewTests(unittest.TestCase):
+    """preview_scene.py reads the XML files that the converter writes."""
+
+    def test_preview_has_all_the_triangles_and_textures(self):
+        import make_test_scene
+        import preview_scene
+        with tempfile.TemporaryDirectory() as tmp:
+            scene = g.load_scene(make_test_scene.make(os.path.join(tmp, "src")))
+            files, textures = g.build_files(scene, "arena_scene", "scenes/shared/arena_scene")
+            out = os.path.join(tmp, "arena_scene")
+            g.write_output(files, textures, out)
+            data = preview_scene.scene_data(out, "arena_scene")
+            page = preview_scene.make_page(out, "arena_scene")
+        self.assertEqual(sum(len(grp["positions"]) // 9 for grp in data["groups"]), len(scene.draw))
+        self.assertTrue(all(grp["texture"].startswith("data:image/png;base64,") for grp in data["groups"]))
+        self.assertEqual(data["start"], [0, 0, 360])
+        self.assertNotIn("__DATA__", page)
+
+
 if __name__ == "__main__":
     unittest.main()
