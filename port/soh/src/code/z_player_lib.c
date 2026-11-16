@@ -1536,6 +1536,9 @@ s32 Player_OverrideLimbDrawGameplayFirstPerson(PlayState* play, s32 limbIndex, G
 // next limb once that hand's mesh + held item have drawn.
 static s32 sVrHandInvertCulling = false;
 
+// SOH [VR] Defined in z_player.c.
+s32 Player_VrIsHeavyLift(Player* this);
+
 // SOH [VR] 20 Hz hand-pose snapshot per VR hand, for extracting hand-LOCAL child transforms
 // (bow/slingshot string) that the interpreter re-composes against the LIVE controller pose —
 // welding derived geometry to the live-rendered hand instead of trailing it at game rate.
@@ -1564,7 +1567,12 @@ s32 Player_OverrideLimbDrawGameplayVRFirstPerson(PlayState* play, s32 limbIndex,
     // items ride the hand matrices, so sword/shield stay visible). With motion hands off, the
     // hands belong to the body's arms, so everything hides. Third person is unaffected (it uses
     // the normal draw path).
-    if (CVarGetInteger("gVrHideBody", 1)) {
+    // SOH [VR] Pillar lift: the animation moves the arms, not the controllers.
+    s32 vrHeavyLift = Player_VrIsHeavyLift(this);
+    s32 vrIsArmLimb = (limbIndex == PLAYER_LIMB_L_SHOULDER) || (limbIndex == PLAYER_LIMB_L_FOREARM) ||
+                      (limbIndex == PLAYER_LIMB_L_HAND) || (limbIndex == PLAYER_LIMB_R_SHOULDER) ||
+                      (limbIndex == PLAYER_LIMB_R_FOREARM) || (limbIndex == PLAYER_LIMB_R_HAND);
+    if (CVarGetInteger("gVrHideBody", 1) && !(vrHeavyLift && vrIsArmLimb)) {
         s32 vrIsHandLimb = (limbIndex == PLAYER_LIMB_L_HAND) || (limbIndex == PLAYER_LIMB_R_HAND);
         if (!(vrIsHandLimb && CVarGetInteger("gVrMotionHands", 1))) {
             *dList = NULL;
@@ -1578,7 +1586,7 @@ s32 Player_OverrideLimbDrawGameplayVRFirstPerson(PlayState* play, s32 limbIndex,
     // PostLimbDraw, so they follow for free. Link's LEFT hand holds the sword / RIGHT holds the shield;
     // by default the player's RIGHT controller drives the sword hand (gVrLeftHanded swaps). Because the
     // hand floats to the controller's world pose, which limb we borrow doesn't matter visually.
-    if (CVarGetInteger("gVrMotionHands", 1)) {
+    if (CVarGetInteger("gVrMotionHands", 1) && !vrHeavyLift) { // SOH [VR]
         if (limbIndex == PLAYER_LIMB_L_SHOULDER || limbIndex == PLAYER_LIMB_L_FOREARM ||
             limbIndex == PLAYER_LIMB_R_SHOULDER || limbIndex == PLAYER_LIMB_R_FOREARM) {
             *dList = NULL;

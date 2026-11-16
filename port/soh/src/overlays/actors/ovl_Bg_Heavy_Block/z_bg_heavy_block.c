@@ -8,6 +8,7 @@
 #include "objects/object_heavy_object/object_heavy_object.h"
 #include "vt.h"
 #include "soh/Enhancements/game-interactor/GameInteractor_Hooks.h"
+#include <vr_interface.h> // SOH [VR]
 
 #define FLAGS 0
 
@@ -485,6 +486,60 @@ void BgHeavyBlock_Update(Actor* thisx, PlayState* play) {
     this->actionFunc(this, play);
 }
 
+// SOH [VR] In first person, the lifted pillar is in the eyes. Draw it away from the eyes.
+// The collision and the throw do not change.
+static Vec3f sVrPillarPush = { 0.0f, 0.0f, 0.0f };
+
+static void BgHeavyBlock_VrPushFromEyes(BgHeavyBlock* this) {
+    Vec3f target = { 0.0f, 0.0f, 0.0f };
+    MtxF mf;
+
+    if (!VR_IsInitialized() || !VR_GetFirstPerson()) {
+        sVrPillarPush.x = sVrPillarPush.y = sVrPillarPush.z = 0.0f;
+        return;
+    }
+    if (BgHeavyBlock_LiftedUp == this->actionFunc) {
+        float eye[3], fwd[3], up[3];
+        Vec3f* a = &this->dyna.actor.world.pos; // The base of the pillar.
+        Vec3f* b = &this->dyna.actor.home.pos;  // The top of the pillar.
+        Vec3f ab = { b->x - a->x, b->y - a->y, b->z - a->z };
+        f32 lenSq = SQ(ab.x) + SQ(ab.y) + SQ(ab.z);
+        f32 t = 0.0f;
+        f32 clearance = CVarGetFloat("gVrPillarClearance", 80.0f);
+        Vec3f away;
+        f32 dist;
+
+        VR_GetCameraPose(eye, fwd, up);
+        if (lenSq > 0.0f) {
+            t = ((eye[0] - a->x) * ab.x + (eye[1] - a->y) * ab.y + (eye[2] - a->z) * ab.z) / lenSq;
+            t = CLAMP(t, 0.0f, 1.0f);
+        }
+        away.x = (a->x + ab.x * t) - eye[0];
+        away.y = (a->y + ab.y * t) - eye[1];
+        away.z = (a->z + ab.z * t) - eye[2];
+        dist = sqrtf(SQ(away.x) + SQ(away.y) + SQ(away.z));
+        if (dist < clearance) {
+            if (dist < 1.0f) {
+                away.x = away.z = 0.0f;
+                away.y = dist = 1.0f;
+            }
+            target.x = away.x / dist * (clearance - dist);
+            target.y = away.y / dist * (clearance - dist);
+            target.z = away.z / dist * (clearance - dist);
+        }
+    }
+    // Ease, so the pillar does not jump.
+    sVrPillarPush.x += (target.x - sVrPillarPush.x) * 0.2f;
+    sVrPillarPush.y += (target.y - sVrPillarPush.y) * 0.2f;
+    sVrPillarPush.z += (target.z - sVrPillarPush.z) * 0.2f;
+
+    Matrix_Get(&mf);
+    mf.xw += sVrPillarPush.x;
+    mf.yw += sVrPillarPush.y;
+    mf.zw += sVrPillarPush.z;
+    Matrix_Put(&mf);
+}
+
 void BgHeavyBlock_Draw(Actor* thisx, PlayState* play) {
     static Vec3f D_80884EC8 = { 0.0f, 0.0f, 0.0f };
     static Vec3f D_80884ED4 = { 0.0f, 400.0f, 0.0f };
@@ -505,6 +560,7 @@ void BgHeavyBlock_Draw(Actor* thisx, PlayState* play) {
 
     Matrix_MultVec3f(&D_80884EC8, &thisx->world.pos);
     Matrix_MultVec3f(&D_80884ED4, &thisx->home.pos);
+    BgHeavyBlock_VrPushFromEyes(this); // SOH [VR] After world.pos and home.pos.
     Gfx_SetupDL_25Opa(play->state.gfxCtx);
 
     gSPMatrix(POLY_OPA_DISP++, MATRIX_NEWMTX(play->state.gfxCtx), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);

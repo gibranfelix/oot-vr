@@ -260,7 +260,7 @@ a 2D fill, and it shows as a small gray rectangle in VR.
 | Pot, small rock, bush, crate, bomb flower, bomb, cucco | `ObjTsubo`, `EnIshi`, `EnKusa`, `ObjKibako`, `EnBombf`, `EnBom`, `EnNiw` | One | Throw with the hand velocity, or drop. |
 | Silver boulder | `EnIshi` (large) | Two | One open grip throws it. Link cannot walk. |
 | Block | The wall of an actor | Two | The grips replace the held A button (`func_8083F9D0`). The body or the stick moves the block. |
-| Golden gauntlet pillar | `BgHeavyBlock` | None | Only the A button. The lift is a cutscene, and the landing uses the animation. |
+| Golden gauntlet pillar | `BgHeavyBlock` | None | Only the A button. The animation moves the arms and the pillar, not the controllers. The pillar is drawn away from the eyes. |
 
 | Step | Code |
 |---|---|
