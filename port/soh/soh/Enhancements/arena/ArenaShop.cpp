@@ -1,6 +1,7 @@
 #include "ArenaShop.h"
 
 #include "soh/Enhancements/custom-message/CustomMessageManager.h"
+#include "soh/frame_interpolation.h"
 
 #include <array>
 #include <cmath>
@@ -48,8 +49,8 @@ static bool GoesIntoTheFloor(EnDns* enDns) {
            enDns->actionFunc == EnDns_Burrow || enDns->actionFunc == EnDns_PostBurrow;
 }
 
-// Not in a namespace: OPEN_DISPS declares FrameInterpolation_RecordOpenChild in the block, and in a namespace that
-// declaration names another function.
+// Not in a namespace: OPEN_DISPS declares FrameInterpolation_RecordOpenChild in the block. In a namespace, that
+// declaration names another function. frame_interpolation.h gives it C linkage.
 static void DrawShopItem(PlayState* play, Actor* scrub, ShopItem item) {
     // The item turns, and goes up and down a little, as the items of the randomizer.
     f32 frames = static_cast<f32>(play->gameplayFrames);
