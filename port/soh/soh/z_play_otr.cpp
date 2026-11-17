@@ -6,6 +6,7 @@
 #include <spdlog/spdlog.h>
 #include "soh/Enhancements/game-interactor/GameInteractor_Hooks.h"
 #include "global.h"
+#include "soh/Enhancements/arena/Arena.h" // SOH [VR]
 
 extern "C" void Play_InitScene(PlayState* play, s32 spawn);
 extern "C" void Play_InitEnvironment(PlayState* play, s16 skyboxId);
@@ -38,6 +39,12 @@ extern "C" void OTRPlay_SpawnScene(PlayState* play, s32 sceneId, s32 spawn) {
     }
     std::string scenePath = StringHelper::Sprintf("scenes/%s/%s/%s", sceneVersion.c_str(), scene->sceneFile.fileName,
                                                   scene->sceneFile.fileName);
+    // SOH [VR] ARENA loads its own scene from soh.o2r in the slot of a debug scene. The path is not the path of the
+    // debug scene, because an oot.o2r from a debug version has the debug scene, and oot.o2r replaces soh.o2r.
+    const char* arenaScenePath = Arena_GetScenePath(sceneId);
+    if (arenaScenePath != nullptr) {
+        scenePath = arenaScenePath;
+    }
 
     play->sceneSegment = OTRPlay_LoadFile(play, scenePath.c_str());
 

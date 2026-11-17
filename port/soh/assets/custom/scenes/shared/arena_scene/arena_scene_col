@@ -1,0 +1,197 @@
+<CollisionHeader Version="0" MinBoundsX="-480" MinBoundsY="0" MinBoundsZ="-480" MaxBoundsX="480" MaxBoundsY="160" MaxBoundsZ="480">
+	<Vertex X="-480" Y="0" Z="-480" />
+	<Vertex X="-480" Y="0" Z="-320" />
+	<Vertex X="-320" Y="0" Z="-320" />
+	<Vertex X="-320" Y="0" Z="-480" />
+	<Vertex X="-160" Y="0" Z="-320" />
+	<Vertex X="-160" Y="0" Z="-480" />
+	<Vertex X="0" Y="0" Z="-320" />
+	<Vertex X="0" Y="0" Z="-480" />
+	<Vertex X="160" Y="0" Z="-320" />
+	<Vertex X="160" Y="0" Z="-480" />
+	<Vertex X="320" Y="0" Z="-320" />
+	<Vertex X="320" Y="0" Z="-480" />
+	<Vertex X="480" Y="0" Z="-320" />
+	<Vertex X="480" Y="0" Z="-480" />
+	<Vertex X="-480" Y="0" Z="-160" />
+	<Vertex X="-320" Y="0" Z="-160" />
+	<Vertex X="-160" Y="0" Z="-160" />
+	<Vertex X="0" Y="0" Z="-160" />
+	<Vertex X="160" Y="0" Z="-160" />
+	<Vertex X="320" Y="0" Z="-160" />
+	<Vertex X="480" Y="0" Z="-160" />
+	<Vertex X="-480" Y="0" Z="0" />
+	<Vertex X="-320" Y="0" Z="0" />
+	<Vertex X="-160" Y="0" Z="0" />
+	<Vertex X="0" Y="0" Z="0" />
+	<Vertex X="160" Y="0" Z="0" />
+	<Vertex X="320" Y="0" Z="0" />
+	<Vertex X="480" Y="0" Z="0" />
+	<Vertex X="-480" Y="0" Z="160" />
+	<Vertex X="-320" Y="0" Z="160" />
+	<Vertex X="-160" Y="0" Z="160" />
+	<Vertex X="0" Y="0" Z="160" />
+	<Vertex X="160" Y="0" Z="160" />
+	<Vertex X="320" Y="0" Z="160" />
+	<Vertex X="480" Y="0" Z="160" />
+	<Vertex X="-480" Y="0" Z="320" />
+	<Vertex X="-320" Y="0" Z="320" />
+	<Vertex X="-160" Y="0" Z="320" />
+	<Vertex X="0" Y="0" Z="320" />
+	<Vertex X="160" Y="0" Z="320" />
+	<Vertex X="320" Y="0" Z="320" />
+	<Vertex X="480" Y="0" Z="320" />
+	<Vertex X="-480" Y="0" Z="480" />
+	<Vertex X="-320" Y="0" Z="480" />
+	<Vertex X="-160" Y="0" Z="480" />
+	<Vertex X="0" Y="0" Z="480" />
+	<Vertex X="160" Y="0" Z="480" />
+	<Vertex X="320" Y="0" Z="480" />
+	<Vertex X="480" Y="0" Z="480" />
+	<Vertex X="-320" Y="160" Z="-480" />
+	<Vertex X="-480" Y="160" Z="-480" />
+	<Vertex X="-160" Y="160" Z="-480" />
+	<Vertex X="0" Y="160" Z="-480" />
+	<Vertex X="160" Y="160" Z="-480" />
+	<Vertex X="320" Y="160" Z="-480" />
+	<Vertex X="480" Y="160" Z="-480" />
+	<Vertex X="320" Y="160" Z="480" />
+	<Vertex X="480" Y="160" Z="480" />
+	<Vertex X="160" Y="160" Z="480" />
+	<Vertex X="0" Y="160" Z="480" />
+	<Vertex X="-160" Y="160" Z="480" />
+	<Vertex X="-320" Y="160" Z="480" />
+	<Vertex X="-480" Y="160" Z="480" />
+	<Vertex X="-480" Y="160" Z="320" />
+	<Vertex X="-480" Y="160" Z="160" />
+	<Vertex X="-480" Y="160" Z="0" />
+	<Vertex X="-480" Y="160" Z="-160" />
+	<Vertex X="-480" Y="160" Z="-320" />
+	<Vertex X="480" Y="160" Z="-320" />
+	<Vertex X="480" Y="160" Z="-160" />
+	<Vertex X="480" Y="160" Z="0" />
+	<Vertex X="480" Y="160" Z="160" />
+	<Vertex X="480" Y="160" Z="320" />
+	<Polygon Type="0" VertexA="0" VertexB="1" VertexC="2" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="0" VertexB="2" VertexC="3" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="3" VertexB="2" VertexC="4" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="3" VertexB="4" VertexC="5" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="5" VertexB="4" VertexC="6" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="5" VertexB="6" VertexC="7" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="7" VertexB="6" VertexC="8" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="7" VertexB="8" VertexC="9" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="9" VertexB="8" VertexC="10" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="9" VertexB="10" VertexC="11" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="11" VertexB="10" VertexC="12" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="11" VertexB="12" VertexC="13" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="1" VertexB="14" VertexC="15" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="1" VertexB="15" VertexC="2" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="2" VertexB="15" VertexC="16" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="2" VertexB="16" VertexC="4" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="4" VertexB="16" VertexC="17" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="4" VertexB="17" VertexC="6" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="6" VertexB="17" VertexC="18" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="6" VertexB="18" VertexC="8" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="8" VertexB="18" VertexC="19" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="8" VertexB="19" VertexC="10" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="10" VertexB="19" VertexC="20" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="10" VertexB="20" VertexC="12" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="14" VertexB="21" VertexC="22" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="14" VertexB="22" VertexC="15" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="15" VertexB="22" VertexC="23" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="15" VertexB="23" VertexC="16" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="16" VertexB="23" VertexC="24" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="16" VertexB="24" VertexC="17" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="17" VertexB="24" VertexC="25" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="17" VertexB="25" VertexC="18" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="18" VertexB="25" VertexC="26" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="18" VertexB="26" VertexC="19" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="19" VertexB="26" VertexC="27" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="19" VertexB="27" VertexC="20" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="21" VertexB="28" VertexC="29" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="21" VertexB="29" VertexC="22" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="22" VertexB="29" VertexC="30" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="22" VertexB="30" VertexC="23" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="23" VertexB="30" VertexC="31" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="23" VertexB="31" VertexC="24" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="24" VertexB="31" VertexC="32" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="24" VertexB="32" VertexC="25" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="25" VertexB="32" VertexC="33" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="25" VertexB="33" VertexC="26" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="26" VertexB="33" VertexC="34" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="26" VertexB="34" VertexC="27" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="28" VertexB="35" VertexC="36" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="28" VertexB="36" VertexC="29" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="29" VertexB="36" VertexC="37" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="29" VertexB="37" VertexC="30" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="30" VertexB="37" VertexC="38" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="30" VertexB="38" VertexC="31" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="31" VertexB="38" VertexC="39" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="31" VertexB="39" VertexC="32" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="32" VertexB="39" VertexC="40" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="32" VertexB="40" VertexC="33" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="33" VertexB="40" VertexC="41" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="33" VertexB="41" VertexC="34" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="35" VertexB="42" VertexC="43" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="35" VertexB="43" VertexC="36" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="36" VertexB="43" VertexC="44" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="36" VertexB="44" VertexC="37" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="37" VertexB="44" VertexC="45" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="37" VertexB="45" VertexC="38" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="38" VertexB="45" VertexC="46" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="38" VertexB="46" VertexC="39" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="39" VertexB="46" VertexC="47" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="39" VertexB="47" VertexC="40" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="40" VertexB="47" VertexC="48" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="40" VertexB="48" VertexC="41" NormalX="0" NormalY="32767" NormalZ="0" Dist="0" />
+	<Polygon Type="0" VertexA="0" VertexB="3" VertexC="49" NormalX="0" NormalY="0" NormalZ="32767" Dist="480" />
+	<Polygon Type="0" VertexA="0" VertexB="49" VertexC="50" NormalX="0" NormalY="0" NormalZ="32767" Dist="480" />
+	<Polygon Type="0" VertexA="3" VertexB="5" VertexC="51" NormalX="0" NormalY="0" NormalZ="32767" Dist="480" />
+	<Polygon Type="0" VertexA="3" VertexB="51" VertexC="49" NormalX="0" NormalY="0" NormalZ="32767" Dist="480" />
+	<Polygon Type="0" VertexA="5" VertexB="7" VertexC="52" NormalX="0" NormalY="0" NormalZ="32767" Dist="480" />
+	<Polygon Type="0" VertexA="5" VertexB="52" VertexC="51" NormalX="0" NormalY="0" NormalZ="32767" Dist="480" />
+	<Polygon Type="0" VertexA="7" VertexB="9" VertexC="53" NormalX="0" NormalY="0" NormalZ="32767" Dist="480" />
+	<Polygon Type="0" VertexA="7" VertexB="53" VertexC="52" NormalX="0" NormalY="0" NormalZ="32767" Dist="480" />
+	<Polygon Type="0" VertexA="9" VertexB="11" VertexC="54" NormalX="0" NormalY="0" NormalZ="32767" Dist="480" />
+	<Polygon Type="0" VertexA="9" VertexB="54" VertexC="53" NormalX="0" NormalY="0" NormalZ="32767" Dist="480" />
+	<Polygon Type="0" VertexA="11" VertexB="13" VertexC="55" NormalX="0" NormalY="0" NormalZ="32767" Dist="480" />
+	<Polygon Type="0" VertexA="11" VertexB="55" VertexC="54" NormalX="0" NormalY="0" NormalZ="32767" Dist="480" />
+	<Polygon Type="0" VertexA="48" VertexB="47" VertexC="56" NormalX="0" NormalY="0" NormalZ="-32767" Dist="480" />
+	<Polygon Type="0" VertexA="48" VertexB="56" VertexC="57" NormalX="0" NormalY="0" NormalZ="-32767" Dist="480" />
+	<Polygon Type="0" VertexA="47" VertexB="46" VertexC="58" NormalX="0" NormalY="0" NormalZ="-32767" Dist="480" />
+	<Polygon Type="0" VertexA="47" VertexB="58" VertexC="56" NormalX="0" NormalY="0" NormalZ="-32767" Dist="480" />
+	<Polygon Type="0" VertexA="46" VertexB="45" VertexC="59" NormalX="0" NormalY="0" NormalZ="-32767" Dist="480" />
+	<Polygon Type="0" VertexA="46" VertexB="59" VertexC="58" NormalX="0" NormalY="0" NormalZ="-32767" Dist="480" />
+	<Polygon Type="0" VertexA="45" VertexB="44" VertexC="60" NormalX="0" NormalY="0" NormalZ="-32767" Dist="480" />
+	<Polygon Type="0" VertexA="45" VertexB="60" VertexC="59" NormalX="0" NormalY="0" NormalZ="-32767" Dist="480" />
+	<Polygon Type="0" VertexA="44" VertexB="43" VertexC="61" NormalX="0" NormalY="0" NormalZ="-32767" Dist="480" />
+	<Polygon Type="0" VertexA="44" VertexB="61" VertexC="60" NormalX="0" NormalY="0" NormalZ="-32767" Dist="480" />
+	<Polygon Type="0" VertexA="43" VertexB="42" VertexC="62" NormalX="0" NormalY="0" NormalZ="-32767" Dist="480" />
+	<Polygon Type="0" VertexA="43" VertexB="62" VertexC="61" NormalX="0" NormalY="0" NormalZ="-32767" Dist="480" />
+	<Polygon Type="0" VertexA="42" VertexB="35" VertexC="63" NormalX="32767" NormalY="0" NormalZ="0" Dist="480" />
+	<Polygon Type="0" VertexA="42" VertexB="63" VertexC="62" NormalX="32767" NormalY="0" NormalZ="0" Dist="480" />
+	<Polygon Type="0" VertexA="35" VertexB="28" VertexC="64" NormalX="32767" NormalY="0" NormalZ="0" Dist="480" />
+	<Polygon Type="0" VertexA="35" VertexB="64" VertexC="63" NormalX="32767" NormalY="0" NormalZ="0" Dist="480" />
+	<Polygon Type="0" VertexA="28" VertexB="21" VertexC="65" NormalX="32767" NormalY="0" NormalZ="0" Dist="480" />
+	<Polygon Type="0" VertexA="28" VertexB="65" VertexC="64" NormalX="32767" NormalY="0" NormalZ="0" Dist="480" />
+	<Polygon Type="0" VertexA="21" VertexB="14" VertexC="66" NormalX="32767" NormalY="0" NormalZ="0" Dist="480" />
+	<Polygon Type="0" VertexA="21" VertexB="66" VertexC="65" NormalX="32767" NormalY="0" NormalZ="0" Dist="480" />
+	<Polygon Type="0" VertexA="14" VertexB="1" VertexC="67" NormalX="32767" NormalY="0" NormalZ="0" Dist="480" />
+	<Polygon Type="0" VertexA="14" VertexB="67" VertexC="66" NormalX="32767" NormalY="0" NormalZ="0" Dist="480" />
+	<Polygon Type="0" VertexA="1" VertexB="0" VertexC="50" NormalX="32767" NormalY="0" NormalZ="0" Dist="480" />
+	<Polygon Type="0" VertexA="1" VertexB="50" VertexC="67" NormalX="32767" NormalY="0" NormalZ="0" Dist="480" />
+	<Polygon Type="0" VertexA="13" VertexB="12" VertexC="68" NormalX="-32767" NormalY="0" NormalZ="0" Dist="480" />
+	<Polygon Type="0" VertexA="13" VertexB="68" VertexC="55" NormalX="-32767" NormalY="0" NormalZ="0" Dist="480" />
+	<Polygon Type="0" VertexA="12" VertexB="20" VertexC="69" NormalX="-32767" NormalY="0" NormalZ="0" Dist="480" />
+	<Polygon Type="0" VertexA="12" VertexB="69" VertexC="68" NormalX="-32767" NormalY="0" NormalZ="0" Dist="480" />
+	<Polygon Type="0" VertexA="20" VertexB="27" VertexC="70" NormalX="-32767" NormalY="0" NormalZ="0" Dist="480" />
+	<Polygon Type="0" VertexA="20" VertexB="70" VertexC="69" NormalX="-32767" NormalY="0" NormalZ="0" Dist="480" />
+	<Polygon Type="0" VertexA="27" VertexB="34" VertexC="71" NormalX="-32767" NormalY="0" NormalZ="0" Dist="480" />
+	<Polygon Type="0" VertexA="27" VertexB="71" VertexC="70" NormalX="-32767" NormalY="0" NormalZ="0" Dist="480" />
+	<Polygon Type="0" VertexA="34" VertexB="41" VertexC="72" NormalX="-32767" NormalY="0" NormalZ="0" Dist="480" />
+	<Polygon Type="0" VertexA="34" VertexB="72" VertexC="71" NormalX="-32767" NormalY="0" NormalZ="0" Dist="480" />
+	<Polygon Type="0" VertexA="41" VertexB="48" VertexC="57" NormalX="-32767" NormalY="0" NormalZ="0" Dist="480" />
+	<Polygon Type="0" VertexA="41" VertexB="57" VertexC="72" NormalX="-32767" NormalY="0" NormalZ="0" Dist="480" />
+	<PolygonType Data1="0" Data2="0" />
+	<CameraData SType="3" NumData="0" CameraPosDataSeg="0" />
+</CollisionHeader>

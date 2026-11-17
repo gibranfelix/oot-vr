@@ -1,0 +1,10 @@
+<Room Version="0">
+	<SetEchoSettings Echo="0" />
+	<SetRoomBehavior GameplayFlags1="0" GameplayFlags2="0" />
+	<SetSkyboxModifier SkyboxDisabled="1" SunMoonDisabled="1" />
+	<SetTimeSettings Hour="255" Minute="255" TimeIncrement="0" />
+	<SetMesh Data="0" MeshHeaderType="0" PolyNum="1">
+		<Polygon PolyType="0" MeshOpa="scenes/shared/arena_scene/arena_scene_room_0_dl" MeshXlu="" />
+	</SetMesh>
+	<EndMarker />
+</Room>

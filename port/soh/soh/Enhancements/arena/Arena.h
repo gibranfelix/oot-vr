@@ -15,6 +15,10 @@ void Arena_SelectNextScene(int step);
 // The name of the selected arena, for the quest menu.
 const char* Arena_GetSelectedSceneName(void);
 
+// The scene resource of the arena in soh.o2r, when ARENA loads its own scene in sceneNum. Otherwise nullptr: the game
+// loads its own scene.
+const char* Arena_GetScenePath(int sceneNum);
+
 // Replaces the new save in gSaveContext with the ARENA save in the selected arena.
 void Arena_InitSave(void);
 
