@@ -31,6 +31,50 @@ void Randomizer_DrawDoubleDefense(PlayState* play, GetItemEntry* getItemEntry);
 
 using ArenaRules::ShopItem;
 
+// The item above a scrub: the height above the feet of the scrub, and the scale of the items of the shops (EnGirlA).
+static constexpr f32 kItemHeight = 70.0f;
+static constexpr f32 kItemScale = 0.25f;
+
+// The model of each item (z64item.h). Double Defense has no model in the game: it uses the model of the randomizer.
+static constexpr s16 kItemDrawIds[ArenaRules::kShopItemCount] = {
+    GID_POTION_RED,      GID_POTION_GREEN, GID_HEART,         GID_ARROWS_MEDIUM, GID_BOMB,      GID_SHIELD_HYLIAN,
+    GID_HEART_CONTAINER, GID_BOMB_BAG_20,  GID_SHIELD_MIRROR, GID_NUTS,          GID_DINS_FIRE, GID_LONGSHOT,
+    GID_HAMMER,          GID_BOOTS_HOVER,  GID_SWORD_BGS,     GID_ARROW_FIRE,    GID_ARROW_ICE, GID_ARROW_LIGHT,
+    GID_NAYRUS_LOVE,     GID_MAXIMUM,      GID_MAGIC_LARGE,
+};
+
+static bool GoesIntoTheFloor(EnDns* enDns) {
+    return enDns->actionFunc == EnDns_SetupBurrow || enDns->actionFunc == EnDns_SetupNoSaleBurrow ||
+           enDns->actionFunc == EnDns_Burrow || enDns->actionFunc == EnDns_PostBurrow;
+}
+
+// Not in a namespace: OPEN_DISPS declares FrameInterpolation_RecordOpenChild in the block, and in a namespace that
+// declaration names another function.
+static void DrawShopItem(PlayState* play, Actor* scrub, ShopItem item) {
+    // The item turns, and goes up and down a little, as the items of the randomizer.
+    f32 frames = static_cast<f32>(play->gameplayFrames);
+    Vec3f pos = { scrub->world.pos.x, scrub->world.pos.y + kItemHeight + 3.0f * sinf(frames * 0.1f),
+                  scrub->world.pos.z };
+
+    OPEN_DISPS(play->state.gfxCtx);
+    // The light of the scene at the item, as Actor_Draw does for an actor.
+    Lights* lights = LightContext_NewLights(&play->lightCtx, play->state.gfxCtx);
+    Lights_BindAll(lights, play->lightCtx.listHead, &pos);
+    Lights_Draw(lights, play->state.gfxCtx);
+    CLOSE_DISPS(play->state.gfxCtx);
+
+    Matrix_Push();
+    Matrix_Translate(pos.x, pos.y, pos.z, MTXMODE_NEW);
+    Matrix_RotateY(frames * 0.05f, MTXMODE_APPLY);
+    Matrix_Scale(kItemScale, kItemScale, kItemScale, MTXMODE_APPLY);
+    if (item == ShopItem::DoubleDefense) {
+        Randomizer_DrawDoubleDefense(play, nullptr);
+    } else {
+        GetItem_Draw(play, kItemDrawIds[static_cast<int>(item)]);
+    }
+    Matrix_Pop();
+}
+
 namespace ArenaShop {
 namespace {
 
@@ -45,10 +89,6 @@ constexpr int kRespawnFrames = 30;
 
 // The scrub that starts the next wave is larger than the scrubs that sell (EnDns_Init: 0.01).
 constexpr f32 kStartScrubScale = 0.015f;
-
-// The item above a scrub: the height above the feet of the scrub, and the scale of the items of the shops (EnGirlA).
-constexpr f32 kItemHeight = 70.0f;
-constexpr f32 kItemScale = 0.25f;
 
 struct ItemText {
     ShopItem item;
@@ -418,49 +458,6 @@ void SceneLoaded() {
     }
 }
 
-namespace {
-
-// The model of each item (z64item.h). Double Defense has no model in the game: it uses the model of the randomizer.
-constexpr s16 kItemDrawIds[ArenaRules::kShopItemCount] = {
-    GID_POTION_RED,      GID_POTION_GREEN, GID_HEART,         GID_ARROWS_MEDIUM, GID_BOMB,      GID_SHIELD_HYLIAN,
-    GID_HEART_CONTAINER, GID_BOMB_BAG_20,  GID_SHIELD_MIRROR, GID_NUTS,          GID_DINS_FIRE, GID_LONGSHOT,
-    GID_HAMMER,          GID_BOOTS_HOVER,  GID_SWORD_BGS,     GID_ARROW_FIRE,    GID_ARROW_ICE, GID_ARROW_LIGHT,
-    GID_NAYRUS_LOVE,     GID_MAXIMUM,      GID_MAGIC_LARGE,
-};
-
-bool GoesIntoTheFloor(EnDns* enDns) {
-    return enDns->actionFunc == EnDns_SetupBurrow || enDns->actionFunc == EnDns_SetupNoSaleBurrow ||
-           enDns->actionFunc == EnDns_Burrow || enDns->actionFunc == EnDns_PostBurrow;
-}
-
-void DrawItem(PlayState* play, const Slot& slot) {
-    Actor* scrub = slot.scrub;
-    // The item turns, and goes up and down a little, as the items of the randomizer.
-    f32 frames = static_cast<f32>(play->gameplayFrames);
-    Vec3f pos = { scrub->world.pos.x, scrub->world.pos.y + kItemHeight + 3.0f * sinf(frames * 0.1f),
-                  scrub->world.pos.z };
-
-    OPEN_DISPS(play->state.gfxCtx);
-    // The light of the scene at the item, as Actor_Draw does for an actor.
-    Lights* lights = LightContext_NewLights(&play->lightCtx, play->state.gfxCtx);
-    Lights_BindAll(lights, play->lightCtx.listHead, &pos);
-    Lights_Draw(lights, play->state.gfxCtx);
-    CLOSE_DISPS(play->state.gfxCtx);
-
-    Matrix_Push();
-    Matrix_Translate(pos.x, pos.y, pos.z, MTXMODE_NEW);
-    Matrix_RotateY(frames * 0.05f, MTXMODE_APPLY);
-    Matrix_Scale(kItemScale, kItemScale, kItemScale, MTXMODE_APPLY);
-    if (slot.item == ShopItem::DoubleDefense) {
-        Randomizer_DrawDoubleDefense(play, nullptr);
-    } else {
-        GetItem_Draw(play, kItemDrawIds[static_cast<int>(slot.item)]);
-    }
-    Matrix_Pop();
-}
-
-} // namespace
-
 void Draw(PlayState* play) {
     if (!sOpen) {
         return;
@@ -472,7 +469,7 @@ void Draw(PlayState* play) {
         if (GoesIntoTheFloor(reinterpret_cast<EnDns*>(slot.scrub))) {
             continue;
         }
-        DrawItem(play, slot);
+        DrawShopItem(play, slot.scrub, slot.item);
     }
 }
 
