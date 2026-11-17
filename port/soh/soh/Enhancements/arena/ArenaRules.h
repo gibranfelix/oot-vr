@@ -68,14 +68,14 @@ inline int KillReward(int level, bool hyper) {
     return kKillRupees[level] * (hyper ? 2 : 1);
 }
 
-// The shop starts after each third wave (issue #169).
-constexpr int kShopEveryWaves = 3;
+// The shop starts after each wave (issue #169).
+constexpr int kShopEveryWaves = 1;
 
 inline bool IsShopAfterWave(int wave) {
     return wave > 0 && wave % kShopEveryWaves == 0;
 }
 
-// The items of the shop (issue #169). The order is the order of the scrubs in the shop.
+// The items of the shop (issue #169).
 enum class ShopItem {
     RedPotion,
     GreenPotion,
@@ -103,6 +103,15 @@ enum class ShopItem {
 constexpr int kShopItemCount = static_cast<int>(ShopItem::Count);
 constexpr int kMaxHearts = 20;
 
+// A stall is a group of scrubs that sell one type of item. Link can buy the healing and the ammo again and again. Each
+// gear item sells one time in each shop.
+enum class ShopStall {
+    Healing,
+    Ammo,
+    Gear,
+};
+constexpr int kStallCount = 3;
+
 // What an item needs before the shop sells it.
 enum class ShopNeed {
     Nothing,
@@ -113,41 +122,41 @@ enum class ShopNeed {
 
 struct ShopItemSpec {
     ShopItem item;
-    // The first shop that sells the item.
-    int firstShop;
+    ShopStall stall;
+    // Gear only: the tier of the item. Tier 2 comes in shop 4, tier 3 in shop 7 (kTierFirstShop).
+    int tier;
+    // The price in the first shop, before Link buys the item.
     int price;
-    // Link can buy a consumable again. The shop sells other items only when Link does not have them.
-    bool consumable;
     ShopNeed need;
 };
 
 constexpr ShopItemSpec kShopItems[kShopItemCount] = {
-    { ShopItem::RedPotion, 1, 40, true, ShopNeed::Nothing },
-    { ShopItem::GreenPotion, 1, 30, true, ShopNeed::Magic },
-    { ShopItem::RecoveryHearts, 1, 15, true, ShopNeed::Nothing },
-    { ShopItem::Arrows, 1, 20, true, ShopNeed::Nothing },
-    { ShopItem::Bombs, 1, 30, true, ShopNeed::BombBag },
-    { ShopItem::HylianShield, 1, 30, true, ShopNeed::NoShield },
-    // Price() uses kHeartContainerPrices.
-    { ShopItem::HeartContainer, 1, 0, true, ShopNeed::Nothing },
-    { ShopItem::BombBag, 1, 60, false, ShopNeed::Nothing },
-    { ShopItem::MirrorShield, 1, 120, false, ShopNeed::Nothing },
-    { ShopItem::DekuNuts, 1, 40, true, ShopNeed::Nothing },
-    { ShopItem::MagicDinsFire, 2, 200, false, ShopNeed::Nothing },
-    { ShopItem::Longshot, 2, 150, false, ShopNeed::Nothing },
-    { ShopItem::MegatonHammer, 2, 200, false, ShopNeed::Nothing },
-    { ShopItem::HoverBoots, 2, 80, false, ShopNeed::Nothing },
-    { ShopItem::BiggoronSword, 3, 500, false, ShopNeed::Nothing },
-    { ShopItem::FireArrows, 3, 150, false, ShopNeed::Magic },
-    { ShopItem::IceArrows, 3, 150, false, ShopNeed::Magic },
-    { ShopItem::LightArrows, 3, 150, false, ShopNeed::Magic },
-    { ShopItem::NayrusLove, 3, 200, false, ShopNeed::Magic },
-    { ShopItem::DoubleDefense, 3, 300, false, ShopNeed::Nothing },
-    { ShopItem::DoubleMagic, 3, 150, false, ShopNeed::Magic },
+    { ShopItem::RedPotion, ShopStall::Healing, 0, 40, ShopNeed::Nothing },
+    { ShopItem::GreenPotion, ShopStall::Healing, 0, 30, ShopNeed::Magic },
+    { ShopItem::RecoveryHearts, ShopStall::Healing, 0, 15, ShopNeed::Nothing },
+    { ShopItem::Arrows, ShopStall::Ammo, 0, 20, ShopNeed::Nothing },
+    { ShopItem::Bombs, ShopStall::Ammo, 0, 30, ShopNeed::BombBag },
+    { ShopItem::HylianShield, ShopStall::Gear, 1, 30, ShopNeed::NoShield },
+    { ShopItem::HeartContainer, ShopStall::Gear, 1, 100, ShopNeed::Nothing },
+    { ShopItem::BombBag, ShopStall::Gear, 1, 60, ShopNeed::Nothing },
+    { ShopItem::MirrorShield, ShopStall::Gear, 2, 120, ShopNeed::Nothing },
+    { ShopItem::DekuNuts, ShopStall::Ammo, 0, 40, ShopNeed::Nothing },
+    { ShopItem::MagicDinsFire, ShopStall::Gear, 2, 200, ShopNeed::Nothing },
+    { ShopItem::Longshot, ShopStall::Gear, 2, 150, ShopNeed::Nothing },
+    { ShopItem::MegatonHammer, ShopStall::Gear, 2, 200, ShopNeed::Nothing },
+    { ShopItem::HoverBoots, ShopStall::Gear, 1, 80, ShopNeed::Nothing },
+    { ShopItem::BiggoronSword, ShopStall::Gear, 3, 500, ShopNeed::Nothing },
+    { ShopItem::FireArrows, ShopStall::Gear, 3, 150, ShopNeed::Magic },
+    { ShopItem::IceArrows, ShopStall::Gear, 3, 150, ShopNeed::Magic },
+    { ShopItem::LightArrows, ShopStall::Gear, 3, 150, ShopNeed::Magic },
+    { ShopItem::NayrusLove, ShopStall::Gear, 3, 200, ShopNeed::Magic },
+    { ShopItem::DoubleDefense, ShopStall::Gear, 3, 300, ShopNeed::Nothing },
+    { ShopItem::DoubleMagic, ShopStall::Gear, 3, 150, ShopNeed::Magic },
 };
 
-// The Heart Container costs more in each shop.
-constexpr int kHeartContainerPrices[] = { 100, 150, 200 };
+// The first shop of each tier of gear. Shop N is the shop after wave N.
+constexpr int kTierFirstShop[] = { 1, 4, 7 };
+constexpr int kTierCount = sizeof(kTierFirstShop) / sizeof(kTierFirstShop[0]);
 
 // What Link has. owns[MagicDinsFire] is true when Link has magic.
 struct LinkState {
@@ -160,25 +169,49 @@ inline const ShopItemSpec& GetShopItem(ShopItem item) {
     return kShopItems[static_cast<int>(item)];
 }
 
-inline int Price(ShopItem item, int shop) {
-    if (item == ShopItem::HeartContainer) {
-        constexpr int count = sizeof(kHeartContainerPrices) / sizeof(kHeartContainerPrices[0]);
-        return kHeartContainerPrices[(shop < 1 ? 1 : (shop > count ? count : shop)) - 1];
+inline bool IsGear(ShopItem item) {
+    return GetShopItem(item).stall == ShopStall::Gear;
+}
+
+// The highest tier of gear in the shop.
+inline int UnlockedTier(int shop) {
+    int tier = 0;
+    for (int i = 0; i < kTierCount; i++) {
+        if (shop >= kTierFirstShop[i]) {
+            tier = i + 1;
+        }
     }
-    return GetShopItem(item).price;
+    return tier;
 }
 
-// The shop has the item, but Link can need another item first.
-inline bool IsInShop(const ShopItemSpec& spec, int shop, const LinkState& link) {
-    return shop >= spec.firstShop && (spec.consumable || !link.owns[static_cast<int>(spec.item)]);
+// The number of gear items at random in the shop: 1 in shops 1 to 3, 2 in shops 4 to 6, and 3 after.
+inline int GearOfferCount(int shop) {
+    return UnlockedTier(shop);
 }
 
-inline bool IsOffered(ShopItem item, int shop, const LinkState& link) {
+// Gear costs 10 % more in each shop. Healing and ammo cost 25 % more for each item that Link bought in the same shop.
+// The prices are multiples of 5 rupees.
+constexpr int kGearIncreasePerShop = 10;
+constexpr int kSupplyIncreasePerBuy = 25;
+
+inline int Price(ShopItem item, int shop, int boughtInShop) {
     const ShopItemSpec& spec = GetShopItem(item);
-    if (!IsInShop(spec, shop, link)) {
+    int percent = 100;
+    if (spec.stall == ShopStall::Gear) {
+        percent += kGearIncreasePerShop * (shop > 1 ? shop - 1 : 0);
+    } else {
+        percent += kSupplyIncreasePerBuy * boughtInShop;
+    }
+    return (spec.price * percent + 250) / 500 * 5;
+}
+
+// Link can buy the item now: Link has its need, and Link does not have the gear.
+inline bool IsOffered(ShopItem item, const LinkState& link) {
+    const ShopItemSpec& spec = GetShopItem(item);
+    if (item == ShopItem::HeartContainer && link.hearts >= kMaxHearts) {
         return false;
     }
-    if (item == ShopItem::HeartContainer && link.hearts >= kMaxHearts) {
+    if (spec.stall == ShopStall::Gear && link.owns[static_cast<int>(item)]) {
         return false;
     }
     switch (spec.need) {
@@ -194,27 +227,59 @@ inline bool IsOffered(ShopItem item, int shop, const LinkState& link) {
     return true;
 }
 
-// The items of the shop, in the order of kShopItems. An item that Link did not buy stays in the next shops.
-inline std::vector<ShopItem> Offers(int shop, const LinkState& link) {
-    std::vector<ShopItem> offers;
-    for (const ShopItemSpec& spec : kShopItems) {
-        if (IsOffered(spec.item, shop, link)) {
-            offers.push_back(spec.item);
-        }
-    }
-    return offers;
-}
+// The items of each stall of one shop.
+struct ShopPlan {
+    std::vector<ShopItem> stalls[kStallCount];
 
-// The places of the scrubs for all the shop: the items of the shop, also when Link must first buy their need. A scrub
-// comes to its place when the shop sells its item, so the scrubs do not move.
-inline std::vector<ShopItem> ShopSlots(int shop, const LinkState& link) {
-    std::vector<ShopItem> slots;
-    for (const ShopItemSpec& spec : kShopItems) {
-        if (IsInShop(spec, shop, link)) {
-            slots.push_back(spec.item);
-        }
+    const std::vector<ShopItem>& Stall(ShopStall stall) const {
+        return stalls[static_cast<int>(stall)];
     }
-    return slots;
+};
+
+// Healing and ammo: all the items of the stall. An item that needs another item also gets a scrub, because Link can
+// buy the need in the same shop. Its scrub comes when Link has the need.
+// Gear: GearOfferCount(shop) items at random from the unlocked tiers, that Link can buy now. An item of lastGear (the
+// gear of the last shop) comes again only when there are not sufficient other items. Without a shield, the Hylian
+// Shield also comes. random returns values in [0, 1).
+template <typename Random>
+ShopPlan PlanShop(int shop, const LinkState& link, const std::vector<ShopItem>& lastGear, Random& random) {
+    ShopPlan plan;
+    std::vector<ShopItem> fresh;
+    std::vector<ShopItem> again;
+    for (const ShopItemSpec& spec : kShopItems) {
+        if (spec.stall != ShopStall::Gear) {
+            plan.stalls[static_cast<int>(spec.stall)].push_back(spec.item);
+            continue;
+        }
+        if (!IsOffered(spec.item, link)) {
+            continue;
+        }
+        if (spec.item == ShopItem::HylianShield) {
+            plan.stalls[static_cast<int>(ShopStall::Gear)].push_back(spec.item);
+            continue;
+        }
+        if (spec.tier > UnlockedTier(shop)) {
+            continue;
+        }
+        bool wasInLastShop = false;
+        for (ShopItem last : lastGear) {
+            wasInLastShop = wasInLastShop || last == spec.item;
+        }
+        (wasInLastShop ? again : fresh).push_back(spec.item);
+    }
+
+    std::vector<ShopItem>& gear = plan.stalls[static_cast<int>(ShopStall::Gear)];
+    for (int i = 0; i < GearOfferCount(shop); i++) {
+        std::vector<ShopItem>& pool = fresh.empty() ? again : fresh;
+        if (pool.empty()) {
+            break;
+        }
+        int index = static_cast<int>(random() * pool.size());
+        index = index < static_cast<int>(pool.size()) ? index : static_cast<int>(pool.size()) - 1;
+        gear.push_back(pool[index]);
+        pool.erase(pool.begin() + index);
+    }
+    return plan;
 }
 
 // The rupees when all the enemies of a wave are dead.
@@ -254,7 +319,7 @@ class Director {
         return mInShop;
     }
 
-    // 1 for the shop after wave 3, 2 for the shop after wave 6, ...
+    // Shop N is the shop after wave N.
     int ShopNumber() const {
         return (mWave - 1) / kShopEveryWaves;
     }
@@ -427,29 +492,42 @@ inline Point KeepInside(Point center, float radius, Point point) {
     return Point{ center.x + (point.x - center.x) * scale, center.z + (point.z - center.z) * scale };
 }
 
-// The scrubs of the shop stand on a ring around Link. A scrub talks to Link from 130 units (EnDns_Idle), so the ring
-// is larger: Link walks to the scrub that he selects. The ring grows when there are many scrubs, and it moves to the
-// center of the arena when it is not in the arena.
-constexpr float kShopRingMinRadius = 130.0f;
+// The places of the scrubs. The scrub that starts the next wave stands alone in front of Link, near enough to talk. The
+// stalls stand on a ring around Link: healing on the left of Link, gear behind Link, and ammo on the right of Link. The
+// scrubs of a stall stand side by side on the ring. A scrub talks to Link from 130 units (EnDns_Idle), so Link walks to
+// a stall. The ring moves to the center of the arena when it is not in the arena.
+constexpr float kShopRingRadius = 200.0f;
+constexpr float kStartScrubDistance = 110.0f;
 constexpr float kScrubSpacing = 62.0f;
 
-inline std::vector<Point> ShopPositions(Point center, float radius, Point link, int count) {
-    constexpr float kTwoPi = 6.2831853f;
-    float ring = count * kScrubSpacing / kTwoPi;
-    if (ring < kShopRingMinRadius) {
-        ring = kShopRingMinRadius;
-    }
-    if (ring > radius) {
-        ring = radius;
-    }
-    Point anchor = KeepInside(center, radius - ring, link);
+struct ShopLayout {
+    Point start;
+    std::vector<Point> stalls[kStallCount];
+};
 
-    std::vector<Point> points;
-    for (int i = 0; i < count; i++) {
-        float angle = kTwoPi * i / count;
-        points.push_back(Point{ anchor.x + ring * std::cos(angle), anchor.z + ring * std::sin(angle) });
+// facing: the yaw of Link in radians. The game yaw 0 looks to +z, and the left of Link is +x.
+inline ShopLayout ShopPositions(Point center, float radius, Point link, float facing, const int counts[kStallCount]) {
+    constexpr float kPi = 3.14159265f;
+    // The angle of each stall from the front of Link, in the order of ShopStall.
+    constexpr float kStallAngles[kStallCount] = { kPi / 2.0f, -kPi / 2.0f, kPi };
+
+    float ring = kShopRingRadius < radius ? kShopRingRadius : radius;
+    Point anchor = KeepInside(center, radius - ring, link);
+    auto at = [&anchor, facing](float angle, float distance) {
+        return Point{ anchor.x + distance * std::sin(facing + angle), anchor.z + distance * std::cos(facing + angle) };
+    };
+
+    ShopLayout layout;
+    layout.start = at(0.0f, kStartScrubDistance < ring ? kStartScrubDistance : ring);
+    float step = kScrubSpacing / ring;
+    for (int stall = 0; stall < kStallCount; stall++) {
+        int count = counts[stall];
+        for (int i = 0; i < count; i++) {
+            float offset = (i - (count - 1) / 2.0f) * step;
+            layout.stalls[stall].push_back(at(kStallAngles[stall] + offset, ring));
+        }
     }
-    return points;
+    return layout;
 }
 
 } // namespace ArenaRules

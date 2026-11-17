@@ -121,6 +121,9 @@ static void PauseBetweenWavesIsFiveSeconds() {
     SpawnRequest request;
     EXPECT(!director.Tick(0, &request));
     EXPECT(director.Wave() == 2);
+    // The shop opens after each wave. The pause starts when the player leaves the shop.
+    EXPECT(director.InShop());
+    director.LeaveShop();
     EXPECT(director.PauseSecondsLeft() == 5);
 }
 
@@ -178,9 +181,11 @@ static void NextWaveStartsWhenAllEnemiesAreDead() {
     EXPECT(!director.Tick(1, &request));
     EXPECT(director.Wave() == 1);
     EXPECT(!director.InPause());
-    // All enemies are dead: the pause before wave 2 starts.
+    // All enemies are dead: the shop opens. After the shop, the pause before wave 2 starts.
     EXPECT(!director.Tick(0, &request));
     EXPECT(director.Wave() == 2);
+    EXPECT(director.InShop());
+    director.LeaveShop();
     EXPECT(director.InPause());
     SkipPause(director);
     EXPECT(DrainSpawns(director, 0, counts, hyper) == 5);
@@ -330,22 +335,19 @@ static void ClearWave(Director& director) {
     EXPECT(!director.Tick(0, &request));
 }
 
-static void ShopStartsAfterEachThirdWave() {
+static void ShopStartsAfterEachWave() {
     Director director;
-    director.StartAt(2);
-    ClearWave(director);
-    EXPECT(!director.InShop());
-    EXPECT(director.Wave() == 3);
+    director.StartAt(1);
     ClearWave(director);
     EXPECT(director.InShop());
     EXPECT(!director.InPause());
-    EXPECT(director.Wave() == 4);
+    EXPECT(director.Wave() == 2);
     EXPECT(director.ShopNumber() == 1);
 
     director.StartAt(6);
     ClearWave(director);
     EXPECT(director.InShop());
-    EXPECT(director.ShopNumber() == 2);
+    EXPECT(director.ShopNumber() == 6);
 }
 
 static void ShopHasNoTimeLimit() {
@@ -384,15 +386,6 @@ static void RestartWaveInTheShopKeepsTheShop() {
     EXPECT(!director.InPause());
 }
 
-static bool Offered(int shop, const LinkState& link, ShopItem item) {
-    for (ShopItem offer : Offers(shop, link)) {
-        if (offer == item) {
-            return true;
-        }
-    }
-    return false;
-}
-
 // Link at the start of the run: the Master Sword, the Hylian Shield, the bow, and 6 hearts.
 static LinkState StartLink() {
     LinkState link;
@@ -401,151 +394,249 @@ static LinkState StartLink() {
     return link;
 }
 
-static void FirstShopSellsTheItemsOfShopOne() {
+static bool Has(const std::vector<ShopItem>& items, ShopItem item) {
+    for (ShopItem each : items) {
+        if (each == item) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// A fixed sequence of random values, so the tests give the same result each time.
+struct TestRandom {
+    unsigned state = 1;
+    float operator()() {
+        state = state * 1103515245u + 12345u;
+        return static_cast<float>((state >> 8) & 0xFFFF) / 65536.0f;
+    }
+};
+
+static ShopPlan Plan(int shop, const LinkState& link, const std::vector<ShopItem>& lastGear = {}) {
+    TestRandom random;
+    return PlanShop(shop, link, lastGear, random);
+}
+
+static void HealingAndAmmoHaveAllTheirItems() {
+    ShopPlan plan = Plan(1, StartLink());
+    const std::vector<ShopItem>& healing = plan.Stall(ShopStall::Healing);
+    const std::vector<ShopItem>& ammo = plan.Stall(ShopStall::Ammo);
+    EXPECT(healing.size() == 3);
+    EXPECT(Has(healing, ShopItem::RedPotion));
+    EXPECT(Has(healing, ShopItem::GreenPotion));
+    EXPECT(Has(healing, ShopItem::RecoveryHearts));
+    EXPECT(ammo.size() == 3);
+    EXPECT(Has(ammo, ShopItem::Arrows));
+    EXPECT(Has(ammo, ShopItem::Bombs));
+    EXPECT(Has(ammo, ShopItem::DekuNuts));
+}
+
+// The scrubs of the Green Potion and the bombs come when Link has magic or the Bomb Bag.
+static void HealingAndAmmoNeedTheirNeed() {
     LinkState link = StartLink();
-    std::vector<ShopItem> offers = Offers(1, link);
-    const ShopItem expected[] = { ShopItem::RedPotion,      ShopItem::RecoveryHearts, ShopItem::Arrows,
-                                  ShopItem::HeartContainer, ShopItem::BombBag,        ShopItem::MirrorShield,
-                                  ShopItem::DekuNuts };
-    EXPECT(offers.size() == sizeof(expected) / sizeof(expected[0]));
-    for (ShopItem item : expected) {
-        EXPECT(Offered(1, link, item));
+    EXPECT(IsOffered(ShopItem::RedPotion, link));
+    EXPECT(IsOffered(ShopItem::Arrows, link));
+    EXPECT(!IsOffered(ShopItem::GreenPotion, link));
+    EXPECT(!IsOffered(ShopItem::Bombs, link));
+    link.owns[static_cast<int>(ShopItem::MagicDinsFire)] = true;
+    link.owns[static_cast<int>(ShopItem::BombBag)] = true;
+    EXPECT(IsOffered(ShopItem::GreenPotion, link));
+    EXPECT(IsOffered(ShopItem::Bombs, link));
+}
+
+static void GearCountGrowsWithTheShop() {
+    const int expected[] = { 1, 1, 1, 2, 2, 2, 3, 3, 3, 3 };
+    for (int shop = 1; shop <= 10; shop++) {
+        EXPECT(GearOfferCount(shop) == expected[shop - 1]);
+        EXPECT(static_cast<int>(Plan(shop, StartLink()).Stall(ShopStall::Gear).size()) == expected[shop - 1]);
     }
 }
 
-static void EachShopAddsItems() {
-    LinkState link = StartLink();
-    EXPECT(!Offered(1, link, ShopItem::Longshot));
-    EXPECT(Offered(2, link, ShopItem::MagicDinsFire));
-    EXPECT(Offered(2, link, ShopItem::Longshot));
-    EXPECT(Offered(2, link, ShopItem::MegatonHammer));
-    EXPECT(Offered(2, link, ShopItem::HoverBoots));
-    EXPECT(!Offered(2, link, ShopItem::BiggoronSword));
-    EXPECT(Offered(3, link, ShopItem::BiggoronSword));
-    EXPECT(Offered(3, link, ShopItem::DoubleDefense));
-    // The shops after shop 3 sell the same items.
-    EXPECT(Offers(7, link).size() == Offers(3, link).size());
+static void GearComesFromTheUnlockedTiers() {
+    for (int shop = 1; shop <= 9; shop++) {
+        for (unsigned seed = 1; seed < 50; seed++) {
+            TestRandom random;
+            random.state = seed;
+            LinkState link = StartLink();
+            link.owns[static_cast<int>(ShopItem::MagicDinsFire)] = true;
+            ShopPlan plan = PlanShop(shop, link, {}, random);
+            for (ShopItem item : plan.Stall(ShopStall::Gear)) {
+                EXPECT(IsGear(item));
+                EXPECT(GetShopItem(item).tier <= UnlockedTier(shop));
+            }
+        }
+    }
 }
 
-static void ItemThatLinkDidNotBuyStays() {
-    LinkState link = StartLink();
-    EXPECT(Offered(3, link, ShopItem::MirrorShield));
-    EXPECT(Offered(3, link, ShopItem::BombBag));
+static void GearIsNotTheSameItemTwoTimes() {
+    for (unsigned seed = 1; seed < 50; seed++) {
+        TestRandom random;
+        random.state = seed;
+        std::vector<ShopItem> gear = PlanShop(9, StartLink(), {}, random).Stall(ShopStall::Gear);
+        for (size_t i = 0; i < gear.size(); i++) {
+            for (size_t j = i + 1; j < gear.size(); j++) {
+                EXPECT(gear[i] != gear[j]);
+            }
+        }
+    }
 }
 
-static void ShopDoesNotSellAnItemThatLinkHas() {
+static void GearOfTheLastShopComesOnlyWhenNecessary() {
+    LinkState link = StartLink();
+    // Tier 1 without the Hylian Shield: the Heart Container, the Bomb Bag, and the Hover Boots.
+    for (unsigned seed = 1; seed < 50; seed++) {
+        TestRandom random;
+        random.state = seed;
+        std::vector<ShopItem> gear = PlanShop(2, link, { ShopItem::HeartContainer }, random).Stall(ShopStall::Gear);
+        EXPECT(gear.size() == 1);
+        EXPECT(!Has(gear, ShopItem::HeartContainer));
+    }
+    link.owns[static_cast<int>(ShopItem::BombBag)] = true;
+    link.owns[static_cast<int>(ShopItem::HoverBoots)] = true;
+    std::vector<ShopItem> gear = Plan(2, link, { ShopItem::HeartContainer }).Stall(ShopStall::Gear);
+    EXPECT(gear.size() == 1);
+    EXPECT(Has(gear, ShopItem::HeartContainer));
+}
+
+static void GearIsRandom() {
+    bool seen[kShopItemCount] = {};
+    for (unsigned seed = 1; seed < 200; seed++) {
+        TestRandom random;
+        random.state = seed;
+        ShopPlan plan = PlanShop(1, StartLink(), {}, random);
+        for (ShopItem item : plan.Stall(ShopStall::Gear)) {
+            seen[static_cast<int>(item)] = true;
+        }
+    }
+    EXPECT(seen[static_cast<int>(ShopItem::HeartContainer)]);
+    EXPECT(seen[static_cast<int>(ShopItem::BombBag)]);
+    EXPECT(seen[static_cast<int>(ShopItem::HoverBoots)]);
+}
+
+static void ShopDoesNotSellGearThatLinkHas() {
     LinkState link = StartLink();
     link.owns[static_cast<int>(ShopItem::MirrorShield)] = true;
     link.owns[static_cast<int>(ShopItem::Longshot)] = true;
-    EXPECT(!Offered(3, link, ShopItem::MirrorShield));
-    EXPECT(!Offered(3, link, ShopItem::Longshot));
+    EXPECT(!IsOffered(ShopItem::MirrorShield, link));
+    EXPECT(!IsOffered(ShopItem::Longshot, link));
+    for (unsigned seed = 1; seed < 50; seed++) {
+        TestRandom random;
+        random.state = seed;
+        std::vector<ShopItem> gear = PlanShop(9, link, {}, random).Stall(ShopStall::Gear);
+        EXPECT(!Has(gear, ShopItem::MirrorShield));
+        EXPECT(!Has(gear, ShopItem::Longshot));
+    }
 }
 
 static void MagicItemsNeedMagic() {
     LinkState link = StartLink();
-    const ShopItem magicItems[] = { ShopItem::GreenPotion, ShopItem::FireArrows, ShopItem::IceArrows,
-                                    ShopItem::LightArrows, ShopItem::NayrusLove, ShopItem::DoubleMagic };
+    const ShopItem magicItems[] = { ShopItem::FireArrows, ShopItem::IceArrows, ShopItem::LightArrows,
+                                    ShopItem::NayrusLove, ShopItem::DoubleMagic };
     for (ShopItem item : magicItems) {
-        EXPECT(!Offered(3, link, item));
+        EXPECT(!IsOffered(item, link));
     }
     link.owns[static_cast<int>(ShopItem::MagicDinsFire)] = true;
     for (ShopItem item : magicItems) {
-        EXPECT(Offered(3, link, item));
+        EXPECT(IsOffered(item, link));
     }
-    EXPECT(!Offered(3, link, ShopItem::MagicDinsFire));
+    EXPECT(!IsOffered(ShopItem::MagicDinsFire, link));
 }
 
-static void BombsNeedTheBombBag() {
+// A Like-Like can eat the Hylian Shield. Then each shop sells it, in addition to the gear at random.
+static void HylianShieldComesWithoutAShield() {
     LinkState link = StartLink();
-    EXPECT(!Offered(1, link, ShopItem::Bombs));
-    link.owns[static_cast<int>(ShopItem::BombBag)] = true;
-    EXPECT(Offered(1, link, ShopItem::Bombs));
-    EXPECT(!Offered(1, link, ShopItem::BombBag));
-}
-
-// A Like-Like can eat the Hylian Shield.
-static void HylianShieldOnlyWithoutAShield() {
-    LinkState link = StartLink();
-    EXPECT(!Offered(1, link, ShopItem::HylianShield));
+    EXPECT(!Has(Plan(1, link).Stall(ShopStall::Gear), ShopItem::HylianShield));
     link.hasShield = false;
-    EXPECT(Offered(1, link, ShopItem::HylianShield));
+    std::vector<ShopItem> gear = Plan(1, link).Stall(ShopStall::Gear);
+    EXPECT(Has(gear, ShopItem::HylianShield));
+    EXPECT(gear.size() == 2);
 }
 
 static void HeartContainerStopsAtTwentyHearts() {
     LinkState link = StartLink();
     link.hearts = 19;
-    EXPECT(Offered(1, link, ShopItem::HeartContainer));
+    EXPECT(IsOffered(ShopItem::HeartContainer, link));
     link.hearts = 20;
-    EXPECT(!Offered(1, link, ShopItem::HeartContainer));
+    EXPECT(!IsOffered(ShopItem::HeartContainer, link));
 }
 
-static void PricesAreThePricesOfTheIssue() {
-    EXPECT(Price(ShopItem::HeartContainer, 1) == 100);
-    EXPECT(Price(ShopItem::HeartContainer, 2) == 150);
-    EXPECT(Price(ShopItem::HeartContainer, 3) == 200);
-    EXPECT(Price(ShopItem::HeartContainer, 8) == 200);
-    EXPECT(Price(ShopItem::RedPotion, 1) == 40);
-    EXPECT(Price(ShopItem::MirrorShield, 1) == 120);
-    EXPECT(Price(ShopItem::MagicDinsFire, 2) == 200);
-    EXPECT(Price(ShopItem::BiggoronSword, 3) == 500);
-    EXPECT(Price(ShopItem::DoubleDefense, 3) == 300);
+static void GearCostsTenPercentMoreInEachShop() {
+    EXPECT(Price(ShopItem::HeartContainer, 1, 0) == 100);
+    EXPECT(Price(ShopItem::HeartContainer, 4, 0) == 130);
+    EXPECT(Price(ShopItem::HeartContainer, 10, 0) == 190);
+    EXPECT(Price(ShopItem::MirrorShield, 4, 0) == 155);
+    EXPECT(Price(ShopItem::BiggoronSword, 7, 0) == 800);
+    // Gear sells one time in each shop: the purchases do not change its price.
+    EXPECT(Price(ShopItem::HeartContainer, 1, 3) == 100);
+}
+
+static void SuppliesCostMoreAfterEachPurchaseInTheShop() {
+    EXPECT(Price(ShopItem::RedPotion, 1, 0) == 40);
+    EXPECT(Price(ShopItem::RedPotion, 1, 1) == 50);
+    EXPECT(Price(ShopItem::RedPotion, 1, 2) == 60);
+    EXPECT(Price(ShopItem::RedPotion, 9, 0) == 40);
+    EXPECT(Price(ShopItem::RecoveryHearts, 1, 1) == 20);
+    EXPECT(Price(ShopItem::Arrows, 5, 2) == 30);
+}
+
+static void PricesAreMultiplesOfFive() {
+    for (int i = 0; i < kShopItemCount; i++) {
+        for (int shop = 1; shop <= 25; shop++) {
+            for (int bought = 0; bought < 5; bought++) {
+                EXPECT(Price(static_cast<ShopItem>(i), shop, bought) % 5 == 0);
+            }
+        }
+    }
 }
 
 static void EachItemHasItsRowInTheTable() {
     for (int i = 0; i < kShopItemCount; i++) {
         EXPECT(static_cast<int>(kShopItems[i].item) == i);
+        EXPECT((kShopItems[i].stall == ShopStall::Gear) == (kShopItems[i].tier > 0));
     }
 }
 
 static void ScrubsAreInTheArenaAndNotOnTopOfEachOther() {
     const Point center{ 0.0f, 0.0f };
-    const float radius = 240.0f;
+    const float radii[] = { 240.0f, 650.0f };
     const Point links[] = { { 0.0f, 0.0f }, { 230.0f, 0.0f }, { -100.0f, 150.0f } };
-    for (Point link : links) {
-        for (int count = 1; count <= kShopItemCount + 1; count++) {
-            std::vector<Point> points = ShopPositions(center, radius, link, count);
-            EXPECT(static_cast<int>(points.size()) == count);
-            for (size_t i = 0; i < points.size(); i++) {
-                EXPECT(DistanceBetween(points[i], center) <= radius + 0.01f);
-                for (size_t j = i + 1; j < points.size(); j++) {
-                    EXPECT(DistanceBetween(points[i], points[j]) >= 55.0f);
+    const float facings[] = { 0.0f, 1.0f, 3.14f, -2.0f };
+    // The largest shop: 3 healing, 3 ammo, 3 gear and the Hylian Shield.
+    const int counts[kStallCount] = { 3, 3, 4 };
+    for (float radius : radii) {
+        for (Point link : links) {
+            for (float facing : facings) {
+                ShopLayout layout = ShopPositions(center, radius, link, facing, counts);
+                std::vector<Point> points = { layout.start };
+                for (int stall = 0; stall < kStallCount; stall++) {
+                    EXPECT(static_cast<int>(layout.stalls[stall].size()) == counts[stall]);
+                    points.insert(points.end(), layout.stalls[stall].begin(), layout.stalls[stall].end());
+                }
+                for (size_t i = 0; i < points.size(); i++) {
+                    EXPECT(DistanceBetween(points[i], center) <= radius + 0.01f);
+                    for (size_t j = i + 1; j < points.size(); j++) {
+                        EXPECT(DistanceBetween(points[i], points[j]) >= 55.0f);
+                    }
                 }
             }
         }
     }
 }
 
-static void ScrubsAreAroundLink() {
+// Link at the center looks to +z. The left of Link is +x.
+static void StartScrubIsInFrontAndStallsAreAroundLink() {
     const Point center{ 0.0f, 0.0f };
-    const Point link{ 300.0f, 100.0f };
-    std::vector<Point> points = ShopPositions(center, 750.0f, link, 8);
-    for (Point point : points) {
-        float distance = DistanceBetween(point, link);
-        EXPECT(distance >= 100.0f && distance <= 200.0f);
-    }
-}
-
-// A slot keeps the place of a scrub for all the shop. Items that need magic, the bomb bag, or no shield get a slot,
-// because Link can buy their need in the same shop.
-static void ShopSlotsHaveAPlaceForTheItemsThatNeedAnotherItem() {
-    LinkState link = StartLink();
-    std::vector<ShopItem> slots = ShopSlots(3, link);
-    auto has = [&](ShopItem item) {
-        for (ShopItem slot : slots) {
-            if (slot == item) {
-                return true;
-            }
-        }
-        return false;
-    };
-    EXPECT(has(ShopItem::GreenPotion));
-    EXPECT(has(ShopItem::Bombs));
-    EXPECT(has(ShopItem::HylianShield));
-    EXPECT(has(ShopItem::NayrusLove));
-    link.owns[static_cast<int>(ShopItem::Longshot)] = true;
-    slots = ShopSlots(3, link);
-    EXPECT(!has(ShopItem::Longshot));
-    EXPECT(ShopSlots(1, StartLink()).size() == 10);
+    const int counts[kStallCount] = { 1, 1, 1 };
+    ShopLayout layout = ShopPositions(center, 650.0f, center, 0.0f, counts);
+    EXPECT(layout.start.z > 100.0f && std::fabs(layout.start.x) < 1.0f);
+    // A scrub talks to Link from 130 units: Link can talk to the start scrub without a step.
+    EXPECT(DistanceBetween(layout.start, center) < 130.0f);
+    Point healing = layout.stalls[static_cast<int>(ShopStall::Healing)][0];
+    Point ammo = layout.stalls[static_cast<int>(ShopStall::Ammo)][0];
+    Point gear = layout.stalls[static_cast<int>(ShopStall::Gear)][0];
+    EXPECT(healing.x > 150.0f && std::fabs(healing.z) < 1.0f);
+    EXPECT(ammo.x < -150.0f && std::fabs(ammo.z) < 1.0f);
+    EXPECT(gear.z < -150.0f && std::fabs(gear.x) < 1.0f);
 }
 
 int main() {
@@ -568,23 +659,27 @@ int main() {
     EnemiesLeftCountsTheAliveAndTheEnemiesToSpawn();
     DeadEnemyGivesTheRupeesOfItsLevel();
     ClearedWaveGivesTenTimesTheWaveNumber();
-    ShopStartsAfterEachThirdWave();
+    ShopStartsAfterEachWave();
     ShopHasNoTimeLimit();
     NextWaveStartsFiveSecondsAfterTheShop();
     RestartWaveInTheShopKeepsTheShop();
-    FirstShopSellsTheItemsOfShopOne();
-    EachShopAddsItems();
-    ItemThatLinkDidNotBuyStays();
-    ShopDoesNotSellAnItemThatLinkHas();
+    HealingAndAmmoHaveAllTheirItems();
+    HealingAndAmmoNeedTheirNeed();
+    GearCountGrowsWithTheShop();
+    GearComesFromTheUnlockedTiers();
+    GearIsNotTheSameItemTwoTimes();
+    GearOfTheLastShopComesOnlyWhenNecessary();
+    GearIsRandom();
+    ShopDoesNotSellGearThatLinkHas();
     MagicItemsNeedMagic();
-    BombsNeedTheBombBag();
-    HylianShieldOnlyWithoutAShield();
+    HylianShieldComesWithoutAShield();
     HeartContainerStopsAtTwentyHearts();
-    PricesAreThePricesOfTheIssue();
+    GearCostsTenPercentMoreInEachShop();
+    SuppliesCostMoreAfterEachPurchaseInTheShop();
+    PricesAreMultiplesOfFive();
     EachItemHasItsRowInTheTable();
     ScrubsAreInTheArenaAndNotOnTopOfEachOther();
-    ScrubsAreAroundLink();
-    ShopSlotsHaveAPlaceForTheItemsThatNeedAnotherItem();
+    StartScrubIsInFrontAndStallsAreAroundLink();
     if (sFailures == 0) {
         std::printf("All ArenaRules tests passed.\n");
     }

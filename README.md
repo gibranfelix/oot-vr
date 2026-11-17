@@ -87,7 +87,7 @@ The game does not contain mods.
   items, songs, and medallions.
 - Boss Rush.
 - ARENA: adult Link fights waves of enemies. Each wave is larger and stronger.
-  The enemies give rupees. After each third wave, Business Scrubs sell items.
+  The enemies give rupees. After each wave, Business Scrubs sell items.
   The game shows the wave and the time when Link dies.
 - Update on the headset: the game finds a new release and installs it.
 

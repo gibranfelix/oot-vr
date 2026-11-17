@@ -272,22 +272,35 @@ static void StartWaveAfterShop() {
     sDirector.LeaveShop();
 }
 
-// The scrubs stand on a ring around Link, in the circle where the enemies spawn.
+// The scrub that starts the wave stands in front of Link. The stalls stand on a ring around Link, in the circle where
+// the enemies spawn (ArenaRules::ShopPositions).
 static void OpenShop(PlayState* play) {
     int shop = sDirector.ShopNumber();
-    int count = ArenaShop::ScrubCount(shop);
+    ArenaRules::ShopPlan plan = ArenaShop::Plan(shop);
+    int counts[ArenaRules::kStallCount];
+    for (int stall = 0; stall < ArenaRules::kStallCount; stall++) {
+        counts[stall] = static_cast<int>(plan.stalls[stall].size());
+    }
     Player* player = GET_PLAYER(play);
-    std::vector<ArenaRules::Point> points = ArenaRules::ShopPositions(
-        ArenaCenter(), sArena->spawnRadius, { player->actor.world.pos.x, player->actor.world.pos.z }, count);
-    std::vector<ArenaShop::Place> places;
-    for (const ArenaRules::Point& point : points) {
+    f32 facing = player->actor.shape.rot.y * (static_cast<f32>(M_PI) / 32768.0f);
+    ArenaRules::ShopLayout layout = ArenaRules::ShopPositions(
+        ArenaCenter(), sArena->spawnRadius, { player->actor.world.pos.x, player->actor.world.pos.z }, facing, counts);
+
+    auto toPlace = [play, player](const ArenaRules::Point& point) {
         f32 floorY = FloorBelow(play, point.x, point.z);
         if (floorY <= BGCHECK_Y_MIN || floorY > sArena->center.y + 150.0f) {
             floorY = player->actor.world.pos.y;
         }
-        places.push_back(ArenaShop::Place{ point.x, floorY, point.z });
+        return ArenaShop::Place{ point.x, floorY, point.z };
+    };
+    ArenaShop::Places places;
+    places.start = toPlace(layout.start);
+    for (int stall = 0; stall < ArenaRules::kStallCount; stall++) {
+        for (const ArenaRules::Point& point : layout.stalls[stall]) {
+            places.stalls[stall].push_back(toPlace(point));
+        }
     }
-    ArenaShop::Open(shop, sDirector.Wave(), places, StartWaveAfterShop);
+    ArenaShop::Open(shop, sDirector.Wave(), plan, places, StartWaveAfterShop);
 }
 
 static void KeepInBoundary(Actor* actor) {
@@ -645,6 +658,9 @@ static void RegisterArena() {
     gi->RegisterGameHook<GameInteractor::OnPlayDrawEnd>([]() {
         if (IS_ARENA) {
             DrawGanonFireRing();
+            if (InArenaScene(gPlayState)) {
+                ArenaShop::Draw(gPlayState);
+            }
         }
     });
 }

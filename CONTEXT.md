@@ -173,9 +173,10 @@ starts when all the enemies of the wave are dead.
 
 ## Shop
 
-A stop between waves in ARENA, after each third wave. Business Scrubs sell
-items for rupees. Each shop adds stronger items, and the items that Link did
-not buy stay. The next wave starts when the player tells a scrub to start it.
+A stop between waves in ARENA, after each wave. Business Scrubs sell items for
+rupees. The scrubs stand in three stalls: healing, ammo, and gear. The gear
+changes at random in each shop. The next wave starts when the player tells a
+scrub to start it.
 
 ## Hyper enemy
 

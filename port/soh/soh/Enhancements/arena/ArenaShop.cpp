@@ -3,6 +3,7 @@
 #include "soh/Enhancements/custom-message/CustomMessageManager.h"
 
 #include <array>
+#include <cmath>
 #include <string>
 #include <spdlog/spdlog.h>
 
@@ -16,9 +17,16 @@ extern "C" {
 extern PlayState* gPlayState;
 extern SaveContext gSaveContext;
 
-// The idle action of the scrub (z_en_dns.c). The shop removes a scrub only when it is idle, so that a scrub that sold
-// its item can go into the floor.
+// The actions of the scrub (z_en_dns.c). The shop removes a scrub only when it is idle, so that a scrub that sold its
+// item can go into the floor. The item above a scrub goes away when the scrub goes into the floor.
 void EnDns_Idle(EnDns* enDns, PlayState* play);
+void EnDns_SetupBurrow(EnDns* enDns, PlayState* play);
+void EnDns_SetupNoSaleBurrow(EnDns* enDns, PlayState* play);
+void EnDns_Burrow(EnDns* enDns, PlayState* play);
+void EnDns_PostBurrow(EnDns* enDns, PlayState* play);
+
+// The Double Defense of the randomizer: a Heart Container with a white border (draw.cpp).
+void Randomizer_DrawDoubleDefense(PlayState* play, GetItemEntry* getItemEntry);
 }
 
 using ArenaRules::ShopItem;
@@ -34,6 +42,13 @@ constexpr u16 kBuyQuestionTextId = 0x10A3;
 
 // A scrub that went into the floor comes back after 1.5 seconds, when the shop still sells its item.
 constexpr int kRespawnFrames = 30;
+
+// The scrub that starts the next wave is larger than the scrubs that sell (EnDns_Init: 0.01).
+constexpr f32 kStartScrubScale = 0.015f;
+
+// The item above a scrub: the height above the feet of the scrub, and the scale of the items of the shops (EnGirlA).
+constexpr f32 kItemHeight = 70.0f;
+constexpr f32 kItemScale = 0.25f;
 
 struct ItemText {
     ShopItem item;
@@ -77,12 +92,14 @@ constexpr bool TextsAreInTheOrderOfTheItems() {
 static_assert(TextsAreInTheOrderOfTheItems(), "kItemTexts must have one row for each ShopItem, in the same order");
 
 struct Slot {
-    // The scrub that starts the next wave has no item.
+    // The scrub that starts the wave has no item.
     bool startsWave;
     ShopItem item;
     Place place;
     Actor* scrub;
     int respawnFramesLeft;
+    // The number of items that Link bought from this scrub in this shop.
+    int bought;
 };
 
 bool sOpen = false;
@@ -90,6 +107,8 @@ int sShop = 0;
 int sNextWave = 0;
 void (*sStartWave)() = nullptr;
 std::vector<Slot> sSlots;
+// The gear of the last shop. The next shop sells other gear first.
+std::vector<ShopItem> sLastGear;
 // The item of each scrub. EnDns keeps a pointer to its entry, so the entries stay in this array.
 std::array<DnsItemEntry, ArenaRules::kShopItemCount + 1> sEntries;
 
@@ -102,8 +121,14 @@ Slot* FindSlot(const Actor* actor) {
     return nullptr;
 }
 
+// Each gear item sells one time in each shop. Healing and ammo sell again.
 bool IsSold(const Slot& slot, const ArenaRules::LinkState& link) {
-    return slot.startsWave || ArenaRules::IsOffered(slot.item, sShop, link);
+    return slot.startsWave ||
+           (ArenaRules::IsOffered(slot.item, link) && (!ArenaRules::IsGear(slot.item) || slot.bought == 0));
+}
+
+int SlotPrice(const Slot& slot) {
+    return slot.startsWave ? 0 : ArenaRules::Price(slot.item, sShop, slot.bought);
 }
 
 u32 CanBuy(EnDns* enDns) {
@@ -114,7 +139,7 @@ u32 CanBuy(EnDns* enDns) {
     if (slot->startsWave) {
         return DNS_CANBUY_RESULT_SUCCESS;
     }
-    if (!ArenaRules::IsOffered(slot->item, sShop, CurrentLink())) {
+    if (!IsSold(*slot, CurrentLink())) {
         return DNS_CANBUY_RESULT_CANT_GET_NOW;
     }
 
@@ -251,6 +276,7 @@ void Pay(EnDns* enDns) {
     }
     Rupees_ChangeBy(-enDns->dnsItemEntry->itemPrice);
     GiveItem(gPlayState, slot->item);
+    slot->bought++;
     SPDLOG_INFO("[ARENA] Shop: bought item {} for {} rupees", static_cast<int>(slot->item),
                 enDns->dnsItemEntry->itemPrice);
 }
@@ -266,13 +292,16 @@ void SpawnScrub(PlayState* play, Slot& slot, int index) {
     }
     EnDns* enDns = reinterpret_cast<EnDns*>(actor);
     DnsItemEntry& entry = sEntries[index];
-    entry.itemPrice = slot.startsWave ? 0 : static_cast<s16>(ArenaRules::Price(slot.item, sShop));
+    entry.itemPrice = static_cast<s16>(SlotPrice(slot));
     entry.itemAmount = 1;
     entry.getItemId = GI_NONE;
     entry.purchaseableCheck = CanBuy;
     entry.setRupeesAndFlags = Pay;
     enDns->dnsItemEntry = &entry;
     actor->textId = slot.startsWave ? kStartTextId : kItemTextId;
+    if (slot.startsWave) {
+        Actor_SetScale(actor, kStartScrubScale);
+    }
     slot.scrub = actor;
 
     Vec3f zero = { 0.0f, 0.0f, 0.0f };
@@ -304,26 +333,31 @@ ArenaRules::LinkState CurrentLink() {
     return link;
 }
 
-int ScrubCount(int shop) {
-    return static_cast<int>(ArenaRules::ShopSlots(shop, CurrentLink()).size()) + 1;
+ArenaRules::ShopPlan Plan(int shop) {
+    auto random = []() { return Rand_ZeroOne(); };
+    return ArenaRules::PlanShop(shop, CurrentLink(), sLastGear, random);
 }
 
-void Open(int shop, int nextWave, const std::vector<Place>& places, void (*startWave)()) {
+void Open(int shop, int nextWave, const ArenaRules::ShopPlan& plan, const Places& places, void (*startWave)()) {
     Close();
-    std::vector<ShopItem> items = ArenaRules::ShopSlots(shop, CurrentLink());
-    if (places.size() != items.size() + 1) {
-        SPDLOG_ERROR("[ARENA] Shop: {} places for {} scrubs", places.size(), items.size() + 1);
-        return;
+    for (int stall = 0; stall < ArenaRules::kStallCount; stall++) {
+        if (places.stalls[stall].size() != plan.stalls[stall].size()) {
+            SPDLOG_ERROR("[ARENA] Shop: {} places for {} scrubs in stall {}", places.stalls[stall].size(),
+                         plan.stalls[stall].size(), stall);
+            return;
+        }
     }
     sOpen = true;
     sShop = shop;
     sNextWave = nextWave;
     sStartWave = startWave;
-    // The scrub that starts the wave is the first scrub of the ring.
-    sSlots.push_back(Slot{ true, ShopItem::Count, places[0], nullptr, 0 });
-    for (size_t i = 0; i < items.size(); i++) {
-        sSlots.push_back(Slot{ false, items[i], places[i + 1], nullptr, 0 });
+    sSlots.push_back(Slot{ true, ShopItem::Count, places.start, nullptr, 0, 0 });
+    for (int stall = 0; stall < ArenaRules::kStallCount; stall++) {
+        for (size_t i = 0; i < plan.stalls[stall].size(); i++) {
+            sSlots.push_back(Slot{ false, plan.stalls[stall][i], places.stalls[stall][i], nullptr, 0, 0 });
+        }
     }
+    sLastGear = plan.Stall(ArenaRules::ShopStall::Gear);
     SPDLOG_INFO("[ARENA] Shop {} opens with {} scrubs", shop, sSlots.size());
 }
 
@@ -333,13 +367,16 @@ void Close() {
             Actor_Kill(slot.scrub);
         }
     }
-    Reset();
+    sSlots.clear();
+    sOpen = false;
+    sStartWave = nullptr;
 }
 
 void Reset() {
     sSlots.clear();
     sOpen = false;
     sStartWave = nullptr;
+    sLastGear.clear();
 }
 
 bool IsOpen() {
@@ -378,6 +415,64 @@ void SceneLoaded() {
     for (Slot& slot : sSlots) {
         slot.scrub = nullptr;
         slot.respawnFramesLeft = 0;
+    }
+}
+
+namespace {
+
+// The model of each item (z64item.h). Double Defense has no model in the game: it uses the model of the randomizer.
+constexpr s16 kItemDrawIds[ArenaRules::kShopItemCount] = {
+    GID_POTION_RED,      GID_POTION_GREEN, GID_HEART,         GID_ARROWS_MEDIUM, GID_BOMB,      GID_SHIELD_HYLIAN,
+    GID_HEART_CONTAINER, GID_BOMB_BAG_20,  GID_SHIELD_MIRROR, GID_NUTS,          GID_DINS_FIRE, GID_LONGSHOT,
+    GID_HAMMER,          GID_BOOTS_HOVER,  GID_SWORD_BGS,     GID_ARROW_FIRE,    GID_ARROW_ICE, GID_ARROW_LIGHT,
+    GID_NAYRUS_LOVE,     GID_MAXIMUM,      GID_MAGIC_LARGE,
+};
+
+bool GoesIntoTheFloor(EnDns* enDns) {
+    return enDns->actionFunc == EnDns_SetupBurrow || enDns->actionFunc == EnDns_SetupNoSaleBurrow ||
+           enDns->actionFunc == EnDns_Burrow || enDns->actionFunc == EnDns_PostBurrow;
+}
+
+void DrawItem(PlayState* play, const Slot& slot) {
+    Actor* scrub = slot.scrub;
+    // The item turns, and goes up and down a little, as the items of the randomizer.
+    f32 frames = static_cast<f32>(play->gameplayFrames);
+    Vec3f pos = { scrub->world.pos.x, scrub->world.pos.y + kItemHeight + 3.0f * sinf(frames * 0.1f),
+                  scrub->world.pos.z };
+
+    OPEN_DISPS(play->state.gfxCtx);
+    // The light of the scene at the item, as Actor_Draw does for an actor.
+    Lights* lights = LightContext_NewLights(&play->lightCtx, play->state.gfxCtx);
+    Lights_BindAll(lights, play->lightCtx.listHead, &pos);
+    Lights_Draw(lights, play->state.gfxCtx);
+    CLOSE_DISPS(play->state.gfxCtx);
+
+    Matrix_Push();
+    Matrix_Translate(pos.x, pos.y, pos.z, MTXMODE_NEW);
+    Matrix_RotateY(frames * 0.05f, MTXMODE_APPLY);
+    Matrix_Scale(kItemScale, kItemScale, kItemScale, MTXMODE_APPLY);
+    if (slot.item == ShopItem::DoubleDefense) {
+        Randomizer_DrawDoubleDefense(play, nullptr);
+    } else {
+        GetItem_Draw(play, kItemDrawIds[static_cast<int>(slot.item)]);
+    }
+    Matrix_Pop();
+}
+
+} // namespace
+
+void Draw(PlayState* play) {
+    if (!sOpen) {
+        return;
+    }
+    for (const Slot& slot : sSlots) {
+        if (slot.startsWave || slot.scrub == nullptr || slot.scrub->update == NULL) {
+            continue;
+        }
+        if (GoesIntoTheFloor(reinterpret_cast<EnDns*>(slot.scrub))) {
+            continue;
+        }
+        DrawItem(play, slot);
     }
 }
 
@@ -423,7 +518,7 @@ void OnOpenText(uint16_t* textId, bool* loadFromMessageTable) {
                             sound + "Es-tu prêt pour la %rvague " + wave + yesNo + "Oui&Non%w");
     } else {
         const ItemText& text = kItemTexts[static_cast<int>(slot->item)];
-        const std::string price = std::to_string(ArenaRules::Price(slot->item, sShop));
+        const std::string price = std::to_string(SlotPrice(*slot));
         // \x07\x10\xA3 goes to the Yes/No question of the scrubs.
         const std::string question = "%w!\x07\x10\xA3";
         msg = CustomMessage(sound + "I sell %g" + text.english + "%w for %y" + price + " Rupees" + question,
