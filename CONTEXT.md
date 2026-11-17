@@ -161,10 +161,20 @@ scene in the quest menu: Phantom Ganon or Ganon. Like Boss Rush, the game does
 not save an ARENA file. When Link dies, the game goes back to the
 file select.
 
+## Run
+
+One ARENA game, from the start to the death of Link. Rupees and items do not
+go to the next run.
+
 ## Wave
 
 A group of enemies that the game spawns at one time in ARENA. The next wave
 starts when all the enemies of the wave are dead.
+
+## Shop
+
+The stop after each ARENA wave. Business Scrubs sell healing, ammo, and gear
+for rupees. A scrub starts the next wave.
 
 ## Hyper enemy
 

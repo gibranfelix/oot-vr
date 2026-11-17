@@ -107,9 +107,14 @@ the slots, the debug save, Boss Rush, and ARENA. Tests:
 
 ARENA is in `port/soh/soh/Enhancements/arena/`. `ArenaRules.h` contains the
 rules of each wave: the enemies of each level, the Hyper enemies, when the wave
-starts, and where an enemy spawns. It has no game types. The host unit tests
-are in `port/soh/tests/arena/ArenaRulesTests.cpp`. `Arena.cpp` connects these
-rules to the game.
+starts, where an enemy spawns, the rupees, and the catalog of the shop. It has
+no game types. The host unit tests are in
+`port/soh/tests/arena/ArenaRulesTests.cpp`. `Arena.cpp` connects these rules to
+the game.
+
+`ArenaShop.cpp` is the shop. Each Business Scrub (`EnDns`) sells one item and
+shows it above its head. Hooks change the text, the price, and the sale. After
+each talk, the scrub goes into the floor and the shop spawns it again.
 
 `Arena.cpp` registers its hooks one time at boot, and each hook checks
 `IS_ARENA`. Do not register hooks in an `OnLoadGame` hook. Other `OnLoadGame`
