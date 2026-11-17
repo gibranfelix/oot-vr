@@ -18,25 +18,24 @@ extern "C" {
 extern PlayState* gPlayState;
 extern SaveContext gSaveContext;
 
-// The actions of the scrub (z_en_dns.c). The shop removes a scrub only when it is idle, so that a scrub that sold its
-// item can go into the floor. The item above a scrub goes away when the scrub goes into the floor.
+// Actions of z_en_dns.c. The shop kills only an idle scrub, so a scrub that sold can go into the floor.
 void EnDns_Idle(EnDns* enDns, PlayState* play);
 void EnDns_SetupBurrow(EnDns* enDns, PlayState* play);
 void EnDns_SetupNoSaleBurrow(EnDns* enDns, PlayState* play);
 void EnDns_Burrow(EnDns* enDns, PlayState* play);
 void EnDns_PostBurrow(EnDns* enDns, PlayState* play);
 
-// The Double Defense of the randomizer: a Heart Container with a white border (draw.cpp).
+// Randomizer model (draw.cpp).
 void Randomizer_DrawDoubleDefense(PlayState* play, GetItemEntry* getItemEntry);
 }
 
 using ArenaRules::ShopItem;
 
-// The item above a scrub: the height above the feet of the scrub, and the scale of the items of the shops (EnGirlA).
+// kItemScale: the scale of the shop items (EnGirlA).
 static constexpr f32 kItemHeight = 70.0f;
 static constexpr f32 kItemScale = 0.25f;
 
-// The model of each item (z64item.h). Double Defense has no model in the game: it uses the model of the randomizer.
+// Double Defense has no GID. DrawShopItem uses the randomizer model.
 static constexpr s16 kItemDrawIds[ArenaRules::kShopItemCount] = {
     GID_POTION_RED,      GID_POTION_GREEN, GID_HEART,         GID_ARROWS_MEDIUM, GID_BOMB,      GID_SHIELD_HYLIAN,
     GID_HEART_CONTAINER, GID_BOMB_BAG_20,  GID_SHIELD_MIRROR, GID_NUTS,          GID_DINS_FIRE, GID_LONGSHOT,
@@ -49,16 +48,15 @@ static bool GoesIntoTheFloor(EnDns* enDns) {
            enDns->actionFunc == EnDns_Burrow || enDns->actionFunc == EnDns_PostBurrow;
 }
 
-// Not in a namespace: OPEN_DISPS declares FrameInterpolation_RecordOpenChild in the block. In a namespace, that
-// declaration names another function. frame_interpolation.h gives it C linkage.
+// Global scope: OPEN_DISPS declares FrameInterpolation_RecordOpenChild in the block, and it needs C linkage.
 static void DrawShopItem(PlayState* play, Actor* scrub, ShopItem item) {
-    // The item turns, and goes up and down a little, as the items of the randomizer.
+    // Turns and goes up and down.
     f32 frames = static_cast<f32>(play->gameplayFrames);
     Vec3f pos = { scrub->world.pos.x, scrub->world.pos.y + kItemHeight + 3.0f * sinf(frames * 0.1f),
                   scrub->world.pos.z };
 
     OPEN_DISPS(play->state.gfxCtx);
-    // The light of the scene at the item, as Actor_Draw does for an actor.
+    // Scene light at the item, as in Actor_Draw.
     Lights* lights = LightContext_NewLights(&play->lightCtx, play->state.gfxCtx);
     Lights_BindAll(lights, play->lightCtx.listHead, &pos);
     Lights_Draw(lights, play->state.gfxCtx);
@@ -79,16 +77,16 @@ static void DrawShopItem(PlayState* play, Actor* scrub, ShopItem item) {
 namespace ArenaShop {
 namespace {
 
-// Text IDs that the game does not use. OnOpenText makes the text.
+// Text IDs that the game does not use.
 constexpr u16 kItemTextId = 0x9400;
 constexpr u16 kStartTextId = 0x9401;
-// Text of the scrubs (z_en_dns.c): the Yes/No question after the offer.
+// Yes/No question of the scrubs (z_en_dns.c).
 constexpr u16 kBuyQuestionTextId = 0x10A3;
 
-// A scrub that went into the floor comes back after 1.5 seconds, when the shop still sells its item.
+// 1.5 s.
 constexpr int kRespawnFrames = 30;
 
-// The scrub that starts the next wave is larger than the scrubs that sell (EnDns_Init: 0.01).
+// EnDns_Init uses 0.01.
 constexpr f32 kStartScrubScale = 0.015f;
 
 struct ItemText {
@@ -99,27 +97,27 @@ struct ItemText {
 };
 
 constexpr ItemText kItemTexts[ArenaRules::kShopItemCount] = {
-    { ShopItem::RedPotion, "a Red Potion", "ein Rotes Elixier", "une Potion rouge" },
-    { ShopItem::GreenPotion, "a Green Potion", "ein Grünes Elixier", "une Potion verte" },
-    { ShopItem::RecoveryHearts, "3 Recovery Hearts", "3 Herzen", "3 cœurs" },
+    { ShopItem::RedPotion, "Red Potion", "Rotes Elixier", "Potion rouge" },
+    { ShopItem::GreenPotion, "Green Potion", "Grünes Elixier", "Potion verte" },
+    { ShopItem::RecoveryHearts, "3 Hearts", "3 Herzen", "3 cœurs" },
     { ShopItem::Arrows, "10 Arrows", "10 Pfeile", "10 flèches" },
     { ShopItem::Bombs, "10 Bombs", "10 Bomben", "10 bombes" },
-    { ShopItem::HylianShield, "a Hylian Shield", "einen Hylia-Schild", "un Bouclier hylien" },
-    { ShopItem::HeartContainer, "a Heart Container", "einen Herzcontainer", "un Réceptacle de cœur" },
-    { ShopItem::BombBag, "a Bomb Bag", "eine Bombentasche", "un Sac de bombes" },
-    { ShopItem::MirrorShield, "a Mirror Shield", "einen Spiegelschild", "un Bouclier miroir" },
+    { ShopItem::HylianShield, "Hylian Shield", "Hylia-Schild", "Bouclier hylien" },
+    { ShopItem::HeartContainer, "Heart Container", "Herzcontainer", "Réceptacle de cœur" },
+    { ShopItem::BombBag, "Bomb Bag", "Bombentasche", "Sac de bombes" },
+    { ShopItem::MirrorShield, "Mirror Shield", "Spiegelschild", "Bouclier miroir" },
     { ShopItem::DekuNuts, "10 Deku Nuts", "10 Deku-Nüsse", "10 noix Mojo" },
-    { ShopItem::MagicDinsFire, "Magic and Din's Fire", "Magie und Dins Feuerinferno", "la Magie et le Feu de Din" },
-    { ShopItem::Longshot, "a Longshot", "einen Enterhaken", "un Super grappin" },
-    { ShopItem::MegatonHammer, "a Megaton Hammer", "einen Stahlhammer", "une Masse des Titans" },
-    { ShopItem::HoverBoots, "Hover Boots", "Gleitstiefel", "des Bottes des airs" },
-    { ShopItem::BiggoronSword, "Biggoron's Sword", "das Biggoron-Schwert", "l'Épée de Biggoron" },
-    { ShopItem::FireArrows, "Fire Arrows", "Feuerpfeile", "des Flèches de feu" },
-    { ShopItem::IceArrows, "Ice Arrows", "Eispfeile", "des Flèches de glace" },
-    { ShopItem::LightArrows, "Light Arrows", "Lichtpfeile", "des Flèches de lumière" },
-    { ShopItem::NayrusLove, "Nayru's Love", "Nayrus Umarmung", "l'Amour de Nayru" },
-    { ShopItem::DoubleDefense, "Double Defense", "doppelte Verteidigung", "la Double défense" },
-    { ShopItem::DoubleMagic, "Double Magic", "doppelte Magie", "la Double magie" },
+    { ShopItem::MagicDinsFire, "Magic + Din's Fire", "Magie + Dins Feuerinferno", "Magie + Feu de Din" },
+    { ShopItem::Longshot, "Longshot", "Enterhaken", "Super grappin" },
+    { ShopItem::MegatonHammer, "Megaton Hammer", "Stahlhammer", "Masse des Titans" },
+    { ShopItem::HoverBoots, "Hover Boots", "Gleitstiefel", "Bottes des airs" },
+    { ShopItem::BiggoronSword, "Biggoron's Sword", "Biggoron-Schwert", "Épée de Biggoron" },
+    { ShopItem::FireArrows, "Fire Arrows", "Feuerpfeile", "Flèches de feu" },
+    { ShopItem::IceArrows, "Ice Arrows", "Eispfeile", "Flèches de glace" },
+    { ShopItem::LightArrows, "Light Arrows", "Lichtpfeile", "Flèches de lumière" },
+    { ShopItem::NayrusLove, "Nayru's Love", "Nayrus Umarmung", "Amour de Nayru" },
+    { ShopItem::DoubleDefense, "Double Defense", "Doppelte Verteidigung", "Double défense" },
+    { ShopItem::DoubleMagic, "Double Magic", "Doppelte Magie", "Double magie" },
 };
 
 constexpr bool TextsAreInTheOrderOfTheItems() {
@@ -139,7 +137,7 @@ struct Slot {
     Place place;
     Actor* scrub;
     int respawnFramesLeft;
-    // The number of items that Link bought from this scrub in this shop.
+    // Purchases in this shop.
     int bought;
 };
 
@@ -148,9 +146,9 @@ int sShop = 0;
 int sNextWave = 0;
 void (*sStartWave)() = nullptr;
 std::vector<Slot> sSlots;
-// The gear of the last shop. The next shop sells other gear first.
+// The next shop sells other gear first.
 std::vector<ShopItem> sLastGear;
-// The item of each scrub. EnDns keeps a pointer to its entry, so the entries stay in this array.
+// EnDns keeps a pointer to its entry.
 std::array<DnsItemEntry, ArenaRules::kShopItemCount + 1> sEntries;
 
 Slot* FindSlot(const Actor* actor) {
@@ -162,7 +160,7 @@ Slot* FindSlot(const Actor* actor) {
     return nullptr;
 }
 
-// Each gear item sells one time in each shop. Healing and ammo sell again.
+// Gear sells one time in each shop.
 bool IsSold(const Slot& slot, const ArenaRules::LinkState& link) {
     return slot.startsWave ||
            (ArenaRules::IsOffered(slot.item, link) && (!ArenaRules::IsGear(slot.item) || slot.bought == 0));
@@ -219,7 +217,7 @@ void EquipShield(PlayState* play, u16 value) {
     Player_SetEquipmentData(play, GET_PLAYER(play));
 }
 
-// Gives the item without the get item animation: the scrub goes into the floor, and the shop continues.
+// No get item animation: the shop continues.
 void GiveItem(PlayState* play, ShopItem item) {
     switch (item) {
         case ShopItem::RedPotion:
@@ -302,7 +300,7 @@ void GiveItem(PlayState* play, ShopItem item) {
     }
 }
 
-// EnDns calls this after the player says Yes and the scrub can sell.
+// EnDns calls this after Yes.
 void Pay(EnDns* enDns) {
     Slot* slot = FindSlot(&enDns->actor);
     if (slot == nullptr) {
@@ -433,8 +431,7 @@ void Update(PlayState* play) {
         Slot& slot = sSlots[i];
         bool sold = IsSold(slot, link);
         if (slot.scrub != nullptr) {
-            // An idle scrub of an item that the shop does not sell now goes away, for example the Hylian Shield after
-            // Link buys the Mirror Shield.
+            // For example, the Hylian Shield after Link buys the Mirror Shield.
             EnDns* enDns = reinterpret_cast<EnDns*>(slot.scrub);
             if (!sold && slot.scrub->update != NULL && enDns->actionFunc == EnDns_Idle) {
                 Actor_Kill(slot.scrub);
@@ -481,10 +478,9 @@ void OnActorUpdate(void* refActor) {
         return;
     }
     EnDns* enDns = reinterpret_cast<EnDns*>(actor);
-    // EnDns_Update sets the text of its params in each frame. This hook runs after EnDns_Update (Actor_UpdateAll), and
-    // the player reads textId in the next frame, so the player gets the text of the shop.
+    // EnDns_Update sets textId in each frame. This hook runs after EnDns_Update.
     actor->textId = slot->startsWave ? kStartTextId : kItemTextId;
-    // A scrub that sold its item drops 3 hearts when it goes into the floor (EnDns_PostBurrow). The shop sells hearts.
+    // No 3 hearts after a sale (EnDns_PostBurrow).
     enDns->dropCollectible = 0;
 }
 
@@ -505,23 +501,23 @@ void OnOpenText(uint16_t* textId, bool* loadFromMessageTable) {
         return;
     }
 
-    // \x12\x38\x82: the sound of the scrub, as in the texts of the randomizer for scrubs (MerchantMessages.cpp).
+    // Scrub sound, as in MerchantMessages.cpp.
     const std::string sound = "\x12\x38\x82";
     CustomMessage msg;
     if (slot->startsWave) {
         const std::string wave = std::to_string(sNextWave);
         const std::string yesNo = "%w?\x1B%g";
-        msg = CustomMessage(sound + "Are you ready for %rwave " + wave + yesNo + "Yes&No%w",
-                            sound + "Bist Du bereit für %rWelle " + wave + yesNo + "Ja&Nein%w",
-                            sound + "Es-tu prêt pour la %rvague " + wave + yesNo + "Oui&Non%w");
+        msg = CustomMessage(sound + "Start %rwave " + wave + yesNo + "Yes&No%w",
+                            sound + "%rWelle " + wave + "%w starten" + yesNo + "Ja&Nein%w",
+                            sound + "Lancer la %rvague " + wave + " %w" + yesNo + "Oui&Non%w");
     } else {
         const ItemText& text = kItemTexts[static_cast<int>(slot->item)];
         const std::string price = std::to_string(SlotPrice(*slot));
-        // \x07\x10\xA3 goes to the Yes/No question of the scrubs.
-        const std::string question = "%w!\x07\x10\xA3";
-        msg = CustomMessage(sound + "I sell %g" + text.english + "%w for %y" + price + " Rupees" + question,
-                            sound + "Ich verkaufe Dir %g" + text.german + "%w für %y" + price + " Rubine" + question,
-                            sound + "Je te vends %g" + text.french + "%w pour %y" + price + " Rubis" + question);
+        // Goes to the Yes/No question.
+        const std::string question = "%w\x07\x10\xA3";
+        msg = CustomMessage(sound + "%g" + text.english + "%w: %y" + price + " Rupees" + question,
+                            sound + "%g" + text.german + "%w: %y" + price + " Rubine" + question,
+                            sound + "%g" + text.french + "%w : %y" + price + " rubis" + question);
     }
     msg.AutoFormat();
     msg.LoadIntoFont();
@@ -529,7 +525,7 @@ void OnOpenText(uint16_t* textId, bool* loadFromMessageTable) {
 }
 
 void OnGiveItemFromScrub(void* scrub, bool* should) {
-    // Pay gives the item. The get item animation would stop the shop for each item.
+    // Pay gives the item.
     if (FindSlot(static_cast<Actor*>(scrub)) != nullptr) {
         *should = false;
     }

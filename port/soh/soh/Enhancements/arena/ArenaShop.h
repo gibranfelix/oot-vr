@@ -1,7 +1,6 @@
 #pragma once
 
-// The shop of ARENA (issue #169): Business Scrubs (EnDns) sell items between waves. Arena.cpp opens and closes the
-// shop, and calls the hooks below only in ARENA. The rules of the catalog are in ArenaRules.h.
+// ARENA shop (#169). Arena.cpp calls these functions only in ARENA. The rules are in ArenaRules.h.
 
 #include "ArenaRules.h"
 
@@ -12,46 +11,43 @@ struct PlayState;
 
 namespace ArenaShop {
 
-// What Link has now, from gSaveContext.
+// From gSaveContext.
 ArenaRules::LinkState CurrentLink();
 
-// The items of the next shop, at random (ArenaRules::PlanShop). The gear of the last shop comes again only when there
-// are not sufficient other items.
+// Gear at random: see ArenaRules::PlanShop.
 ArenaRules::ShopPlan Plan(int shop);
 
-// A place of a scrub on the floor, in the coordinates of the scene.
+// Scene coordinates.
 struct Place {
     float x;
     float y;
     float z;
 };
 
-// The places of the scrubs: the scrub that starts the next wave, and one place for each item of each stall of the plan.
+// One place for the wave scrub, and one for each item of the plan.
 struct Places {
     Place start;
     std::vector<Place> stalls[ArenaRules::kStallCount];
 };
 
-// Opens the shop. nextWave is the wave after the shop. The shop calls startWave when the player tells a scrub to start
-// the next wave.
+// startWave runs when the player says Yes to the wave scrub.
 void Open(int shop, int nextWave, const ArenaRules::ShopPlan& plan, const Places& places, void (*startWave)());
 
-// Removes all the scrubs.
+// Kills all the scrubs.
 void Close();
 
-// Forgets the scrubs and the gear of the last shop, and does not touch the scrubs. For a new run: the scrubs of the
-// last run can be deleted.
+// For a new run. Does not kill the scrubs: the scene can be gone.
 void Reset();
 
 bool IsOpen();
 
-// Spawns the scrubs of the items that the shop sells now, and removes the others. Call one time in each frame.
+// Call each frame. Spawns the scrubs of the items on sale, and kills the others.
 void Update(PlayState* play);
 
-// The scene loaded again: the scrubs are gone. Update spawns them again.
+// The scene loaded again and the scrubs are gone.
 void SceneLoaded();
 
-// Draws the item of each scrub above the scrub. Call after the game draws the actors.
+// Draws the item above each scrub. Call after the actors draw.
 void Draw(PlayState* play);
 
 void OnActorUpdate(void* actor);

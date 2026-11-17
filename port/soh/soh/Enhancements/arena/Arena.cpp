@@ -272,8 +272,6 @@ static void StartWaveAfterShop() {
     sDirector.LeaveShop();
 }
 
-// The scrub that starts the wave stands in front of Link. The stalls stand on a ring around Link, in the circle where
-// the enemies spawn (ArenaRules::ShopPositions).
 static void OpenShop(PlayState* play) {
     int shop = sDirector.ShopNumber();
     ArenaRules::ShopPlan plan = ArenaShop::Plan(shop);

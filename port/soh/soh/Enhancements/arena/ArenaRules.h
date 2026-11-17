@@ -68,14 +68,14 @@ inline int KillReward(int level, bool hyper) {
     return kKillRupees[level] * (hyper ? 2 : 1);
 }
 
-// The shop starts after each wave (issue #169).
+// Shop N opens after wave N.
 constexpr int kShopEveryWaves = 1;
 
 inline bool IsShopAfterWave(int wave) {
     return wave > 0 && wave % kShopEveryWaves == 0;
 }
 
-// The items of the shop (issue #169).
+// Shop items (#169).
 enum class ShopItem {
     RedPotion,
     GreenPotion,
@@ -103,8 +103,7 @@ enum class ShopItem {
 constexpr int kShopItemCount = static_cast<int>(ShopItem::Count);
 constexpr int kMaxHearts = 20;
 
-// A stall is a group of scrubs that sell one type of item. Link can buy the healing and the ammo again and again. Each
-// gear item sells one time in each shop.
+// Healing and ammo sell again and again. Gear sells one time in each shop.
 enum class ShopStall {
     Healing,
     Ammo,
@@ -123,9 +122,9 @@ enum class ShopNeed {
 struct ShopItemSpec {
     ShopItem item;
     ShopStall stall;
-    // Gear only: the tier of the item. Tier 2 comes in shop 4, tier 3 in shop 7 (kTierFirstShop).
+    // Gear only. Tier N starts in kTierFirstShop[N - 1].
     int tier;
-    // The price in the first shop, before Link buys the item.
+    // Base price.
     int price;
     ShopNeed need;
 };
@@ -154,11 +153,11 @@ constexpr ShopItemSpec kShopItems[kShopItemCount] = {
     { ShopItem::DoubleMagic, ShopStall::Gear, 3, 150, ShopNeed::Magic },
 };
 
-// The first shop of each tier of gear. Shop N is the shop after wave N.
+// First shop of each gear tier.
 constexpr int kTierFirstShop[] = { 1, 4, 7 };
 constexpr int kTierCount = sizeof(kTierFirstShop) / sizeof(kTierFirstShop[0]);
 
-// What Link has. owns[MagicDinsFire] is true when Link has magic.
+// owns[MagicDinsFire]: Link has magic.
 struct LinkState {
     bool owns[kShopItemCount] = {};
     bool hasShield = true;
@@ -173,7 +172,7 @@ inline bool IsGear(ShopItem item) {
     return GetShopItem(item).stall == ShopStall::Gear;
 }
 
-// The highest tier of gear in the shop.
+// Highest gear tier on sale.
 inline int UnlockedTier(int shop) {
     int tier = 0;
     for (int i = 0; i < kTierCount; i++) {
@@ -184,13 +183,12 @@ inline int UnlockedTier(int shop) {
     return tier;
 }
 
-// The number of gear items at random in the shop: 1 in shops 1 to 3, 2 in shops 4 to 6, and 3 after.
+// 1 in shops 1-3, 2 in shops 4-6, 3 after.
 inline int GearOfferCount(int shop) {
     return UnlockedTier(shop);
 }
 
-// Gear costs 10 % more in each shop. Healing and ammo cost 25 % more for each item that Link bought in the same shop.
-// The prices are multiples of 5 rupees.
+// Gear: +10 % in each shop. Healing and ammo: +25 % for each purchase in the same shop. Multiples of 5.
 constexpr int kGearIncreasePerShop = 10;
 constexpr int kSupplyIncreasePerBuy = 25;
 
@@ -205,7 +203,7 @@ inline int Price(ShopItem item, int shop, int boughtInShop) {
     return (spec.price * percent + 250) / 500 * 5;
 }
 
-// Link can buy the item now: Link has its need, and Link does not have the gear.
+// Link has the need of the item, and does not have the gear.
 inline bool IsOffered(ShopItem item, const LinkState& link) {
     const ShopItemSpec& spec = GetShopItem(item);
     if (item == ShopItem::HeartContainer && link.hearts >= kMaxHearts) {
@@ -227,7 +225,6 @@ inline bool IsOffered(ShopItem item, const LinkState& link) {
     return true;
 }
 
-// The items of each stall of one shop.
 struct ShopPlan {
     std::vector<ShopItem> stalls[kStallCount];
 
@@ -236,11 +233,9 @@ struct ShopPlan {
     }
 };
 
-// Healing and ammo: all the items of the stall. An item that needs another item also gets a scrub, because Link can
-// buy the need in the same shop. Its scrub comes when Link has the need.
-// Gear: GearOfferCount(shop) items at random from the unlocked tiers, that Link can buy now. An item of lastGear (the
-// gear of the last shop) comes again only when there are not sufficient other items. Without a shield, the Hylian
-// Shield also comes. random returns values in [0, 1).
+// Healing and ammo: all the items. An item with a need gets a scrub too: Link can buy the need in the same shop.
+// Gear: GearOfferCount(shop) items at random from the unlocked tiers. Items of lastGear come only when there are
+// not sufficient other items. Without a shield, the Hylian Shield comes too. random returns values in [0, 1).
 template <typename Random>
 ShopPlan PlanShop(int shop, const LinkState& link, const std::vector<ShopItem>& lastGear, Random& random) {
     ShopPlan plan;
@@ -319,7 +314,6 @@ class Director {
         return mInShop;
     }
 
-    // Shop N is the shop after wave N.
     int ShopNumber() const {
         return (mWave - 1) / kShopEveryWaves;
     }
@@ -492,10 +486,8 @@ inline Point KeepInside(Point center, float radius, Point point) {
     return Point{ center.x + (point.x - center.x) * scale, center.z + (point.z - center.z) * scale };
 }
 
-// The places of the scrubs. The scrub that starts the next wave stands alone in front of Link, near enough to talk. The
-// stalls stand on a ring around Link: healing on the left of Link, gear behind Link, and ammo on the right of Link. The
-// scrubs of a stall stand side by side on the ring. A scrub talks to Link from 130 units (EnDns_Idle), so Link walks to
-// a stall. The ring moves to the center of the arena when it is not in the arena.
+// The wave scrub stands in front of Link, in talk range. The stalls stand on a ring: healing left, gear behind, ammo
+// right. A scrub talks from 130 units (EnDns_Idle), so Link walks to a stall.
 constexpr float kShopRingRadius = 200.0f;
 constexpr float kStartScrubDistance = 110.0f;
 constexpr float kScrubSpacing = 62.0f;
@@ -505,10 +497,10 @@ struct ShopLayout {
     std::vector<Point> stalls[kStallCount];
 };
 
-// facing: the yaw of Link in radians. The game yaw 0 looks to +z, and the left of Link is +x.
+// facing: yaw of Link in radians. Yaw 0 looks to +z. Left of Link is +x.
 inline ShopLayout ShopPositions(Point center, float radius, Point link, float facing, const int counts[kStallCount]) {
     constexpr float kPi = 3.14159265f;
-    // The angle of each stall from the front of Link, in the order of ShopStall.
+    // Angle of each stall from the front, in the order of ShopStall.
     constexpr float kStallAngles[kStallCount] = { kPi / 2.0f, -kPi / 2.0f, kPi };
 
     float ring = kShopRingRadius < radius ? kShopRingRadius : radius;

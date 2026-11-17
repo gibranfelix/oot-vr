@@ -112,11 +112,9 @@ no game types. The host unit tests are in
 `port/soh/tests/arena/ArenaRulesTests.cpp`. `Arena.cpp` connects these rules to
 the game.
 
-`ArenaShop.cpp` is the shop. Each Business Scrub (`EnDns`) sells one item. The
-shop draws the item above its scrub.
-Hooks change the text, the price, and the sale of the scrub. The scrub gives
-the item without the get item animation. After each talk, a scrub goes into
-the floor. The shop spawns it again when the shop still sells its item.
+`ArenaShop.cpp` is the shop. Each Business Scrub (`EnDns`) sells one item and
+shows it above its head. Hooks change the text, the price, and the sale. After
+each talk, the scrub goes into the floor and the shop spawns it again.
 
 `Arena.cpp` registers its hooks one time at boot, and each hook checks
 `IS_ARENA`. Do not register hooks in an `OnLoadGame` hook. Other `OnLoadGame`

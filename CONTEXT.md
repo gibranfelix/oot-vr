@@ -163,8 +163,8 @@ file select.
 
 ## Run
 
-One ARENA game, from the start to the death of Link. Rupees and purchases
-stay only in the run.
+One ARENA game, from the start to the death of Link. Rupees and items do not
+go to the next run.
 
 ## Wave
 
@@ -173,10 +173,8 @@ starts when all the enemies of the wave are dead.
 
 ## Shop
 
-A stop between waves in ARENA, after each wave. Business Scrubs sell items for
-rupees. The scrubs stand in three stalls: healing, ammo, and gear. The gear
-changes at random in each shop. The next wave starts when the player tells a
-scrub to start it.
+The stop after each ARENA wave. Business Scrubs sell healing, ammo, and gear
+for rupees. A scrub starts the next wave.
 
 ## Hyper enemy
 
